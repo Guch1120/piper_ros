@@ -39,7 +39,7 @@ First, you need to set up the shell script parameters.
 
 ##### PC with Only One USB-to-CAN Module Inserted
 
-- **Use the `can_activate.sh` **
+- **Use the `can_activate.sh`**
 
 Directly run:
 
@@ -49,7 +49,7 @@ bash can_activate.sh can0 1000000
 
 ##### PC with Multiple USB-to-CAN Modules Inserted
 
-**Use the `can_activate.sh` **
+**Use the `can_activate.sh`**
 
 Disconnect all CAN modules.
 
@@ -83,7 +83,7 @@ Then run`ifconfig` to check if `can_piper` appears. If it does, the CAN module h
 
 然后can模块中的其中一个单独插入PC，执行
 
-In the `can_config.sh`, the `EXPECTED_CAN_COUNT` shows the number of the CAN modules you want to activate. Assume it's 2 here. 
+In the `can_config.sh`, the `EXPECTED_CAN_COUNT` shows the number of the CAN modules you want to activate. Assume it's 2 here.
 
 Then, insert one of the two CAN modules into the PC alone and run the script.
 
@@ -333,7 +333,7 @@ coming...
 
 ## Q&A
 
-1. 
+1.  
 
 ```shell
 colcon build
