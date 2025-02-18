@@ -8,7 +8,7 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     package_name = 'piper_description'
-    urdf_name = "piper_description.xacro"  # 使用xacro格式文件
+    urdf_name = "piper_no_gripper_description.xacro"  # 使用xacro格式文件
 
     ld = LaunchDescription()
     pkg_share = FindPackageShare(package=package_name).find(package_name)
@@ -21,7 +21,7 @@ def generate_launch_description():
     
     # 使用指定的RViz配置文件路径
     # default_rviz_config_path = os.path.join(pkg_share, 'rviz/urdf.rviz')
-    specific_rviz_config_path = os.path.join(pkg_share, 'rviz/piper_ctrl.rviz')
+    specific_rviz_config_path = os.path.join(pkg_share, 'rviz/piper_no_gripper.rviz')
     print(specific_rviz_config_path)  # 打印以确保路径正确
 
     # Declare arguments
