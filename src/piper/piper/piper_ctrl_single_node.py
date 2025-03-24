@@ -183,7 +183,7 @@ class PiperRosNode(Node):
         joint_3: float = (self.piper.GetArmJointCtrl().joint_ctrl.joint_4/1000) * 0.017444
         joint_4: float = (self.piper.GetArmJointCtrl().joint_ctrl.joint_5/1000) * 0.017444
         joint_5: float = (self.piper.GetArmJointCtrl().joint_ctrl.joint_6/1000) * 0.017444
-        joint_6: float = self.piper.GetArmGripperCtrl().gripper_ctrl.grippers_angle * 0.001
+        joint_6: float = self.piper.GetArmGripperCtrl().gripper_ctrl.grippers_angle/1000000
         self.joint_ctrl.position = [joint_0, joint_1, joint_2, joint_3, joint_4, joint_5, joint_6]  # Example values
         self.joint_ctrl_pub.publish(self.joint_ctrl)
 
