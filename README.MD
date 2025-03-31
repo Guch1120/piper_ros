@@ -361,7 +361,7 @@ Summary: 1 package finished [0.55s]
 ```
 
 ```shell
-source /opt/ros/foxy/setup.bash
+source /opt/ros/$ROS_DISTRO/setup.bash
 ```
 
 2. 
@@ -426,5 +426,5 @@ sudo apt install ros-$ROS_DISTRO-robot-state-publisher
 5. 
 
 ```shell
-sudo apt install ros-humble-xacro
+sudo apt install ros-$ROS_DISTRO-xacro
 ```
