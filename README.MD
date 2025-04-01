@@ -1,4 +1,4 @@
-# piper 机械臂(humble)
+# piper 机械臂ROS(humble)
 
 ![ubuntu](https://img.shields.io/badge/Ubuntu-22.04-orange.svg)
 
@@ -11,6 +11,15 @@ Test:
 |PYTHON |STATE|
 |---|---|
 |![humble](https://img.shields.io/badge/ros-humble-blue.svg)|![Pass](https://img.shields.io/badge/Pass-blue.svg)|
+
+```shell
+git clone https://github.com/agilexrobotics/piper_ros.git
+```
+
+```shell
+cd piper_ros
+git checkout humble
+```
 
 ## 1 安装方法
 
