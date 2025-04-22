@@ -12,6 +12,19 @@ Test:
 |---|---|
 |![humble](https://img.shields.io/badge/ros-humble-blue.svg)|![Pass](https://img.shields.io/badge/Pass-blue.svg)|
 
+## 0 Note the URDF version
+
+DH parameters before S-V1.6-3 firmware version are obtained by taking the contact limit of each joint as the initial coordinate
+
+DH parameters after S-V1.6-3 firmware version offset the coordinate system of j2 and j3 by 2 degrees
+
+The default URDF is now the latter
+
+|firmware version |urdf|
+|---|---|
+|current version < S-V1.6-3|`piper_description_old.urdf`|
+|current version >= S-V1.6-3|`piper_description.urdf`|
+
 ## Installation
 
 ### Install dependencies
