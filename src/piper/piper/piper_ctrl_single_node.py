@@ -302,7 +302,7 @@ class PiperRosNode(Node):
                         gripper_effort = round(gripper_effort * 1000)
                     else:
                         # self.get_logger().warning("Gripper effort is NaN, using default value.")
-                        gripper_effort = 0  # 设置默认值
+                        gripper_effort = 1000  # 设置默认值
                     self.piper.GripperCtrl(abs(joint_6), gripper_effort, 0x01, 0)
                 else:
                     self.piper.GripperCtrl(abs(joint_6), 1000, 0x01, 0)
@@ -320,12 +320,13 @@ class PiperRosNode(Node):
             self.__enable_flag = True
             self.piper.EnableArm(7)
             if self.gripper_exist:
+                self.piper.GripperCtrl(0, 1000, 0x02, 0)
                 self.piper.GripperCtrl(0, 1000, 0x01, 0)
         else:
             self.__enable_flag = False
             self.piper.DisableArm(7)
             if self.gripper_exist:
-                self.piper.GripperCtrl(0, 1000, 0x00, 0)
+                self.piper.GripperCtrl(0, 1000, 0x02, 0)
 
     def handle_enable_service(self, req, resp):
         """Handle enable service for the robotic arm"""
