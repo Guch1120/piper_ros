@@ -89,29 +89,29 @@ class PiperRosNode(Node):
             if(self.auto_enable):
                 while not (enable_flag):
                     elapsed_time = time.time() - start_time
-                    print("--------------------")
+                    self.get_logger().info("--------------------")
                     enable_flag = self.piper.GetArmLowSpdInfoMsgs().motor_1.foc_status.driver_enable_status and \
                         self.piper.GetArmLowSpdInfoMsgs().motor_2.foc_status.driver_enable_status and \
                         self.piper.GetArmLowSpdInfoMsgs().motor_3.foc_status.driver_enable_status and \
                         self.piper.GetArmLowSpdInfoMsgs().motor_4.foc_status.driver_enable_status and \
                         self.piper.GetArmLowSpdInfoMsgs().motor_5.foc_status.driver_enable_status and \
                         self.piper.GetArmLowSpdInfoMsgs().motor_6.foc_status.driver_enable_status
-                    print("Enable status:", enable_flag)
+                    self.get_logger().info(f"Enable status:{enable_flag}")
                     self.piper.EnableArm(7)
                     self.piper.GripperCtrl(0, 1000, 0x01, 0)
                     if(enable_flag):
                         self.__enable_flag = True
-                    print("--------------------")
+                    self.get_logger().info("--------------------")
                     # Check if the timeout has been exceeded
                     if elapsed_time > timeout:
-                        print("Timeout....")
+                        self.get_logger().info("Timeout....")
                         elapsed_time_flag = True
                         enable_flag = True
                         break
                     time.sleep(1)
                     pass
             if(elapsed_time_flag):
-                print("Automatic enable timeout, exiting program")
+                self.get_logger().info("Automatic enable timeout, exiting program")
                 exit(0)
 
             self.PublishArmState()
@@ -257,7 +257,7 @@ class PiperRosNode(Node):
 
         # 遍历joint_data.name来映射位置
         for idx, joint_name in enumerate(joint_data.name):
-            # self.get_logger().info(f"{joint_name}: {joint_data.position[idx]}")
+            self.get_logger().info(f"{joint_name}: {joint_data.position[idx]}")
             joint_positions[joint_name] = round(joint_data.position[idx] * factor)
         
         # 获取第7个关节的位置
