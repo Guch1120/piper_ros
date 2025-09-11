@@ -13,10 +13,10 @@ from piper_sdk import *
 from piper_sdk import C_PiperInterface
 from piper_msgs.msg import PiperStatusMsg, PosCmd
 from piper_msgs.srv import Enable
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Pose, PoseStamped
 from scipy.spatial.transform import Rotation as R  # For Euler angle to quaternion conversion
 from numpy import clip
-
+from builtin_interfaces.msg import Time
 
 class PiperRosNode(Node):
     """ROS2 node for the robotic arm"""
@@ -41,9 +41,11 @@ class PiperRosNode(Node):
         self.get_logger().info(f"gripper_val_mutiple is {self.gripper_val_mutiple}")
         # Publishers
         self.joint_pub = self.create_publisher(JointState, 'joint_states_single', 1)
+        self.joint_feedback_pub = self.create_publisher(JointState, 'joint_states_feedback', 1)
         self.joint_ctrl_pub = self.create_publisher(JointState, 'joint_ctrl', 1)
         self.arm_status_pub = self.create_publisher(PiperStatusMsg, 'arm_status', 1)
         self.end_pose_pub = self.create_publisher(Pose, 'end_pose', 1)
+        self.end_pose_stamped_pub = self.create_publisher(PoseStamped, 'end_pose_stamped', 1)
         # Service
         self.motor_srv = self.create_service(Enable, 'enable_srv', self.handle_enable_service)
         # Joint
@@ -52,6 +54,12 @@ class PiperRosNode(Node):
         self.joint_states.position = [0.0] * 7
         self.joint_states.velocity = [0.0] * 7
         self.joint_states.effort = [0.0] * 7
+
+        self.joint_states_feedback = JointState()
+        self.joint_states_feedback.name = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'gripper']
+        self.joint_states_feedback.position = [0.0] * 7
+        self.joint_states_feedback.velocity = [0.0] * 7
+        self.joint_states_feedback.effort = [0.0] * 7
         # Joint ctrl
         self.joint_ctrl = JointState()
         self.joint_ctrl.name = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'gripper']
@@ -113,11 +121,16 @@ class PiperRosNode(Node):
             if(elapsed_time_flag):
                 self.get_logger().info("Automatic enable timeout, exiting program")
                 exit(0)
-
-            self.PublishArmState()
-            self.PublishArmJointAndGripper()
-            self.PublishArmCtrlAndGripper()
-            self.PublishArmEndPose()
+            
+            if self.piper.isOk():
+                self.PublishArmState()
+                self.PublishArmJointAndGripper()
+                self.PublishArmCtrlAndGripper()
+                self.PublishArmEndPose()
+            else:
+                self.get_logger().error(f"{self.can_port} is loss")
+                self.get_logger().error(f"exit...")
+                exit(0)
 
             rate.sleep()
 
@@ -144,9 +157,17 @@ class PiperRosNode(Node):
         arm_status.communication_status_joint_6 = self.piper.GetArmStatus().arm_status.err_status.communication_status_joint_6
         self.arm_status_pub.publish(arm_status)
 
+    def float_to_ros_time(self, t: float) -> Time:
+        ros_time = Time()
+        ros_time.sec = int(t)
+        ros_time.nanosec = int((t - ros_time.sec) * 1e9)
+        return ros_time
+
     def PublishArmJointAndGripper(self):
         # Assign timestamp
-        self.joint_states.header.stamp = self.get_clock().now().to_msg()
+        # self.joint_states.header.stamp = self.get_clock().now().to_msg()
+        new_time = max(self.piper.GetArmJointMsgs().time_stamp, self.piper.GetArmHighSpdInfoMsgs().time_stamp)
+        self.joint_states.header.stamp = self.float_to_ros_time(new_time)
         # Here, you can set the joint positions to any value you want
         # The raw data obtained is in degrees multiplied by 1000. To convert to radians, divide by 1000, multiply by π/180, and limit to 5 decimal places
         joint_0: float = (self.piper.GetArmJointMsgs().joint_state.joint_1 / 1000) * 0.017444
@@ -175,8 +196,16 @@ class PiperRosNode(Node):
         # 发布所有消息
         self.joint_pub.publish(self.joint_states)
 
+        self.joint_states_feedback.position = [joint_0,joint_1, joint_2, joint_3, joint_4, joint_5,joint_6]
+        self.joint_states_feedback.velocity = [vel_0, vel_1, vel_2, vel_3, vel_4, vel_5]
+        self.joint_states_feedback.effort = [effort_0, effort_1, effort_2, effort_3, effort_4, effort_5, effort_6]
+        self.joint_states_feedback.header.stamp = self.joint_states.header.stamp
+        self.joint_feedback_pub.publish(self.joint_states_feedback)
+
     def PublishArmCtrlAndGripper(self):
-        self.joint_ctrl.header.stamp = self.get_clock().now().to_msg()
+        # self.joint_ctrl.header.stamp = self.get_clock().now().to_msg()
+        new_time = max(self.piper.GetArmJointCtrl().time_stamp, self.piper.GetArmGripperCtrl().time_stamp)
+        self.joint_ctrl.header.stamp = self.float_to_ros_time(new_time)
         joint_0: float = (self.piper.GetArmJointCtrl().joint_ctrl.joint_1/1000) * 0.017444
         joint_1: float = (self.piper.GetArmJointCtrl().joint_ctrl.joint_2/1000) * 0.017444
         joint_2: float = (self.piper.GetArmJointCtrl().joint_ctrl.joint_3/1000) * 0.017444
@@ -188,6 +217,7 @@ class PiperRosNode(Node):
         self.joint_ctrl_pub.publish(self.joint_ctrl)
 
     def PublishArmEndPose(self):
+        new_time = self.piper.GetArmEndPoseMsgs().time_stamp
         # End effector pose
         endpos = Pose()
         endpos.position.x = self.piper.GetArmEndPoseMsgs().end_pose.X_axis / 1000000
@@ -205,6 +235,12 @@ class PiperRosNode(Node):
         endpos.orientation.z = quaternion[2]
         endpos.orientation.w = quaternion[3]
         self.end_pose_pub.publish(endpos)
+        #  时间戳的endpose
+        end_pos_stamp = PoseStamped()
+        end_pos_stamp.pose = endpos
+        end_pos_stamp.header.stamp = self.float_to_ros_time(new_time)
+        # end_pos_stamp.header.stamp = self.get_clock().now().to_msg()
+        self.end_pose_stamped_pub.publish(end_pos_stamp)
 
     def pos_callback(self, pos_data):
         """Callback function for subscribing to the end effector pose
@@ -277,9 +313,9 @@ class PiperRosNode(Node):
                     self.get_logger().info(f"vel_all: {vel_all}")
                     self.piper.MotionCtrl_2(0x01, 0x01, vel_all)
                 else:
-                    self.piper.MotionCtrl_2(0x01, 0x01, 30)
+                    self.piper.MotionCtrl_2(0x01, 0x01, 100)
             else:
-                self.piper.MotionCtrl_2(0x01, 0x01, 30)
+                self.piper.MotionCtrl_2(0x01, 0x01, 100)
 
             # 使用关节名称来动态控制关节
             self.piper.JointCtrl(
