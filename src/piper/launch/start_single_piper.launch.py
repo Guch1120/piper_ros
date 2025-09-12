@@ -57,6 +57,7 @@ def generate_launch_description():
         }],
         remappings=[
             ('joint_ctrl_single', '/joint_states'),
+            # ('joint_states_feedback', '/joint_states'),
         ]
     )
 

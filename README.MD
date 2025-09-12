@@ -215,7 +215,7 @@ colcon build
 source install/setup.bash
 ```
 
-### 3.1 单个机械臂
+### 3.1 单个机械臂启动控制
 
 节点名`piper_single_ctrl`
 
@@ -334,7 +334,69 @@ ros2 topic pub /joint_states sensor_msgs/msg/JointState "{header: {stamp: {sec: 
 
 ```
 
-### 3.2 同时控制双臂
+### 3.2 单个机械臂启动读取关节消息并在rviz中跟随显示
+
+启动读取关节数据节点
+
+```bash
+# 有夹爪
+ros2 run piper piper_read_slave_joint --ros-args -p can_port:=can0 -p gripper_exist:=true
+```
+
+```bash
+# 无夹爪
+ros2 run piper piper_read_slave_joint --ros-args -p can_port:=can0 -p gripper_exist:=false
+```
+
+执行后仅有一个`/joint_states`用作机械臂消息的反馈
+
+其中有夹爪启动的话消息内容会有`joint7`,`joint8`的数据，这个是为了rviz作为跟随显示功能的时候所需要的
+
+启动rviz显示跟随launch
+
+```bash
+# 有夹爪
+ros2 launch piper_description  display_urdf_follow.launch.py
+```
+
+```bash
+# 无夹爪
+ros2 launch piper_description  display_no_gripper_urdf_follow.launch.py
+```
+
+note:**如果只启动rviz显示，不启动关节数据读取，会导致没有/joint_states数据发布，rviz中的模型的所有link会在原点聚集，无法正常显示**
+
+如果不想启动实机机械臂数据读取节点，可以只启动rviz的显示launch，然后在其他程序中或者终端发布`joint_states`topic，示例如下
+
+```bash
+# 有夹爪
+ros2 topic pub /joint_states sensor_msgs/msg/JointState "header:
+  stamp:
+    sec: 1757669668
+    nanosec: 196177482
+  frame_id: ''
+name: ['joint1','joint2','joint3','joint4','joint5','joint6','gripper','joint7','joint8']
+position: [0,0,0,0,0,0,0,0,0]
+velocity: [0,0,0,0,0,0,0,0,0]
+effort: [0,0,0,0,0,0,0,0,0]" 
+```
+
+```bash
+# 无夹爪
+ros2 topic pub /joint_states sensor_msgs/msg/JointState "header:
+  stamp:
+    sec: 1757669668
+    nanosec: 196177482
+  frame_id: ''
+name: ['joint1','joint2','joint3','joint4','joint5','joint6']
+position: [0,0,0,0,0,0]
+velocity: [0,0,0,0,0,0]
+effort: [0,0,0,0,0,0]" 
+```
+
+注意：**header中的时间戳为必需，否则会导致rviz显示的模型依旧不正常**
+
+### 3.3 同时控制双臂
 
 需要每条臂各自链接一个can模块，然后激活两个can模块
 
@@ -406,7 +468,7 @@ remappings=[
 /pos_cmd_right
 ```
 
-### 3.3 piper自定义消息
+### 3.4 piper自定义消息
 
 ros功能包`piper_msgs`
 
