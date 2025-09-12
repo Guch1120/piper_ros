@@ -2,9 +2,16 @@ from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
+import os
 
+os.environ["RCUTILS_COLORIZED_OUTPUT"] = "1"   # 强制彩色日志
 
 def generate_launch_description():
+    log_level_arg = DeclareLaunchArgument(
+        'log_level',
+        default_value='info',
+        description='Logging level (debug, info, warn, error, fatal).'
+    )
     # Declare the launch arguments
     can_port_arg = DeclareLaunchArgument(
         'can_port',
@@ -41,6 +48,7 @@ def generate_launch_description():
         executable='piper_single_ctrl',
         name='piper_ctrl_single_node',
         output='screen',
+        ros_arguments=['--log-level', LaunchConfiguration('log_level')],
         parameters=[{
             'can_port': LaunchConfiguration('can_port'),
             'auto_enable': LaunchConfiguration('auto_enable'),
@@ -54,6 +62,7 @@ def generate_launch_description():
 
     # Return the LaunchDescription
     return LaunchDescription([
+        log_level_arg,
         can_port_arg,
         auto_enable_arg,
         gripper_exist_arg,
