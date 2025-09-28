@@ -332,20 +332,20 @@
       velocity="3" />
   </joint>
   <link
-    name="gripper_base">
+    name="teach_base">
     <inertial>
       <origin
-        xyz="-0.000183807162235591 8.05033155577911E-05 0.0321436689908876"
+        xyz="0.00698 0.00006 0.03499"
         rpy="0 0 0" />
       <mass
-        value="0.45" />
+        value="0.5" />
       <inertia
-        ixx="0.00092934"
-        ixy="0.00000034"
-        ixz="-0.00000738"
-        iyy="0.00071447"
+        ixx="0.0009649"
+        ixy="0.00000037"
+        ixz="0.00010867"
+        iyy="0.00116346"
         iyz="0.00000005"
-        izz="0.00039442" />
+        izz="0.00061726" />
     </inertial>
     <visual>
       <origin
@@ -372,7 +372,7 @@
     </collision>
   </link> 
   <joint
-    name="joint6_to_gripper_base"
+    name="joint6_to_teach_base"
     type="fixed">
     <origin
       xyz="0 0 0"
@@ -380,23 +380,23 @@
     <parent
       link="link6" />
     <child
-      link="gripper_base" />
+      link="teach_base" />
   </joint>
   <link
     name="link7">
     <inertial>
       <origin
-        xyz="0.00065123185041968 -0.0491929869131989 0.00972258769184025"
+        xyz="0.020788 -0.00547 0.014"
         rpy="0 0 0" />
       <mass
-        value="0.025" />
+        value="0.02" />
       <inertia
-        ixx="0.00007371"
-        ixy="-0.00000113"
-        ixz="0.00000021"
-        iyy="-0.00000113"
-        iyz="-0.00001372"
-        izz="0.0000747" />
+        ixx="0.000005831772"
+        ixy="0.000002431687"
+        ixz="0.000005768698"
+        iyy="0.000022918961"
+        iyz="0.000001517918"
+        izz="0.000018730394" />
     </inertial>
     <visual>
       <origin
@@ -429,7 +429,7 @@
       xyz="0 0 0.0795"
       rpy="1.5708 0 0" />
     <parent
-      link="gripper_base" />
+      link="teach_base" />
     <child
       link="link7" />
     <axis
@@ -444,17 +444,17 @@
     name="link8">
     <inertial>
       <origin
-        xyz="0.000651231850419722 -0.0491929869131991 0.00972258769184024"
+        xyz="-0.019726 -0.005423 0.014"
         rpy="0 0 0" />
       <mass
-        value="0.025" />
+        value="0.02" />
       <inertia
-        ixx="0.00007371"
-        ixy="-0.00000113"
-        ixz="0.00000021"
-        iyy="-0.00000113"
-        iyz="-0.00001372"
-        izz="0.0000747" />
+        ixx="0.000005678203"
+        ixy="0.00000218332"
+        ixz="0.000005337688"
+        iyy="0.000022529586"
+        iyz="0.000001467426"
+        izz="0.0000184409" />
     </inertial>
     <visual>
       <origin
@@ -487,7 +487,7 @@
       xyz="0 0 0.0795"
       rpy="1.5708 0 -3.1416" />
     <parent
-      link="gripper_base" />
+      link="teach_base" />
     <child
       link="link8" />
     <axis
