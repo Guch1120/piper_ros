@@ -13,7 +13,9 @@ services:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       #開発用コードまるごとマウント
       - ../src:/workspace/ros2_ws/src:rw
-      
+      - ../:/workspace/ros2_ws:rw
+      #terminatorの設定ファイルをマウント
+      - ./config/terminator/config://root/.config/terminator:rw 
     # 環境変数 (GUI用)
     environment:
       - DISPLAY=${DISPLAY}

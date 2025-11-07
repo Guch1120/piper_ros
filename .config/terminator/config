@@ -1,0 +1,50 @@
+# この内容を /root/.config/terminator/config に保存してね
+
+[global_config]
+  title_transmit_bg_color = "#d3d7cf"
+[keybindings]
+[profiles]
+  [[default]]
+    # ターミナルが開いたら、自動でROSの環境を source して bash を起動する
+    command = "source /workspace/ros2_ws/install/setup.bash; /bin/bash"
+    login_shell = True
+    # その他、好みの設定
+    cursor_color = "#aaaaaa"
+    use_system_font = False
+    font = "Monospace 10"
+    show_titlebar = False
+[layouts]
+    [[default]]
+    # ウィンドウ全体を 2x2 のグリッドにする設定
+    [[[window0]]]
+        type = Window
+        parent = ""
+    [[[child1]]] # 縦に2分割する
+        type = VPaned
+        parent = window0
+        position = 50
+    [[[child2]]] # 上側を、横に2分割する
+        type = HPaned
+        parent = child1
+        position = 50
+    [[[terminal1]]] # 【左上】 Pane 1
+        type = Terminal
+        parent = child2
+        profile = default
+    [[[terminal2]]] # 【右上】 Pane 2
+        type = Terminal
+        parent = child2
+        profile = default
+    [[[child3]]] # 下側を、横に2分割する
+        type = HPaned
+        parent = child1
+        position = 50
+    [[[terminal3]]] # 【左下】 Pane 3
+        type = Terminal
+        parent = child3
+        profile = default
+    [[[terminal4]]] # 【右下】 Pane 4
+        type = Terminal
+        parent = child3
+        profile = default
+[plugins]
