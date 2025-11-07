@@ -22,6 +22,9 @@ RUN apt-get update && apt-get install -y \
     software-properties-common \
     build-essential \
     git \
+    iproute2 \
+    terminator \
+    dbus-x11 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN add-apt-repository universe \
