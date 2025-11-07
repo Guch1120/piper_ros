@@ -1,0 +1,40 @@
+services:
+  piper-humble-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: piper-ros-humble-dev:latest
+    container_name: piper-humble-dev
+    
+    # ワークスペースをマウント (ホストでのコード変更がコンテナに即反映される)
+    volumes:
+      - ./src:/workspace/ros2_ws/src:rw
+      # GUI (RViz, Gazebo) 用
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      #開発用コードまるごとマウント
+      - ../src:/workspace/ros2_ws/src:rw
+      
+    # 環境変数 (GUI用)
+    environment:
+      - DISPLAY=${DISPLAY}
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - NVIDIA_VISIBLE_DEVICES=all
+      
+    # GPUの使用 (NVIDIA CUDA)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+              
+    # ネットワーク (シミュレータとホストの通信を簡単にする)
+    network_mode: host
+    
+    # --- 実機開発 (CAN) 用 ---
+    privileged: true
+    devices:
+      - /dev:/dev
+    # コンテナを起動し続ける
+    command: sleep infinity
