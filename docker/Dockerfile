@@ -58,7 +58,7 @@ RUN pip3 install \
     piper_sdk \
     colcon-common-extensions
 
-# ROS環境のセットアップ
+# ROS環境のセットアップを　.bashrcに追加
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 
 # ワークスペースの作成
