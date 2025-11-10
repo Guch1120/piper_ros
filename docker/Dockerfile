@@ -6,6 +6,7 @@ FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     tzdata \
+    terminator \
     locales \
     && ln -fs /usr/share/zoneinfo/Asia/Tokyo /etc/localtime \
     && dpkg-reconfigure --frontend noninteractive tzdata \
@@ -23,7 +24,6 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     git \
     iproute2 \
-    terminator \
     dbus-x11 \
     && rm -rf /var/lib/apt/lists/*
 

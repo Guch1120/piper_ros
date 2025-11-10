@@ -1,0 +1,3 @@
+[submodule "src/piper_sdk"]
+	path = src/piper_sdk
+	url = git@github.com:Guch1120/piper_sdk.git
