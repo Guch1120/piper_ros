@@ -12,4 +12,4 @@ function on_signal_interrupt() {
 }
 trap on_signal_interrupt EXIT
 
-terminator -l piper-arm 
+terminator -m -l  piper-arm 

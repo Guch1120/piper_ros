@@ -199,3 +199,6 @@ piper_interface_v2.py参照.motionctrl関数の中身
             self.logger.error("0x150 send failed: SendCanMessage(%s)", feedback)
 
 ```
+
+モータidの割当はpiper_sdk/piper_msgs/msg_v2/can_id.py
+sdk内部とidのメッセージタイプはpiper_sdk/piper_msgs/msg_v2/arm_id_type_map.pyで決まっている．
