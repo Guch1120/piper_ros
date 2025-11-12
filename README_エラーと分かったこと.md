@@ -202,3 +202,14 @@ piper_interface_v2.py参照.motionctrl関数の中身
 
 モータidの割当はpiper_sdk/piper_msgs/msg_v2/can_id.py
 sdk内部とidのメッセージタイプはpiper_sdk/piper_msgs/msg_v2/arm_id_type_map.pyで決まっている．
+
+
+
+### rosdep install -i --from-path src --rosdistro humble -y
+executing command [apt-get install -y ros-humble-warehouse-ros-mongo]
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+E: Unable to locate package ros-humble-warehouse-ros-mongo
+ERROR: the following rosdeps failed to install
+  apt: command [apt-get install -y ros-humble-warehouse-ros-mongo] failed
