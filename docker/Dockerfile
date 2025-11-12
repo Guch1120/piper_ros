@@ -19,6 +19,13 @@ ENV LANG en_US.UTF-8
 RUN apt-get update && apt-get install -y \
     curl \
     gnupg \
+    curl \
+    nano \
+    wget \
+    git \
+    emacs \
+    tree \
+    cmake \
     lsb-release \
     software-properties-common \
     build-essential \
@@ -56,7 +63,7 @@ RUN pip3 install \
     python-can \
     scipy \
     piper_sdk \
-    colcon-common-extensions
+    colcon-common-extensions 
 
 # ROS環境のセットアップを　.bashrcに追加
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
