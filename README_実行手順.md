@@ -27,7 +27,7 @@ rosdep install -i --from-path src --rosdistro humble -y
 ```
 dockerfileでterminatorのインストールができていないので，
 ```
-apt get install terminator
+apt-get install terminator
 ```
 ```
 colcon build --symlink-install
