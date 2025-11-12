@@ -99,3 +99,11 @@ V2下にある```V2_piper_set_gripper_zero.py```を実行する． \
 ```
 python3 piper_set_gripper_zero.py
 ```
+
+
+MEMO: \
+アームに適当な指令を送るコマンド
+```
+# Pane 2 で実行
+ros2 topic pub /joint_states sensor_msgs/msg/JointState "{header: {stamp: {sec: 0, nanosec: 0}, frame_id: 'piper_single'}, name: ['joint1', 'joint2','joint3','joint4','joint5','joint6'], position: [0.2,0.2,-0.2,0.3,-0.2,0.5], velocity: [], effort: []}" --once
+```
