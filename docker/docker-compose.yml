@@ -11,9 +11,12 @@ services:
       # GUI (RViz, Gazebo) 用
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       #開発用コードまるごとマウント
-      - ..:/workspace/ros2_ws:rw
+      - ..:/ros2_ws:rw
       #terminatorの設定ファイルをマウント
       - ../.config/terminator/config:/root/.config/terminator/config:rw
+      #gitのssh鍵をマウント
+      - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
+      - ~/.ssh/id_rsa.pub:/root/.ssh/id_rsa.pub:ro
     # 環境変数 (GUI用)
     environment:
       - DISPLAY=${DISPLAY}
