@@ -8,12 +8,15 @@ RUN apt-get update && apt-get install -y \
     tzdata \
     terminator \
     locales \
+    fonts-noto-cjk \
     && ln -fs /usr/share/zoneinfo/Asia/Tokyo /etc/localtime \
     && dpkg-reconfigure --frontend noninteractive tzdata \
     && locale-gen en_US en_US.UTF-8 \
     && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
 ENV LANG en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+ENV LANGUAGE=en_US:en
 
 # ROS2 humbleのインストール (公式手順 + 必要なツール)
 RUN apt-get update && apt-get install -y \
@@ -65,12 +68,16 @@ RUN pip3 install \
     piper_sdk \
     colcon-common-extensions 
 
+# ワークスペースの作成
+RUN mkdir -p /ros2_ws/src
+WORKDIR /ros2_ws
+
 # ROS環境のセットアップを　.bashrcに追加
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
-
-# ワークスペースの作成
-RUN mkdir -p /workspace/ros2_ws/src
-WORKDIR /workspace/ros2_ws
+#ターミナルの色変更
+RUN echo "export PS1='\[\e[1;36m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]\$ '" >> /root/.bashrc
+# Gitの所有権エラー回避設定
+RUN git config --global --add safe.directory /ros2_ws
 
 # コンテナ起動時のデフォルトコマンド
 CMD ["/bin/bash"]

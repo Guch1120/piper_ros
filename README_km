@@ -1,8 +1,8 @@
 # Deticのインストール
-[Deticによる物体検出とセグメンテーション](https://zenn.dev/kaeru39/articles/ed00244dbb32cd)
+#[Deticによる物体検出とセグメンテーション](https://zenn.dev/kaeru39/articles/ed00244dbb32cd)
 
 
-mkdir ./detic
+#mkdir ./detic
 git clone git@github.com:facebookresearch/detectron2.git
 cd detectron2
 pip install torch==2.4.1 torchvision
@@ -21,5 +21,13 @@ git clone https://github.com/facebookresearch/Detic.git --recurse-submodules
 cd Detic
 pip install -r requirements.txt
 
+# sample 実行方法
+#python3 demo.py --config-file configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml --input ./models/sample.JPG --output out.jpg --vocabulary lvis --opts MODEL.WEIGHTS models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
 
-python3 demo.py --config-file configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml --input ./models/sample.JPG --output out.jpg --vocabulary lvis --opts MODEL.WEIGHTS models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
+
+#追記
+setup_detic.bashの実行には実行権限が必要 \
+コンテナ内でもローカルでもどっちでもいいから，ターミナルで以下を実行すること
+```
+chmod +x setup_detic.bash
+```
