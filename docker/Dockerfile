@@ -54,7 +54,7 @@ RUN apt-get update && apt-get install -y \
 # Python (pip) の依存関係
 RUN pip3 install \
     python-can \
-    scipy \
+    scipy==1.11.4 \
     piper_sdk \
     colcon-common-extensions
 
