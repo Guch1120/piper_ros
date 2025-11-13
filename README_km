@@ -23,3 +23,11 @@ pip install -r requirements.txt
 
 # sample 実行方法
 #python3 demo.py --config-file configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml --input ./models/sample.JPG --output out.jpg --vocabulary lvis --opts MODEL.WEIGHTS models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
+
+
+#追記
+setup_detic.bashの実行には実行権限が必要 \
+コンテナ内でもローカルでもどっちでもいいから，ターミナルで以下を実行すること
+```
+chmod +x setup_detic.bash
+```
