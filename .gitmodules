@@ -7,3 +7,6 @@
 [submodule "detic/Detic"]
 	path = detic/Detic
 	url = git@github.com:Guch1120/Detic.git
+[submodule "src/detic_onnx_ros2"]
+	path = src/detic_onnx_ros2
+	url = git@github.com:Guch1120/detic_onnx_ros2.git
