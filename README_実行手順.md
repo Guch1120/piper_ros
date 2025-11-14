@@ -25,10 +25,6 @@ rosdep init && rosdep update
 ```
 rosdep install -i --from-path src --rosdistro humble -y
 ```
-dockerfileでterminatorのインストールができていないので，
-```
-apt-get install terminator
-```
 ```
 colcon build --symlink-install
 ```
@@ -98,4 +94,14 @@ V2下にある```V2_piper_set_gripper_zero.py```を実行する． \
 なので．ここまでのように実行して数値を代入とかではなく，実行時の数値がパラメータとなる．
 ```
 python3 piper_set_gripper_zero.py
+```
+
+
+deticのインストールはros2_wsにあるsetup_detic.bashを実行する． \
+まずsetup_detic.bashに実行権限を与える．
+```
+chmod +x setup_detic.bash
+```
+```
+bash setup_detic.bash
 ```

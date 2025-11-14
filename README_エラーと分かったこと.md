@@ -213,3 +213,12 @@ Reading state information... Done
 E: Unable to locate package ros-humble-warehouse-ros-mongo
 ERROR: the following rosdeps failed to install
   apt: command [apt-get install -y ros-humble-warehouse-ros-mongo] failed
+
+
+
+deticを追加したあとでCOLCON IGNOREファイルを追加しないとビルド時にバカ程エラー出る
+追加するのは4つ
+```
+detic/detectron2/COLCON_IGNORE
+detic/Detic/third_party/COLCON_IGNORE
+```
