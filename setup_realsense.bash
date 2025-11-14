@@ -63,7 +63,8 @@ PACKAGE_NAME="ros-$ROS_DISTRO-diagnostic-updater"
 if ! dpkg-query -W -f='${Status}' $PACKAGE_NAME 2>/dev/null | grep -q "install ok installed"; then
   echo "$PACKAGE_NAME が見つかりません。インストールします..."
   sudo apt-get update
-  sudo apt-get install -y $PACKAGE_NAME
+  sudo apt-get install -y $PACKAGE_NAME \
+                        ros-humble-realsense2-camera  #realsense2 rs_launch.pyに必要
 else
   echo "$PACKAGE_NAME は既にインストールされています。スキップします。"
 fi
