@@ -17,7 +17,7 @@ echo "作業ディレクトリ: $(pwd)"
 # 2. Detectron2 のクローンとインストール
 if [! -d "./detectron2" ]; then
     echo "Detectron2 をクローンしています..."
-    git clone git@github.com:facebookresearch/detectron2.git
+    git clone git@github.com:Guch1120/detectron2.git.git
 else
     echo "Detectron2 ディレクトリは既に存在します。スキップします。"
 fi
@@ -45,7 +45,7 @@ echo "Detectron2 のインストールが完了しました。"
 # 3. Detic のクローンとインストール
 if [! -d "./Detic" ]; then
     echo "Detic をクローンしています (サブモジュール含む)..."
-    git clone git@github.com:facebookresearch/Detic.git --recurse-submodules 
+    git clone git@github.com:Guch1120/Detic.git --recurse-submodules 
 else
     echo "Detic ディレクトリは既に存在します。スキップします。"
 fi
