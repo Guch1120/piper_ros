@@ -37,6 +37,8 @@ RUN apt-get update && apt-get install -y \
     iproute2 \
     libgl1-mesa-glx \
     dbus-x11 \
+    python3-dev \
+    python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
 RUN add-apt-repository universe \
@@ -68,9 +70,7 @@ RUN pip3 install \
     python-can \
     scipy==1.11.4 \
     piper_sdk \
-    colcon-common-extensions \
-    python3-venv \
-    python3-dev
+    colcon-common-extensions 
 
 # ワークスペースの作成
 RUN mkdir -p /ros2_ws/src
