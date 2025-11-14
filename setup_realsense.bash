@@ -32,3 +32,6 @@ sudo apt-get install -y librealsense2-dkms \
 
 echo "✅ Intel RealSense SDK のセットアップが完了しました。"
 echo "Realsenseカメラを接続し、'realsense-viewer' コマンドで動作確認をしてください。"
+
+#動作確認
+echo "realsense-viewerで動作確認をしてください。"
