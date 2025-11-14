@@ -100,8 +100,29 @@ python3 piper_set_gripper_zero.py
 deticのインストールはros2_wsにあるsetup_detic.bashを実行する． \
 まずsetup_detic.bashに実行権限を与える．
 ```
-chmod +x setup_detic.bash
+chmod +x setup_detic.bash setup_detic_ros.bash
 ```
 ```
 bash setup_detic.bash
 ```
+```
+bash setup_detic_ros.bash
+```
+
+サンプル実行方法 (参考)
+モデルやサンプル画像は別途ダウンロード/配置が必要です。
+モデルのダウンロード (例)
+
+サンプル画像の配置 (例) なんでもいいから好きなやつをmodels/の中に入れて
+(./models/sample.JPG に画像を配置する)
+
+デモの実行はこれ． --input のあとのパスがあっているか確認してね
+python3 demo.py \
+    --config-file configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml \
+    --input ./models/sample.JPG \
+    --output out.jpg \
+    --vocabulary lvis \
+    --opts MODEL.WEIGHTS models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
+'
+
+#実行にはsudo chown -R $USER:$USER ./deticが必要

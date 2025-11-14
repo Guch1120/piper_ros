@@ -1,3 +1,9 @@
 [submodule "src/piper_sdk"]
 	path = src/piper_sdk
 	url = git@github.com:Guch1120/piper_sdk.git
+[submodule "detic/detectron2"]
+	path = detic/detectron2
+	url = git@github.com:Guch1120/detectron2.git
+[submodule "detic/Detic"]
+	path = detic/Detic
+	url = git@github.com:Guch1120/Detic.git
