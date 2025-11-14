@@ -26,10 +26,9 @@ sudo apt-get update
 
 # 1.5 必要なライブラリをインストール
 echo "librealsenseライブラリをインストールします..."
-sudo apt-get install -y librealsense2-dkms \
-                        librealsense2-utils \
+sudo apt-get install -y librealsense2-utils \
                         librealsense2-dev \
-                        librealsense2-dbg
+                        librealsense2-dbg 
 
 echo " Intel RealSense SDK のセットアップが完了しました。"
 echo "--------------------------------------------------"
