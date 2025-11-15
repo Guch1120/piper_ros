@@ -126,3 +126,21 @@ python3 demo.py \
 '
 
 #実行にはsudo chown -R $USER:$USER ./deticが必要
+
+
+detic_onxx_rosの使い方 \
+realsenseノードを起動
+```
+ros2 launch realsense2_camera rs_launch.py \
+  align_depth.enable:=true \
+  enable_sync:=true \
+  enable_rgbd:=true
+```
+```
+ros2 run detic_onnx_ros2 detic_onnx_ros2_node
+```
+実行後黄色文字で警告が出る．(対応予定) \
+しばらく起動を待って
+```
+/detic_result/
+```
