@@ -28,7 +28,8 @@ sudo apt-get update
 echo "librealsenseライブラリをインストールします..."
 sudo apt-get install -y librealsense2-utils \
                         librealsense2-dev \
-                        librealsense2-dbg 
+                        librealsense2-dbg \
+                        python3-pyrealsense2
 
 echo " Intel RealSense SDK のセットアップが完了しました。"
 echo "--------------------------------------------------"

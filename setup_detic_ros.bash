@@ -3,6 +3,8 @@
 rosdep init 
 rosdep update
 
+pip install onnxruntime
+
 cd src
 git submodule add git@github.com:Guch1120/detic_onnx_ros2.git 
 cd detic_onnx_ros2
