@@ -20,7 +20,6 @@ ENV LANGUAGE=en_US:en
 
 # ROS2 humbleのインストール (公式手順 + 必要なツール)
 RUN apt-get update && apt-get install -y \
-    curl \
     gnupg \
     curl \
     nano \

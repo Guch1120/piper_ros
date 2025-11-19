@@ -217,7 +217,7 @@ ERROR: the following rosdeps failed to install
 
 
 deticを追加したあとでCOLCON IGNOREファイルを追加しないとビルド時にバカ程エラー出る
-追加するのは4つ
+追加するのは2つ
 ```
 detic/detectron2/COLCON_IGNORE
 detic/Detic/third_party/COLCON_IGNORE
