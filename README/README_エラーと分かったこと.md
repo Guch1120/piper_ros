@@ -216,9 +216,14 @@ ERROR: the following rosdeps failed to install
 
 
 
-deticを追加したあとでCOLCON IGNOREファイルを追加しないとビルド時にバカ程エラー出る
-追加するのは2つ
+deticを追加したあとでCOLCON IGNOREファイルを追加しないとビルド時にバカ程エラー出る \
+これはdeticがrosプログラム群でないのにsetup.pyというファイルがあるせいでrosパッケージ群として誤認識されるから． \
+対処法はCOLCON_IGNOREファイル(中身は空)を追加してビルド時に無視されるようにすること． \
+追加するのは2つ.この2つの下に犯人のsetup.pyがある．\
 ```
 detic/detectron2/COLCON_IGNORE
 detic/Detic/third_party/COLCON_IGNORE
 ```
+
+Realsense D435Iのdepth最小距離は0.1m \
+近すぎると左右のセンサで三角測量できなくなることが原因． \
