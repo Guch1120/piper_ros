@@ -27,13 +27,13 @@ def generate_launch_description():
         output='screen')
 
 
-    # 因为 urdf文件中有一句 $(find mybot) 需要用xacro进行编译一下才行
+    # urdfファイルに$(find mybot)があるため、xacroでコンパイルする必要がある
     xacro_file = urdf_model_path
     doc = xacro.parse(open(xacro_file))
     xacro.process_doc(doc)
     params = {'robot_description': remove_comments(doc.toxml())}
 
-    # 启动了robot_state_publisher节点后，该节点会发布 robot_description 话题，话题内容是模型文件urdf的内容？
+    # robot_state_publisherノードを起動すると、robot_descriptionトピックが発行され、urdfモデルファイルの内容が含まれる
     node_robot_state_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
@@ -41,13 +41,13 @@ def generate_launch_description():
         output='screen'
     )
 
-    # Launch the robot, 通过robot_description话题进行模型内容获取从而在gazebo中生成模型
+    # ロボットを起動、robot_descriptionトピックを通じてモデル内容を取得しGazeboでモデルを生成
     spawn_entity_cmd = Node(
         package='gazebo_ros', 
         executable='spawn_entity.py',
         arguments=['-entity', robot_name_in_model,  '-topic', 'robot_description'], output='screen')
 
-    # 关节状态发布器
+    # 関節状態パブリッシャー
     load_joint_state_controller = ExecuteProcess(
         cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
              'joint_state_broadcaster'],
