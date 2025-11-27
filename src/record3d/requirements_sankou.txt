@@ -1,0 +1,4 @@
+record3d
+numpy
+opencv-python-headless
+lzfse
