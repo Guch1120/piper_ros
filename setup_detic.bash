@@ -68,8 +68,17 @@ else
 fi
 wget https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth -P models/
 
-
-# (サンプル実行方法は省略)
-: '
-...
-'
+#ここからdetic_onnx_rosのセットアップ
+cd /ros2_ws/src
+echo "detic_onnx_rosのセットアップを開始します..."
+if [ ! -d "./detic_onnx_ros2" ]; then
+    git submodule add git@github.com:Guch1120/detic_onnx_ros2.git 
+else
+    echo "detic_onnx_ros2 ディレクトリは既に存在します。スキップします。"
+fi
+cd detic_onnx_ros2
+rosdep init
+rosdep update
+rosdep install -iry --from-paths .
+cd ../../
+colcon build --symlink-install
