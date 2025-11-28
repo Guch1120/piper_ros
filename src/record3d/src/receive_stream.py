@@ -11,10 +11,14 @@ class Record3DReceiver:
     def __init__(self, output_dir="output"):
         self.event = Event()
         self.session = None
-        self.output_dir = output_dir
-        self.rgbd_dir = os.path.join(output_dir, "rgbd")
-        self.metadata_file = os.path.join(output_dir, "metadata")
+
+        # Create a unique directory for this session based on timestamp
+        session_name = time.strftime("%Y-%m-%d_%H-%M-%S")
+        self.output_dir = os.path.join(output_dir, session_name)
         
+        self.rgbd_dir = os.path.join(self.output_dir, "rgbd")
+        self.metadata_file = os.path.join(self.output_dir, "metadata")
+
         os.makedirs(self.rgbd_dir, exist_ok=True)
         
         # Metadata storage
@@ -140,7 +144,7 @@ class Record3DReceiver:
             cv2.destroyAllWindows()
 
 if __name__ == '__main__':
-    receiver = Record3DReceiver(output_dir="/app/output")
+    receiver = Record3DReceiver(output_dir="/ros2_ws/src/record3d/output")
     try:
         receiver.connect_to_device()
         receiver.start_processing_stream()
