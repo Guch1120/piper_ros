@@ -225,5 +225,10 @@ detic/detectron2/COLCON_IGNORE
 detic/Detic/third_party/COLCON_IGNORE
 ```
 
+piperのgazeboを動かすときにjoint8_ctrl.pyに実行権限が必要
+```
+chmod +x src/piper_sim/piper_gazebo/scripts/joint8_ctrl.py
+```
+
 Realsense D435Iのdepth最小距離は0.1m \
 近すぎると左右のセンサで三角測量できなくなることが原因． \

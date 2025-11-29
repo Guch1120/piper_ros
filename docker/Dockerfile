@@ -48,6 +48,7 @@ RUN apt-get update && apt-get install -y \
     ros-humble-desktop \
     ros-humble-gazebo-ros-pkgs \
     ros-humble-gazebo-ros2-control \
+    ros-humble-ros-gz \
     ros-humble-xacro \
     ros-dev-tools \
     python3-pip \

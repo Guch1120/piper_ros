@@ -27,13 +27,16 @@ def generate_launch_description():
         output='screen')
 
 
+    # URDFファイルに $(find ...) のような記述があるため、xacroでコンパイルする必要があります
     # urdfファイルに$(find mybot)があるため、xacroでコンパイルする必要がある
     xacro_file = urdf_model_path
     doc = xacro.parse(open(xacro_file))
     xacro.process_doc(doc)
     params = {'robot_description': remove_comments(doc.toxml())}
 
-    # robot_state_publisherノードを起動すると、robot_descriptionトピックが発行され、urdfモデルファイルの内容が含まれる
+    # robot_state_publisherノードは、URDFモデルの内容を 'robot_description' トピックとして配信します。
+    # また、'/joint_states' トピックを購読して関節データを取得し、
+    # 各リンクの座標変換情報(TF)を 'tf' および 'tf_static' トピックとして配信します。
     node_robot_state_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
@@ -41,37 +44,42 @@ def generate_launch_description():
         output='screen'
     )
 
-    # ロボットを起動、robot_descriptionトピックを通じてモデル内容を取得しGazeboでモデルを生成
+    # 'robot_description' トピックからモデル内容を取得して、Gazebo内にロボットモデルを生成（スポーン）します
     spawn_entity_cmd = Node(
         package='gazebo_ros', 
         executable='spawn_entity.py',
         arguments=['-entity', robot_name_in_model,  '-topic', 'robot_description'], output='screen')
 
-    # 関節状態パブリッシャー
+    # 関節状態ブロードキャスター
+    # Gazebo内のロボットの関節状態を読み取り、/joint_statesトピックとして配信します。
     load_joint_state_controller = ExecuteProcess(
         cmd=['ros2', 'control', 'load_controller', '--set-state', 'active',
              'joint_state_broadcaster'],
         output='screen'
     )
 
+    # 腕の軌道実行コントローラー
     load_joint_trajectory_controller = ExecuteProcess(
         cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 
              'arm_controller'],
         output='screen'
         )
 
+    # グリッパーの軌道実行コントローラー (joint7)
     load_gripper_trajectory_controller = ExecuteProcess(
         cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 
              'gripper_controller'],
         output='screen'
         )
     
+    # グリッパーの軌道実行コントローラー (joint8)
     load_gripper8_trajectory_controller = ExecuteProcess(
         cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 
              'gripper8_controller'],
         output='screen'
         )
 
+    # spawn_entity_cmd（ロボットの生成）が完了したら、load_joint_state_controllerを起動します。
     close_evt1 =  RegisterEventHandler( 
             event_handler=OnProcessExit(
                 target_action=spawn_entity_cmd,
@@ -79,6 +87,7 @@ def generate_launch_description():
             )
     )
 
+    # load_joint_state_controllerが完了したら、腕とグリッパーのコントローラーを起動します。
     close_evt2 = RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=load_joint_state_controller,
@@ -88,6 +97,7 @@ def generate_launch_description():
             )
     )
 
+    # グリッパーの指(joint8)をもう片方の指(joint7)の動きに追従させるためのノード
     node_gripper_mirror_controller = Node(
         package='piper_gazebo',
         executable='joint8_ctrl.py',
