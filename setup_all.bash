@@ -9,9 +9,9 @@ set -e
 # ==========================================
 SCRIPTS=(
     "setup_detic.bash"
+    "setup_flexbe.bash"
     "setup_realsense.bash"
     "setup_piper.bash"
-    "setup_flexbe.bash"
 )
 # ==========================================
 for script in "${SCRIPTS[@]}"; do
