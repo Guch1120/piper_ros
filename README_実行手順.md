@@ -144,3 +144,21 @@ ros2 run detic_onnx_ros2 detic_onnx_ros2_node
 ```
 /detic_result/
 ```
+
+
+# Moveit実機編
+
+moceit仕様に変更した（Joint.nameでgripper -> joint7）にしたものを実行
+```
+ros2 launch piper start_single_moveit_piper.launch.py
+```
+
+Moveitのアクション通信をpiperのrosコントローラに合わせるブリッジを起動
+```
+ros2 run piper piper_moveit_bridge
+```
+
+Moveitとrvizがセットで起動
+```
+ros2 launch piper_with_gripper_moveit piper_real_moveit.launch.py 
+```
