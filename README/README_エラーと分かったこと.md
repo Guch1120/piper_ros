@@ -185,7 +185,7 @@ piper_interface_v2.py参照.motionctrl関数の中身
                 0x00: 無効化
                 0x01: ティーチ記録開始 (ティーチモード進入)
                 0x02: ティーチ記録終了 (ティーチモード退出)
-                0x03: ティーチ済み軌道実行 (ティーチモード軌道の再生)
+                 0x03: ティーチ済み軌道実行 (ティーチモード軌道の再生)
                 0x04: 実行一時停止
                 0x05: 実行継続 (軌道再生再開)
                 0x06: 実行終了
@@ -232,3 +232,26 @@ chmod +x src/piper_sim/piper_gazebo/scripts/joint8_ctrl.py
 
 Realsense D435Iのdepth最小距離は0.1m \
 近すぎると左右のセンサで三角測量できなくなることが原因． \
+
+ビルドでエラー：
+```
+failed to create symbolic link 色々なディレクトリパス
+CMakeFiles/ament_cmake_python_symlink_何かROSのパッケージパス
+```
+これはcolcon build --symlink-installによって作成されたシンボリックリンクが原因． \
+ビルド生成物であるbuikd, logフォルダを丸っと削除してクリーンビルドすると解決する． \
+ビルド時にシンボリックリンク無しでビルドしたりするとファイルコピーされるが，シンボリックリンク作成するときに既に
+ディレクトリが存在するためにエラーになる．
+
+rosの通信のリストを見たいときは
+```
+ros2 topic list
+ros2 service list
+ros2 action list
+```
+それぞれの通信で何と何が通信しているかは
+```
+ros2 topic info トピック名
+ros2 service info サービス名
+ros2 action info アクション名
+```

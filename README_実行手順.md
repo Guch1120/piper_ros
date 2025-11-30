@@ -148,17 +148,40 @@ ros2 run detic_onnx_ros2 detic_onnx_ros2_node
 
 # Moveit実機編
 
-moceit仕様に変更した（Joint.nameでgripper -> joint7）にしたものを実行
+- moceit仕様に変更した（Joint.nameでgripper -> joint7）にしたものを実行
 ```
 ros2 launch piper start_single_moveit_piper.launch.py
 ```
-
-Moveitのアクション通信をpiperのrosコントローラに合わせるブリッジを起動
+- Moveitのアクション通信をpiperのrosコントローラに合わせるブリッジを起動
 ```
 ros2 run piper piper_moveit_bridge
 ```
-
-Moveitとrvizがセットで起動
+- Moveitとrvizがセットで起動
 ```
 ros2 launch piper_with_gripper_moveit piper_real_moveit.launch.py 
+```
+- rvizで表示されるアームの球か矢印を動かしてPlanボタン押してExecuteを押すと動く
+
+# Moveit rvizではなくコードから実行編
+rviz立ち上げるまではMoveit実践編まんま同じ． \
+- ここからが違うとこ． \
+- rviz上で動作させるのではなくコードから指定した**角度(ラジアン)**を目標に動く．
+```
+ros2 run piper moveit_client
+```
+- 実行するとアクション通信で角度がmoveitのPlannerへ送られてTrajectry(軌跡)が出てくる． \
+- Trajecryを受け取ってmoveitのコントローラがアクション通信でFollowJointTrajectryを出す． \
+- これをPiperのコントローラのpiper_ctrl_single_nodeで受け取りたいがトピック通信なのでブリッジをかます． \
+- それがpiper_moveit_bridgeである．\
+
+moveit_clientのログ(成功例)
+```
+[INFO] [1764505661.883104917] [move_arm_client]: Sending goal...
+[INFO] [1764505661.885222897] [move_arm_client]: Goal accepted! Moving...
+[INFO] [1764505662.193592280] [move_arm_client]: Result code: 1
+```
+このときmoveit_bridgeの出力は，
+```
+[INFO] [1764503706.083124040] [piper_moveit_bridge]: Received Goal Request
+[INFO] [1764503706.083931981] [piper_moveit_bridge]: Executing goal...
 ```
