@@ -50,19 +50,19 @@ class PiperRosNode(Node):
         self.motor_srv = self.create_service(Enable, 'enable_srv', self.handle_enable_service)
         # Joint
         self.joint_states = JointState()
-        self.joint_states.name = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'gripper']
+        self.joint_states.name = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'joint7']
         self.joint_states.position = [0.0] * 7
         self.joint_states.velocity = [0.0] * 7
         self.joint_states.effort = [0.0] * 7
 
         self.joint_states_feedback = JointState()
-        self.joint_states_feedback.name = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'gripper']
+        self.joint_states_feedback.name = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'joint7']
         self.joint_states_feedback.position = [0.0] * 7
         self.joint_states_feedback.velocity = [0.0] * 7
         self.joint_states_feedback.effort = [0.0] * 7
         # Joint ctrl
         self.joint_ctrl = JointState()
-        self.joint_ctrl.name = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'gripper']
+        self.joint_ctrl.name = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'joint7']
         self.joint_ctrl.position = [0.0] * 7
         self.joint_ctrl.velocity = [0.0] * 7
         self.joint_ctrl.effort = [0.0] * 7
