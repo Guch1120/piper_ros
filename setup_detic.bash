@@ -77,7 +77,10 @@ else
     echo "detic_onnx_ros2 ディレクトリは既に存在します。スキップします。"
 fi
 cd detic_onnx_ros2
-rosdep init
+# rosdepが初期化済みか確認し、未初期化の場合のみ実行
+if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
+    rosdep init
+fi
 rosdep update
 rosdep install -iry --from-paths .
 cd ../../
