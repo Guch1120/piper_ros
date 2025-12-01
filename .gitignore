@@ -17,4 +17,4 @@ oculus_reader
 oculus_reader/oculus_reader
 **/__pycache__/
 .thumbs
-src/record3d/output
+record3d/output/
