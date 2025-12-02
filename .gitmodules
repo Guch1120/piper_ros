@@ -18,3 +18,6 @@
 	path = src/flexbe_app
 	url = https://github.com/HSR-OIT/flexbe_app.git
 	branch = humble
+[submodule "piper_sdk"]
+	path = piper_sdk
+	url = git@github.com:Guch1120/piper_sdk.git

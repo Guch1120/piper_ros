@@ -3,6 +3,14 @@ set -e
 
 rosdep update
 
+if [ ! -d piper_sdk ]; then
+    echo "piper_sdk をクローンします..."
+    git submodule add git@github.com:Guch1120/piper_sdk.git
+else 
+    echo "piper_sdk は既に存在します。スキップします。"
+fi
+
+
 echo "Piper関連パッケージの依存関係をインストールします (detic_onnx_ros2 は除外)..."
 
 apt-get update

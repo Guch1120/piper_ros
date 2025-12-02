@@ -64,6 +64,41 @@ bash RUN-DOCKER-CONTAINER.bash
 ```
 これでコンテナ起動→コンテナ入り→コンテナ内のterminator起動までできる
 
+# 自動実行コマンドについて
+Terminator起動時 (`bash RUN-DOCKER-CONTAINER.bash` 実行時)、以下のコマンドが各ウィンドウで自動的に実行されます。
+これにより、手動で `source` コマンドや長い `ros2 launch` コマンドを入力する手間が省けます。
+
+1. `ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true enable_sync:=true enable_rgbd:=true`
+2. `ros2 run detic_onnx_ros2 detic_onnx_ros2_node`
+3. `ros2 launch piper start_single_moveit_piper.launch.py`
+4. `ros2 run piper piper_moveit_bridge`
+5. `ros2 launch piper_with_gripper_moveit piper_real_moveit.launch.py`
+6. `ros2 run piper moveit_client`
+
+## コマンド実行ラッパースクリプト (`run_ros_cmd.sh`)
+これらの自動実行は、`/ros2_ws/run_ros_cmd.sh` というスクリプトを使用しています。
+このスクリプトは、ROS環境 (`/opt/ros/humble/setup.bash` および `install/setup.bash`) を読み込んだ上で、引数として渡されたコマンドを実行します。
+
+### 使い方
+Terminatorの設定 (`.config/terminator/config`) で、`command` に以下のように記述することで、任意のコマンドを環境設定済みで実行できます。
+
+```bash
+bash /ros2_ws/run_ros_cmd.sh [実行したいコマンド]
+```
+
+例:
+```bash
+bash /ros2_ws/run_ros_cmd.sh ros2 topic list
+```
+
+**動作仕様:**
+1. 起動すると「Press Enter to execute...」と表示され、待機状態になります。実行するコマンドは**シアン色**で表示されます。
+2. エンターキーを押すとコマンドが実行されます。
+3. 終了するには **'q'** を入力してエンターを押してください。
+4. コマンド終了後（または Ctrl+C で中断後）、再び待機状態に戻ります。これにより、エラー発生時のログ確認や、コマンドの再実行が容易に行えます。
+
+---
+
 terminator画面(4分割版)
 ```
 ros2 launch piper start_single_piper.launch.py gripper_exist:=false
