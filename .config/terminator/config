@@ -52,6 +52,7 @@
       order = 0
       profile = default
       uuid = 348d2f22-da8b-44eb-9b0b-a7ccebc4af00
+      command = bash /ros2_ws/run_ros_cmd.sh ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true enable_sync:=true enable_rgbd:=true; bash
     [[[child4]]]
       type = VPaned
       parent = child2
@@ -64,12 +65,14 @@
       order = 0
       profile = default
       uuid = 6854fada-49cc-4de9-9ade-25f6d9a9b88c
+      command = bash /ros2_ws/run_ros_cmd.sh ros2 run detic_onnx_ros2 detic_onnx_ros2_node; bash
     [[[terminal6]]]
       type = Terminal
       parent = child4
       order = 1
       profile = default
       uuid = 79e6da3c-5668-4c46-bb35-75634b63a509
+      command = bash /ros2_ws/run_ros_cmd.sh ros2 launch piper start_single_moveit_piper.launch.py; bash
     [[[child7]]]
       type = HPaned
       parent = child1
@@ -82,6 +85,7 @@
       order = 0
       profile = default
       uuid = b279d4f0-7500-4c9c-a075-3eaa81f97cad
+      command = bash /ros2_ws/run_ros_cmd.sh ros2 run piper piper_moveit_bridge; bash
     [[[child9]]]
       type = VPaned
       parent = child7
@@ -94,10 +98,12 @@
       order = 0
       profile = default
       uuid = bf24ef60-f3d3-46be-bf47-8203353d647f
+      command = bash /ros2_ws/run_ros_cmd.sh ros2 launch piper_with_gripper_moveit piper_real_moveit.launch.py; bash
     [[[terminal11]]]
       type = Terminal
       parent = child9
       order = 1
       profile = default
       uuid = 53a0e0dc-8601-4b28-8dcf-00e3f3f11356
+      command = bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client; bash
 [plugins]
