@@ -20,3 +20,4 @@ oculus_reader/oculus_reader
 *.conf
 *.depth
 *.jpg
+metadata
