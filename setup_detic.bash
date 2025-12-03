@@ -39,8 +39,12 @@ pip install numpy==1.22.2
 pip install scipy==1.11.4
 pip install opencv-python==4.8.1.78
 
+pip install setuptools==59.5.0
+
 echo "Detectron2 をインストールしています..."
-pip install -e .
+# pip install -e . --no-build-isolation
+python3 setup.py develop
+
 
 cd ..
 echo "Detectron2 のインストールが完了しました。"
@@ -83,5 +87,11 @@ if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
 fi
 rosdep update
 rosdep install -iry --from-paths .
+rosdep install -iry --from-paths .
 cd ../../
+
+# NumPyのヘッダーパスを取得してCFLAGSに追加
+export CFLAGS="${CFLAGS} -I$(python3 -c 'import numpy; print(numpy.get_include())')"
+export C_INCLUDE_PATH="${C_INCLUDE_PATH}:$(python3 -c 'import numpy; print(numpy.get_include())')"
+
 colcon build --symlink-install
