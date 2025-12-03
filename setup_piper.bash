@@ -3,9 +3,9 @@ set -e
 
 rosdep update
 
-if [ ! -d piper_sdk ]; then
+if [ ! -d src/piper_sdk ]; then
     echo "piper_sdk をクローンします..."
-    git submodule add git@github.com:Guch1120/piper_sdk.git
+    git submodule add git@github.com:Guch1120/piper_sdk.git src/piper_sdk
 else 
     echo "piper_sdk は既に存在します。スキップします。"
 fi

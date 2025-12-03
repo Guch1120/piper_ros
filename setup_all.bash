@@ -16,6 +16,7 @@ echo "----------------------------------------"
 # ここに実行したいスクリプトを順番に書いてね
 # ==========================================
 SCRIPTS=(
+    "setup_sam3.bash"
     "setup_detic.bash"
     "setup_flexbe.bash"
     "setup_realsense.bash"
