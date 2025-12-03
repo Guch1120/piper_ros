@@ -17,3 +17,6 @@ oculus_reader
 oculus_reader/oculus_reader
 **/__pycache__/
 .thumbs
+*.conf
+*.depth
+*.jpg
