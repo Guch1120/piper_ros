@@ -185,7 +185,7 @@ piper_interface_v2.py参照.motionctrl関数の中身
                 0x00: 無効化
                 0x01: ティーチ記録開始 (ティーチモード進入)
                 0x02: ティーチ記録終了 (ティーチモード退出)
-                0x03: ティーチ済み軌道実行 (ティーチモード軌道の再生)
+                 0x03: ティーチ済み軌道実行 (ティーチモード軌道の再生)
                 0x04: 実行一時停止
                 0x05: 実行継続 (軌道再生再開)
                 0x06: 実行終了
@@ -213,3 +213,45 @@ Reading state information... Done
 E: Unable to locate package ros-humble-warehouse-ros-mongo
 ERROR: the following rosdeps failed to install
   apt: command [apt-get install -y ros-humble-warehouse-ros-mongo] failed
+
+
+
+deticを追加したあとでCOLCON IGNOREファイルを追加しないとビルド時にバカ程エラー出る \
+これはdeticがrosプログラム群でないのにsetup.pyというファイルがあるせいでrosパッケージ群として誤認識されるから． \
+対処法はCOLCON_IGNOREファイル(中身は空)を追加してビルド時に無視されるようにすること． \
+追加するのは2つ.この2つの下に犯人のsetup.pyがある．\
+```
+detic/detectron2/COLCON_IGNORE
+detic/Detic/third_party/COLCON_IGNORE
+```
+
+piperのgazeboを動かすときにjoint8_ctrl.pyに実行権限が必要
+```
+chmod +x src/piper_sim/piper_gazebo/scripts/joint8_ctrl.py
+```
+
+Realsense D435Iのdepth最小距離は0.1m \
+近すぎると左右のセンサで三角測量できなくなることが原因． \
+
+ビルドでエラー：
+```
+failed to create symbolic link 色々なディレクトリパス
+CMakeFiles/ament_cmake_python_symlink_何かROSのパッケージパス
+```
+これはcolcon build --symlink-installによって作成されたシンボリックリンクが原因． \
+ビルド生成物であるbuikd, logフォルダを丸っと削除してクリーンビルドすると解決する． \
+ビルド時にシンボリックリンク無しでビルドしたりするとファイルコピーされるが，シンボリックリンク作成するときに既に
+ディレクトリが存在するためにエラーになる．
+
+rosの通信のリストを見たいときは
+```
+ros2 topic list
+ros2 service list
+ros2 action list
+```
+それぞれの通信で何と何が通信しているかは
+```
+ros2 topic info トピック名
+ros2 service info サービス名
+ros2 action info アクション名
+```

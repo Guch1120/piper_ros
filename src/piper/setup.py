@@ -29,6 +29,9 @@ setup(
         'console_scripts': [
             'piper_single_ctrl = piper.piper_single_ctrl_node:main',
             'piper_read_slave_joint = piper.piper_read_slave_joint:main',
+            'piper_single_ctrl_moveit = piper.piper_single_ctrl_moveit_node:main',
+            'piper_moveit_bridge = piper.moveit_bridge:main',
+            'moveit_client = piper.moveit_client_node:main'
         ],
     },
 )

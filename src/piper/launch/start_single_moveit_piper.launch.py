@@ -45,7 +45,7 @@ def generate_launch_description():
     # Define the node
     piper_node = Node(
         package='piper',
-        executable='piper_single_ctrl',
+        executable='piper_single_ctrl_moveit',
         name='piper_ctrl_single_node',
         output='screen',
         ros_arguments=['--log-level', LaunchConfiguration('log_level')],
@@ -56,9 +56,7 @@ def generate_launch_description():
             'gripper_exist': LaunchConfiguration('gripper_exist'),
         }],
         remappings=[
-            ('joint_states_single', '/joint_states'),
-            ('joint_ctrl_single', '/joint_states') #Moveitのために変更する
-            # ('joint_states_feedback', '/joint_states'),
+            ('joint_states_single', '/joint_states') #Moveitのために変更する
         ]
     )
 

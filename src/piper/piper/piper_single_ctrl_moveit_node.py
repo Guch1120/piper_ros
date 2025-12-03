@@ -40,8 +40,9 @@ class PiperRosNode(Node):
         self.get_logger().info(f"gripper_exist is {self.gripper_exist}")
         self.get_logger().info(f"gripper_val_mutiple is {self.gripper_val_mutiple}")
         # Publishers
-        self.joint_states_feedback_pub = self.create_publisher(JointState, 'joint_states_feedback', 1)
-        self.joint_states_ctrl_pub = self.create_publisher(JointState, 'joint_ctrl_states_feedback', 1)
+        self.joint_pub = self.create_publisher(JointState, 'joint_states_single', 1)
+        self.joint_feedback_pub = self.create_publisher(JointState, 'joint_states_feedback', 1)
+        self.joint_ctrl_pub = self.create_publisher(JointState, 'joint_ctrl', 1)
         self.arm_status_pub = self.create_publisher(PiperStatusMsg, 'arm_status', 1)
         self.end_pose_pub = self.create_publisher(Pose, 'end_pose', 1)
         self.end_pose_stamped_pub = self.create_publisher(PoseStamped, 'end_pose_stamped', 1)
@@ -49,22 +50,22 @@ class PiperRosNode(Node):
         self.motor_srv = self.create_service(Enable, 'enable_srv', self.handle_enable_service)
         # Joint
         self.joint_states = JointState()
-        self.joint_states.name = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'gripper']
+        self.joint_states.name = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'joint7']
         self.joint_states.position = [0.0] * 7
         self.joint_states.velocity = [0.0] * 7
         self.joint_states.effort = [0.0] * 7
 
         self.joint_states_feedback = JointState()
-        self.joint_states_feedback.name = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'gripper']
+        self.joint_states_feedback.name = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'joint7']
         self.joint_states_feedback.position = [0.0] * 7
         self.joint_states_feedback.velocity = [0.0] * 7
         self.joint_states_feedback.effort = [0.0] * 7
         # Joint ctrl
-        self.joint_states_ctrl = JointState()
-        self.joint_states_ctrl.name = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'gripper']
-        self.joint_states_ctrl.position = [0.0] * 7
-        self.joint_states_ctrl.velocity = [0.0] * 7
-        self.joint_states_ctrl.effort = [0.0] * 7
+        self.joint_ctrl = JointState()
+        self.joint_ctrl.name = ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'joint7']
+        self.joint_ctrl.position = [0.0] * 7
+        self.joint_ctrl.velocity = [0.0] * 7
+        self.joint_ctrl.effort = [0.0] * 7
         # Enable flag
         self.__enable_flag = False
         # Create piper class and open CAN interface
@@ -73,8 +74,8 @@ class PiperRosNode(Node):
 
         # Start subscription thread
         self.create_subscription(PosCmd, 'pos_cmd', self.pos_callback, 1)
-        self.create_subscription(JointState, 'joint_ctrl_cmd', self.joint_callback, 1)
-        self.create_subscription(Bool, 'enable_cmd', self.enable_callback, 1)
+        self.create_subscription(JointState, 'joint_ctrl_single', self.joint_callback, 1)
+        self.create_subscription(Bool, 'enable_flag', self.enable_callback, 1)
 
         self.publisher_thread = threading.Thread(target=self.publish_thread)
         self.publisher_thread.start()
@@ -119,7 +120,7 @@ class PiperRosNode(Node):
                     pass
             if(elapsed_time_flag):
                 self.get_logger().info("Automatic enable timeout, exiting program")
-                rclpy.shutdown() 
+                rclpy.shutdown()
             
             if self.piper.isOk():
                 self.PublishArmState()
@@ -166,6 +167,7 @@ class PiperRosNode(Node):
         # Assign timestamp
         # self.joint_states.header.stamp = self.get_clock().now().to_msg()
         new_time = max(self.piper.GetArmJointMsgs().time_stamp, self.piper.GetArmHighSpdInfoMsgs().time_stamp)
+        self.joint_states.header.stamp = self.float_to_ros_time(new_time)
         # Here, you can set the joint positions to any value you want
         # The raw data obtained is in degrees multiplied by 1000. To convert to radians, divide by 1000, multiply by π/180, and limit to 5 decimal places
         joint_0: float = (self.piper.GetArmJointMsgs().joint_state.joint_1 / 1000) * 0.017444
@@ -188,20 +190,25 @@ class PiperRosNode(Node):
         effort_4:float = self.piper.GetArmHighSpdInfoMsgs().motor_5.effort/1000
         effort_5:float = self.piper.GetArmHighSpdInfoMsgs().motor_6.effort/1000
         effort_6:float = self.piper.GetArmGripperMsgs().gripper_state.grippers_effort/1000
-        # すべてのメッセージを発行
+        self.joint_states.position = [joint_0,joint_1, joint_2, joint_3, joint_4, joint_5,joint_6]
+        self.joint_states.velocity = [vel_0, vel_1, vel_2, vel_3, vel_4, vel_5]
+        self.joint_states.effort = [effort_0, effort_1, effort_2, effort_3, effort_4, effort_5, effort_6]
+        
         self.joint_states_feedback.position = [joint_0,joint_1, joint_2, joint_3, joint_4, joint_5,joint_6]
         self.joint_states_feedback.velocity = [vel_0, vel_1, vel_2, vel_3, vel_4, vel_5]
         self.joint_states_feedback.effort = [effort_0, effort_1, effort_2, effort_3, effort_4, effort_5, effort_6]
-        self.joint_states_feedback.header.stamp = self.float_to_ros_time(new_time)
+        self.joint_states_feedback.header.stamp = self.joint_states.header.stamp
+        # すべてのメッセージを発行
         if any(abs(pos) > 3.5 for pos in self.joint_states_feedback.position):
             self.get_logger().warn("Joint state abnormal: value exceeds ±3.5 rad")
         else:
-            self.joint_states_feedback_pub.publish(self.joint_states_feedback)
+            self.joint_feedback_pub.publish(self.joint_states_feedback)
+            self.joint_pub.publish(self.joint_states)
 
     def PublishArmCtrlAndGripper(self):
-        # self.joint_states_ctrl.header.stamp = self.get_clock().now().to_msg()
+        # self.joint_ctrl.header.stamp = self.get_clock().now().to_msg()
         new_time = max(self.piper.GetArmJointCtrl().time_stamp, self.piper.GetArmGripperCtrl().time_stamp)
-        self.joint_states_ctrl.header.stamp = self.float_to_ros_time(new_time)
+        self.joint_ctrl.header.stamp = self.float_to_ros_time(new_time)
         joint_0: float = (self.piper.GetArmJointCtrl().joint_ctrl.joint_1/1000) * 0.017444
         joint_1: float = (self.piper.GetArmJointCtrl().joint_ctrl.joint_2/1000) * 0.017444
         joint_2: float = (self.piper.GetArmJointCtrl().joint_ctrl.joint_3/1000) * 0.017444
@@ -209,12 +216,12 @@ class PiperRosNode(Node):
         joint_4: float = (self.piper.GetArmJointCtrl().joint_ctrl.joint_5/1000) * 0.017444
         joint_5: float = (self.piper.GetArmJointCtrl().joint_ctrl.joint_6/1000) * 0.017444
         joint_6: float = self.piper.GetArmGripperCtrl().gripper_ctrl.grippers_angle/1000000
-        self.joint_states_ctrl.position = [joint_0, joint_1, joint_2, joint_3, joint_4, joint_5, joint_6]  # Example values
+        self.joint_ctrl.position = [joint_0, joint_1, joint_2, joint_3, joint_4, joint_5, joint_6]  # Example values
         if any(abs(pos) > 3.5 for pos in self.joint_ctrl.position):
             self.get_logger().warn("Joint state abnormal: value exceeds ±3.5 rad")
         else:
             self.joint_ctrl_pub.publish(self.joint_ctrl)
-
+    
     def PublishArmEndPose(self):
         new_time = self.piper.GetArmEndPoseMsgs().time_stamp
         # End effector pose
@@ -238,7 +245,6 @@ class PiperRosNode(Node):
         end_pos_stamp = PoseStamped()
         end_pos_stamp.pose = endpos
         end_pos_stamp.header.stamp = self.float_to_ros_time(new_time)
-        end_pos_stamp.header.frame_id = 'link6'
         # end_pos_stamp.header.stamp = self.get_clock().now().to_msg()
         self.end_pose_stamped_pub.publish(end_pos_stamp)
 
@@ -291,7 +297,7 @@ class PiperRosNode(Node):
 
         # joint_data.nameを走査して位置をマッピング
         for idx, joint_name in enumerate(joint_data.name):
-            self.get_logger().info(f"{joint_name}: {joint_data.position[idx]}")
+            # self.get_logger().info(f"{joint_name}: {joint_data.position[idx]}")
             joint_positions[joint_name] = round(joint_data.position[idx] * factor)
         
         # 7番目の関節の位置を取得
@@ -342,15 +348,15 @@ class PiperRosNode(Node):
                     self.piper.GripperCtrl(abs(joint_6), 1000, 0x01, 0)
 
 
-    def enable_callback(self, enable_cmd: Bool):
+    def enable_callback(self, enable_flag: Bool):
         """Callback function for enabling the robotic arm
 
         Args:
             enable_flag (): Boolean flag
         """
-        self.get_logger().info(f"Received enable cmd:")
-        self.get_logger().info(f"enable_cmd: {enable_cmd.data}")
-        if enable_cmd.data:
+        self.get_logger().info(f"Received enable flag:")
+        self.get_logger().info(f"enable_flag: {enable_flag.data}")
+        if enable_flag.data:
             self.__enable_flag = True
             self.piper.EnableArm(7)
             if self.gripper_exist:

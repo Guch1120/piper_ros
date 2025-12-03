@@ -25,10 +25,6 @@ rosdep init && rosdep update
 ```
 rosdep install -i --from-path src --rosdistro humble -y
 ```
-dockerfileでterminatorのインストールができていないので，
-```
-apt-get install terminator
-```
 ```
 colcon build --symlink-install
 ```
@@ -68,6 +64,41 @@ bash RUN-DOCKER-CONTAINER.bash
 ```
 これでコンテナ起動→コンテナ入り→コンテナ内のterminator起動までできる
 
+# 自動実行コマンドについて
+Terminator起動時 (`bash RUN-DOCKER-CONTAINER.bash` 実行時)、以下のコマンドが各ウィンドウで自動的に実行されます。
+これにより、手動で `source` コマンドや長い `ros2 launch` コマンドを入力する手間が省けます。
+
+1. `ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true enable_sync:=true enable_rgbd:=true`
+2. `ros2 run detic_onnx_ros2 detic_onnx_ros2_node`
+3. `ros2 launch piper start_single_moveit_piper.launch.py`
+4. `ros2 run piper piper_moveit_bridge`
+5. `ros2 launch piper_with_gripper_moveit piper_real_moveit.launch.py`
+6. `ros2 run piper moveit_client`
+
+## コマンド実行ラッパースクリプト (`run_ros_cmd.sh`)
+これらの自動実行は、`/ros2_ws/run_ros_cmd.sh` というスクリプトを使用しています。
+このスクリプトは、ROS環境 (`/opt/ros/humble/setup.bash` および `install/setup.bash`) を読み込んだ上で、引数として渡されたコマンドを実行します。
+
+### 使い方
+Terminatorの設定 (`.config/terminator/config`) で、`command` に以下のように記述することで、任意のコマンドを環境設定済みで実行できます。
+
+```bash
+bash /ros2_ws/run_ros_cmd.sh [実行したいコマンド]
+```
+
+例:
+```bash
+bash /ros2_ws/run_ros_cmd.sh ros2 topic list
+```
+
+**動作仕様:**
+1. 起動すると「Press Enter to execute...」と表示され、待機状態になります。実行するコマンドは**シアン色**で表示されます。
+2. エンターキーを押すとコマンドが実行されます。
+3. 終了するには **'q'** を入力してエンターを押してください。
+4. コマンド終了後（または Ctrl+C で中断後）、再び待機状態に戻ります。これにより、エラー発生時のログ確認や、コマンドの再実行が容易に行えます。
+
+---
+
 terminator画面(4分割版)
 ```
 ros2 launch piper start_single_piper.launch.py gripper_exist:=false
@@ -101,9 +132,91 @@ python3 piper_set_gripper_zero.py
 ```
 
 
-MEMO: \
-アームに適当な指令を送るコマンド
+deticのインストールはros2_wsにあるsetup_detic.bashを実行する． \
+まずsetup_detic.bashに実行権限を与える．
 ```
-# Pane 2 で実行
-ros2 topic pub /joint_states sensor_msgs/msg/JointState "{header: {stamp: {sec: 0, nanosec: 0}, frame_id: 'piper_single'}, name: ['joint1', 'joint2','joint3','joint4','joint5','joint6'], position: [0.2,0.2,-0.2,0.3,-0.2,0.5], velocity: [], effort: []}" --once
+chmod +x setup_detic.bash setup_detic_ros.bash
+```
+```
+bash setup_detic.bash
+```
+```
+bash setup_detic_ros.bash
+```
+
+サンプル実行方法 (参考)
+モデルやサンプル画像は別途ダウンロード/配置が必要です。
+モデルのダウンロード (例)
+
+サンプル画像の配置 (例) なんでもいいから好きなやつをmodels/の中に入れて
+(./models/sample.JPG に画像を配置する)
+
+デモの実行はこれ． --input のあとのパスがあっているか確認してね
+python3 demo.py \
+    --config-file configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml \
+    --input ./models/sample.JPG \
+    --output out.jpg \
+    --vocabulary lvis \
+    --opts MODEL.WEIGHTS models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
+'
+
+#実行にはsudo chown -R $USER:$USER ./deticが必要
+
+
+detic_onxx_rosの使い方 \
+realsenseノードを起動
+```
+ros2 launch realsense2_camera rs_launch.py \
+  align_depth.enable:=true \
+  enable_sync:=true \
+  enable_rgbd:=true
+```
+```
+ros2 run detic_onnx_ros2 detic_onnx_ros2_node
+```
+実行後黄色文字で警告が出る．(対応予定) \
+しばらく起動を待って
+```
+/detic_result/
+```
+
+
+# Moveit実機編
+
+- moceit仕様に変更した（Joint.nameでgripper -> joint7）にしたものを実行
+```
+ros2 launch piper start_single_moveit_piper.launch.py
+```
+- Moveitのアクション通信をpiperのrosコントローラに合わせるブリッジを起動
+```
+ros2 run piper piper_moveit_bridge
+```
+- Moveitとrvizがセットで起動
+```
+ros2 launch piper_with_gripper_moveit piper_real_moveit.launch.py 
+```
+- rvizで表示されるアームの球か矢印を動かしてPlanボタン押してExecuteを押すと動く
+
+# Moveit rvizではなくコードから実行編
+rviz立ち上げるまではMoveit実践編まんま同じ． \
+- ここからが違うとこ． \
+- rviz上で動作させるのではなくコードから指定した**角度(ラジアン)**を目標に動く．
+```
+ros2 run piper moveit_client
+```
+- 実行するとアクション通信で角度がmoveitのPlannerへ送られてTrajectry(軌跡)が出てくる． \
+- Trajecryを受け取ってmoveitのコントローラがアクション通信でFollowJointTrajectryを出す． \
+- これをPiperのコントローラのpiper_ctrl_single_nodeで受け取りたいがトピック通信なのでブリッジをかます． \
+- それがpiper_moveit_bridgeである．\
+
+moveit_clientのログ(成功例)
+```
+[INFO] [1764505661.883104917] [move_arm_client]: Sending goal...
+[INFO] [1764505661.885222897] [move_arm_client]: Goal accepted! Moving...
+[INFO] [1764505662.193592280] [move_arm_client]: Result code: 1
+```
+このときmoveit_bridgeの出力は，
+```
+[INFO] [1764503706.083124040] [piper_moveit_bridge]: Received Goal Request
+[INFO] [1764503706.083931981] [piper_moveit_bridge]: Executing goal...
 ```

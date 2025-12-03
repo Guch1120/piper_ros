@@ -17,6 +17,10 @@ services:
       #gitのssh鍵をマウント
       - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
       - ~/.ssh/id_rsa.pub:/root/.ssh/id_rsa.pub:ro
+      # usbを認識をマウント
+      - /dev:/dev
+      # ホストのios通信用
+      - /var/run/usbmuxd:/var/run/usbmuxd:rw
     # 環境変数 (GUI用)
     environment:
       - DISPLAY=${DISPLAY}

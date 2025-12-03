@@ -17,7 +17,7 @@ class MujocoModel(Node):
         super().__init__("mujoco_joint_controller")
         self.create_subscription(JointState, "/joint_states", self.joint_state_callback, 10)
 
-        # 初始化 joint_targets 字典
+        # joint_targets辞書を初期化
         self.joint_targets = {}
 
         pkg_share_dir = get_package_share_directory('piper_description')
@@ -30,15 +30,15 @@ class MujocoModel(Node):
         self.sim = MjSim(model)
         self.viewer = MjViewer(self.sim)
 
-        self.timer = self.create_timer(0.01, self.control_loop)  # 100Hz 控制循环
-        self.tolerance = 0.05  # 角度误差容忍度
+        self.timer = self.create_timer(0.01, self.control_loop)  # 100Hz 制御ループ
+        self.tolerance = 0.05  # 角度誤差許容度
 
     def joint_state_callback(self, msg):
         """ 从 ROS 2 /joint_states 话题获取关节角度 """
         for i, name in enumerate(msg.name):
             self.joint_targets[name] = msg.position[i]
         
-        # 确保 joint8 为 joint7 的负值
+        # joint8をjoint7の負の値にする
         if "joint7" in self.joint_targets:
             self.joint_targets["joint8"] = -self.joint_targets["joint7"]
 

@@ -108,7 +108,7 @@ class PiperRosNode(Node):
             self.joint_states_feedback.effort = [effort_1, effort_2, effort_3, effort_4, effort_5, effort_6]
             self.joint_states_feedback.header.stamp = self.float_to_ros_time(new_time)
             
-        # 发布所有消息
+        # すべてのメッセージを発行
         if any(abs(pos) > 3.5 for pos in self.joint_states_feedback.position):
             self.get_logger().warn("Joint state abnormal: value exceeds ±3.5 rad")
         else:
