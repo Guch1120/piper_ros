@@ -380,3 +380,34 @@ mask
 やった後: 「物体だけの距離リスト」になるので、np.median(target_depth_pixels) とすれば、背景に邪魔されずに**「その物体までの正確な距離」**が一発で求まります。
 この1行で「フィルタリング」と「データ抽出」を同時に行っている、非常に効率的な処理です。
 ```
+
+
+# FlexBE Integration Walkthrough
+ROSノード（Realsense, Detic, Piper）をFlexBEから制御するための統合を行いました。
+## 変更内容
+- 新しいパッケージ `piper_flexbe_behaviors` を作成しました。
+- 統合起動ファイル `piper_flexbe_demo.launch.py` を作成しました。
+- FlexBEステート `PiperMoveItState` を実装しました。
+
+# FlexBEと関連ノードの起動
+ros2 launch piper_flexbe_behaviors piper_flexbe_demo.launch.py
+
+これにより、以下のノードが一括で起動します：
+- Realsense Camera
+- Piper MoveIt
+- Piper Bridge
+- FlexBE App & Onboard
+### FlexBEでの動作確認
+1. FlexBE Appが立ち上がります。
+2. `Load Behavior` から `Piper Demo Behavior` (まだ作成していない場合は新規作成) を選択します。
+3. `PiperMoveItState` を使用して、アームを動かすステートマシンを作成・実行できます。
+## ステートの使用方法
+`PiperMoveItState` は以下のように設定します：
+- **Parameters**: `timeout` (デフォルト 5.0秒)
+- **Input Keys**: `target_joints` (辞書型: `{'joint1': 0.0, ...}`)
+- **Outcomes**: `reached`, `failed`
+
+## トラブルシューティング
+- **ノードが起動しない場合**: `colcon build --packages-select piper_flexbe_behaviors` を再実行してください。
+- **MoveItのエラー**: `piper_moveit_bridge` が正しく起動しているか確認してください。
+```
