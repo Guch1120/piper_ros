@@ -40,6 +40,7 @@ services:
 
     # ネットワーク (シミュレータとホストの通信を簡単にする)
     network_mode: host
+    ipc: host
 
     # --- 実機開発 (CAN) 用 ---
     privileged: true

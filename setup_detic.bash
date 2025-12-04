@@ -86,6 +86,7 @@ if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
     rosdep init
 fi
 rosdep update
+pip install onnxruntime
 rosdep install -iry --from-paths .
 rosdep install -iry --from-paths .
 cd ../../
