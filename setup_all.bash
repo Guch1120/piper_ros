@@ -17,7 +17,6 @@ echo "----------------------------------------"
 # ==========================================
 SCRIPTS=(
     "setup_sam3.bash"
-    "setup_detic.bash"
     "setup_flexbe.bash"
     "setup_realsense.bash"
     "setup_piper.bash"
