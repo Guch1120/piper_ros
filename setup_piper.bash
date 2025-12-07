@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+
+echo "setuptools のバージョンを 58.2.0 にダウングレードします..."
+pip3 install setuptools==58.2.0
 rosdep update
 
 if [ ! -d src/piper_sdk ]; then
