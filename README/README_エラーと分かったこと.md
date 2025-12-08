@@ -382,34 +382,6 @@ mask
 ```
 
 
-# FlexBE Integration Walkthrough
-ROSノード（Realsense, Detic, Piper）をFlexBEから制御するための統合を行いました。
-## 変更内容
-- 新しいパッケージ `piper_flexbe_behaviors` を作成しました。
-- 統合起動ファイル `piper_flexbe_demo.launch.py` を作成しました。
-- FlexBEステート `PiperMoveItState` を実装しました。
-
-# FlexBEと関連ノードの起動
-ros2 launch piper_flexbe_behaviors piper_flexbe_demo.launch.py
-
-これにより、以下のノードが一括で起動します：
-- Realsense Camera
-- Piper MoveIt
-- Piper Bridge
-- FlexBE App & Onboard
-### FlexBEでの動作確認
-1. FlexBE Appが立ち上がります。
-2. `Load Behavior` から `Piper Demo Behavior` (まだ作成していない場合は新規作成) を選択します。
-3. `PiperMoveItState` を使用して、アームを動かすステートマシンを作成・実行できます。
-## ステートの使用方法
-`PiperMoveItState` は以下のように設定します：
-- **Parameters**: `timeout` (デフォルト 5.0秒)
-- **Input Keys**: `target_joints` (辞書型: `{'joint1': 0.0, ...}`)
-- **Outcomes**: `reached`, `failed`
-
-## トラブルシューティング
-- **ノードが起動しない場合**: `colcon build --packages-select piper_flexbe_behaviors` を再実行してください。
-- **MoveItのエラー**: `piper_moveit_bridge` が正しく起動しているか確認してください。
 ```
 # SAM3 ROS Integration Status
 
@@ -438,7 +410,7 @@ ros2 launch piper_flexbe_behaviors piper_flexbe_demo.launch.py
    ```
    - 自動的にGPU (CUDA) が利用可能かチェックし、利用可能ならGPU、そうでなければCPUで動作します。
 
-4. **ROSノードの実行（予定）**
+4. **ROSノードの実行**
    ```bash
    ros2 launch sam3_ros sam3.launch.py
    ```
@@ -459,10 +431,9 @@ ros2 launch piper_flexbe_behaviors piper_flexbe_demo.launch.py
     └── test_tracker.py            # 単体テスト用スクリプト
 ```
 
-## 今後の拡張計画と実装方法
+## 今後の拡張計画と実装方法 (後述にて実装済み。動作確認はまだ)
 
 重要度の高い順に記載します。
-
 ### 1. 3D位置推定とTF発行（最優先）
 - **目的**: 検出した物体の3D位置を特定し、ロボットが操作できるようにTFを発行する。
 - **実装方法**:
@@ -513,7 +484,7 @@ SAM3で検出した物体の2Dマスクと、Realsense等の深度カメラか�
 ### サービスインターフェースの実装完了 (2025/12/06)
 
 **機能概要**:
-従来のトピック通信 () に加え、同期的な制御を可能にするサービスインターフェースを実装しました。これにより、追跡の開始・停止を確実に行い、結果（成功/失敗）を受け取ることができるようになりました。
+従来のトピック通信に加え、同期的な制御を可能にするサービスインターフェースを実装しました。これにより、追跡の開始・停止を確実に行い、結果（成功/失敗）を受け取ることができるようになりました。
 
 **実装詳細**:
 1.  **新規パッケージ**: `sam3_interfaces`
