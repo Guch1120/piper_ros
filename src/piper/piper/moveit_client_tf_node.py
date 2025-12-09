@@ -20,7 +20,7 @@ class MoveArmClient(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
         # ダミーTFを使うかどうかを選択するパラメータ
-        self.declare_parameter('use_dummy_tf', True)
+        self.declare_parameter('use_dummy_tf', False)
 
     def send_goal(self, tf_stamped):
         """
@@ -134,7 +134,7 @@ def main(args=None):
         else:
             client.get_logger().info('Looking up transform from TF tree...')
             target_frame = 'base_link'      # 基準となる座標系
-            source_frame = 'target_object'  # 目標物の座標系
+            source_frame = 'interactive_set'  # 目標物の座標系
 
             # TFが利用可能になるまで10秒待機し、TFを取得する
             when = rclpy.time.Time() # 最新のTFを取得

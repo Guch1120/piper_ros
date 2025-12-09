@@ -1,4 +1,5 @@
 import os
+import sam3
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,11 +7,10 @@ from PIL import Image
 from sam3 import build_sam3_image_model
 from sam3.model.sam3_image_processor import Sam3Processor
 from sam3.visualization_utils import plot_results
-import sam3
 
 '''
-image_pash : 検出したい画像のパス
-input_test : 検出したい物体名
+image_path : 検出したい画像のパス
+input_text : 検出したい物体名
 '''
 
 def main():
@@ -76,10 +76,12 @@ def main():
     
     # Initialize processor
     # Pass device explicitly
+    # confidence_threshold:Presence Head(その概念が画像内にある確率)
     processor = Sam3Processor(model, confidence_threshold=0.5, device=device)
     
     # Set image
     print("Processing image...")
+    # 画像の特徴抽出
     inference_state = processor.set_image(image)
     
     # Predict

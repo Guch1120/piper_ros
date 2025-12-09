@@ -138,6 +138,7 @@ sam3_logs/
 *.pickle
 *.npy
 *.npz
+*.png
 
 # Logs
 logs/
