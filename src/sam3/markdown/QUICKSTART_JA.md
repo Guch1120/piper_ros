@@ -13,37 +13,14 @@ cudaは12.8,pytorchは2.9.0をインストールしている. \
 参考：https://en.wikipedia.org/wiki/CUDA#GPUs_supported
 ```bash
 # コンテナを起動
-cd /home/guch1/ssd_yamaguchi/sam3
+cd sam3
 docker compose up -d
 
 # コンテナに入る
 docker exec -it sam3-ros2-dev bash
 ```
 
-## 環境の確認　1コマンドver
-ホストのターミナル、つまりコンテナ外のターミナルで実行する。
-下の1行ずつverを1コマンドにまとめたやつ
-```
-docker exec piper-humble-dev python3 -c "import sam3; import torch; print(f'SAM3 Version: {sam3.__version__}'); print(f'Torch Version: {torch.__version__}'); print(f'CUDA Available: {torch.cuda.is_available()}'); print(f'CUDA Device: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else None}')"
-```
-成功していればこうなる。CUDA Deviceは使っているGPUの名前
-```
-SAM3 Version: 0.1.0
-Torch Version: 2.9.1+cu128
-CUDA Available: True
-CUDA Device: NVIDIA GeForce RTX 5060 Ti
-```
-成功していればコンテナ内に入って```setup_sam3.bash```を実行する。 \
-コンテナ内に入って
-```
-bash setup_sam3.bash
-```
-でもいいし、ホストのターミナルで以下のコマンドでもいい。やってることはコンテナに入ってbash実行なので    全く同じ。
-```
-docker exec piper-humble-dev bash /ros2_ws/setup_sam3.bash
-```
-
-## 環境の確認　1行ずつver
+## 環境の確認
 
 コンテナ内で以下のコマンドを実行して、環境が正しくセットアップされているか確認します：
 
@@ -57,7 +34,7 @@ python3 --version
 
 # PyTorch 確認
 python3 -c "import torch; print('PyTorch:', torch.__version__); print('CUDA Available:', torch.cuda.is_available())"
-# 出力: PyTorch: 2.7.0+cu126
+# 出力: PyTorch: 2.9.0+cu128
 #       CUDA Available: True
 
 # SAM3 確認
@@ -66,6 +43,9 @@ python3 -c "import sam3; print('SAM3 Version:', sam3.__version__)"
 
 # ROS2 確認
 ros2 topic list
+# 出力: /parameter_events
+    　　/rosout
+
 ```
 
 ## SAM3の基本的な使い方
