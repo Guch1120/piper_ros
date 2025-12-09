@@ -513,3 +513,13 @@ RVizでの確認: RVizの "Global Options" -> "Fixed Frame" を camera_depth_opt
 プレフィックスを無視して名前をつけたければ リマッピングで=の後を/で始めればいい。
 `ネームスペース（`<namespace>`）がコメントアウトされているため、トップレベルになります。
 結果として /camera/color/image_raw というトピック名になります（`<sensor name="camera">` の名前がプレフィックスとして付くため）。
+
+# tfの繋がりを見たいとき
+これだとpdfに出力してくれる．保存パスは実行したところ直下．
+```
+ros2 run rqt_tf_tree rqt_tf_tree
+```
+rqtで見るなら
+```
+ros2 run rqt_graph rqt_graph
+```

@@ -31,7 +31,7 @@ cd "$WS_DIR"
 # ---------------------------------------------------------
 echo "--- 2. Building flexbe_app ---"
 # flexbe_app だけを狙い撃ちでビルド（時間短縮）
-colcon build --symlink-install --packages-select flexbe_app
+colcon build --symlink-install 
 
 # ---------------------------------------------------------
 # 3. nwjs 自動インストール処理
