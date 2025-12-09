@@ -41,7 +41,8 @@ echo "--------------------------------------------------"
 echo "realsense-ros (ROS 2 Humble) のセットアップを開始します..."
 
 # ROS 2 ワークスペースのパスを定義 (例: $HOME/ros2_ws)
-ROS_WS="$HOME/ros2_ws"
+# ROS_WS="$HOME/ros2_ws" #dokcer内の$HOMEはrootだけどdockerfileで作業ディレクトリを/ros2_wsにしてるから作業外にクローンしてしまう．
+ROS_WS="/ros2_ws"
 ROS_DISTRO="humble" 
 
 echo "ROS 2 ワークスペース: $ROS_WS を準備します..."
