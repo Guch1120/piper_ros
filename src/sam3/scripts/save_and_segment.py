@@ -55,15 +55,16 @@ class RealSenseSaveAndSegment(Node):
                 device = "cpu"
                 self.get_logger().info("Using CPU")
         except RuntimeError as e:
-            self.get_logger().warn(f"CUDA available but failed to init: {e}")
+            self.get_logger().warn(f"CUDA available but failed to init : {e}")
             device = "cpu"
 
         ## BPEファイル(SAM3が必要とするtokenizer辞書)のパスを決定
+        current_dir = os.path.dirname(os.path.abspath(__file__))
         bpe_path = os.path.join(current_dir, "assets", "bpe_simple_vocab_16e6.txt.gz")
         if not os.path.exists(bpe_path):
             sam3_root = os.path.dirname(sam3.__file__)
             bpe_path = os.path.join(sam3_root, "..", "assets", "bpe_simple_vocab_16e6.txt.gz")
-        self.get_logger().info(f"Loading SAM3 with BPE: {bpe_path}")
+        self.get_logger().info(f"Loading SAM3 with BPE : {bpe_path}")
         
         model = build_sam3_image_model(bpe_path=bpe_path, device=device)
         if device == "cpu":
@@ -81,20 +82,19 @@ class RealSenseSaveAndSegment(Node):
             rgb_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='rgb8')  # ROS → OpenCV変換
             bgr_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2BGR)  # RGB → BGR変換
 
+            timestamp = datetime.now().strftime('%Y_%m%d_%H_%M_%S')
+            save_path = os.path.join(self.output_dir, f'rl_frame_{timestamp}.png')
             # 画像保存
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            save_path = os.path.join(self.output_dir, f'realsense_frame_{timestamp}.png')
             cv2.imwrite(save_path, bgr_image)
-            self.get_logger().info(f"画像を保存しました: {save_path}")
+            # self.get_logger().info(f"画像を保存しました : {save_path}")
 
             # SAM3セグメント処理
             self.run_sam3(save_path, timestamp)
-
             self.frame_saved = True
             rclpy.shutdown()
 
         except Exception as e:
-            self.get_logger().error(f"画像保存中にエラー発生: {str(e)}")
+            self.get_logger().error(f"画像保存中にエラー発生 : {str(e)}")
 
     def run_sam3(self, img_path, timestamp):
         self.get_logger().info("SAM3 によるセグメンテーションを開始します")
@@ -107,21 +107,21 @@ class RealSenseSaveAndSegment(Node):
 
         # 検出したい物体を指定
         input_text = "magcup"
-        self.get_logger().info(f"SAM3 テキストプロンプト: {input_text}")
+        self.get_logger().info(f"SAM3 テキストプロンプト : {input_text}")
 
         results = self.processor.set_text_prompt(input_text, inference_state)
 
         count = len(results["scores"])
-        self.get_logger().info(f"SAM3 が検出した物体数: {count}")
+        self.get_logger().info(f"SAM3 が検出した物体数 : {count}")
 
-        # 可視化して保存
-        result_path = os.path.join(self.output_dir, f"segmented_{timestamp}.png")
+        # セグメント後の画像保存
+        result_path = os.path.join(self.output_dir, f"seg_{timestamp}.png")
         plot_results(image, results)
         plt.savefig(result_path)
         plt.close()
 
-        self.get_logger().info(f"SAM3 セグメント結果を保存: {result_path}")
-
+        self.get_logger().info(f"SAM3 セグメント結果を保存完了 : {result_path}")
+        self.get_logger().info("Ctl+Cで終了してください")
 
 def main(args=None):
     rclpy.init(args=args)
