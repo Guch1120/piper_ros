@@ -99,7 +99,7 @@ def plot_bbox(
     ax=None,
 ):
     if isinstance(box, torch.Tensor):
-        box = box.numpy()
+        box = box.cpu().numpy()
     if box_format == "XYXY":
         x, y, x2, y2 = box
         w = x2 - x
@@ -145,11 +145,11 @@ def plot_bbox(
 
 
 def plot_mask(mask, color="r", ax=None):
-    if isinstance(mask, torch.Tensor):
-        mask = mask.numpy()
     im_h, im_w = mask.shape
     mask_img = np.zeros((im_h, im_w, 4), dtype=np.float32)
     mask_img[..., :3] = to_rgb(color)
+    if isinstance(mask, torch.Tensor):
+        mask = mask.numpy()
     mask_img[..., 3] = mask * 0.5
     # Use the provided ax or the current axis
     if ax is None:
