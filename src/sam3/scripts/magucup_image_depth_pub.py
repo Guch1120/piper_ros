@@ -30,7 +30,8 @@ class MagcupImageDepthPub(Node):
             os.makedirs(self.output_dir)
 
         # 座標値(u, v, z)を配信するパブリッシャーを作成する,x=u(pixel), y=v(pixel), z=depth(meter) として扱う
-        self.coord_pub = self.create_publisher(Point, '/target_object_uvz', 10)
+        # オブジェクトを指定していないときはトピック名を`target_object_uvz`にする
+        self.coord_pub = self.create_publisher(Point, '/magcup_object_uvz', 10)
 
         # RGB画像のサブスクライバー
         self.rgb_sub = self.create_subscription(
@@ -189,7 +190,7 @@ class MagcupImageDepthPub(Node):
             point_msg.y = float(center_v)
             point_msg.z = float(median_depth_m)
             self.coord_pub.publish(point_msg)
-            self.get_logger().info("Published coordinates to /target_object_uvz")
+            self.get_logger().info("Published coordinates to /magcup_object_uvz")
 
         # 結果画像の保存
         result_path = os.path.join(self.output_dir, f"segmented_{timestamp}.png")
@@ -202,7 +203,7 @@ class MagcupImageDepthPub(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = RealSenseSegmentWithDepth()
+    node = MagcupImageDepthPub()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
