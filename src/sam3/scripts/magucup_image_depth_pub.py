@@ -2,6 +2,7 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
+from geometry_msgs.msg import Point
 from cv_bridge import CvBridge
 import numpy as np
 import torch
@@ -21,12 +22,15 @@ class RealSenseSegmentWithDepth(Node):
         self.bridge = CvBridge()
         self.frame_processed = False
 
-        # 保存パスを指定する
+        # 保存パスを指定
         script_dir = os.path.dirname(os.path.abspath(__file__))
         self.output_dir = os.path.join(script_dir, '..', 'assets', 'saved_frames')
-        # ディレクトリが存在しない場合は作成する
+        # ディレクトリが存在しない場合は作成
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
+
+        # 座標値(u, v, z)を配信するパブリッシャーを作成する,x=u(pixel), y=v(pixel), z=depth(meter) として扱う
+        self.coord_pub = self.create_publisher(Point, '/target_object_uvz', 10)
 
         # RGB画像のサブスクライバー
         self.rgb_sub = self.create_subscription(
@@ -43,15 +47,15 @@ class RealSenseSegmentWithDepth(Node):
             10
         )
         
-        # 画像を一時保持する変数である
+        # 画像を一時保持する変数
         self.latest_rgb = None
         self.latest_depth = None
-        # SAM3のセットアップを行う
+        # SAM3のセットアップ
         self.model, self.processor, self.device = self.setup_sam3()
 
 
     def setup_sam3(self):
-        # デバイスの決定を行う
+        # デバイスの決定
         if torch.cuda.is_available():
             device = "cuda"
             self.get_logger().info("Using CUDA")
@@ -59,7 +63,7 @@ class RealSenseSegmentWithDepth(Node):
             device = "cpu"
             self.get_logger().info("Using CPU")
 
-        # BPEファイルのパス設定を行う
+        # BPEファイルのパス設定
         current_dir = os.path.dirname(os.path.abspath(__file__))
         bpe_path = os.path.join(current_dir, "assets", "bpe_simple_vocab_16e6.txt.gz")
         if not os.path.exists(bpe_path):
@@ -72,7 +76,7 @@ class RealSenseSegmentWithDepth(Node):
         processor = Sam3Processor(model, confidence_threshold=0.5, device=device)
         return model, processor, device
 
-    # OpenCV で扱える画像に変換する
+    # OpenCVで扱える画像に変換
     def rgb_callback(self, msg):
         if self.frame_processed:
             return
@@ -101,16 +105,17 @@ class RealSenseSegmentWithDepth(Node):
             self.frame_processed = True
             rclpy.shutdown()
 
-    # フレーム処理を実行する
+    # フレーム処理を実行
     def process_frame(self, rgb_image, depth_image):
         timestamp = datetime.now().strftime('%Y_%m%d_%H_%M_%S')
         self.get_logger().info("Starting SAM3 segmentation and depth calculation...")
 
-        # SAM3用にPIL画像へ変換する
+        # SAM3用にPIL画像へ変換
         image_pil = PILImage.fromarray(rgb_image)
         
-        # 推論を実行する
+        # 推論を実行
         inference_state = self.processor.set_image(image_pil)
+        # 検出したいオブジェクトを指定
         input_text = "magcup"
         self.get_logger().info(f"SAM3 text prompt : {input_text}")
         results = self.processor.set_text_prompt(input_text, inference_state)
@@ -120,21 +125,21 @@ class RealSenseSegmentWithDepth(Node):
             self.get_logger().warn("Object not found by SAM3.")
             return
 
-        # SAM3の出力形式に合わせて次元を調整する,最初のマスクを取得 (Tensor -> Numpy, Shape: [H, W])
+        # SAM3の出力形式に合わせて次元を調整. 最初のマスクを取得 (Tensor -> Numpy, Shape: [H, W])
         mask_tensor = results['masks'][0]
         mask = mask_tensor.squeeze().cpu().numpy().astype(bool)
 
-        # 重心座標 (u, v) の計算,マスクがTrueのインデックスを取得する
+        # 重心座標 (u, v) の計算. マスクがTrueのインデックスを取得
         indices = np.argwhere(mask)
-        center_u = 0
-        center_v = 0
+        center_u = 0.0
+        center_v = 0.0
         
         if len(indices) > 0:
-            # indices は [y, x] の順で格納されているため、xがu、yがvに対応する
+            # indices は [y, x] の順で格納されているため, xがu, yがvに対応させる
             y_indices = indices[:, 0]
             x_indices = indices[:, 1]
             
-            # 平均値を計算して重心とする
+            # 重心を平均値として計算
             center_v = np.mean(y_indices)
             center_u = np.mean(x_indices)
             
@@ -150,15 +155,15 @@ class RealSenseSegmentWithDepth(Node):
         if depth_np.ndim == 3:
             depth_np = np.squeeze(depth_np)
 
-        # マスク領域のDepth値のみを抽出する
-        # maskがTrueの場所にあるdepth_npの値を取得する
-        # depthは近すぎると取れないので、20cm以上遠ざけると良い
+        # マスク領域のDepth値のみを抽出
+        # maskがTrueの場所にあるdepth_npの値を取得
+        # depthは近すぎると取れないので, 20cm以上遠ざけると良い
         masked_depth = depth_np[mask]
 
         if masked_depth.size == 0:
             self.get_logger().warn("No depth pixels found in the masked area.")
         else:
-            # 中央値 (Median) を計算する
+            # 中央値 (Median) を計算
             median_depth = np.median(masked_depth)
             
             # RealSenseのDepthは通常mm単位 (uint16) である
@@ -171,20 +176,28 @@ class RealSenseSegmentWithDepth(Node):
 
             self.get_logger().info(f"Median Depth : {median_depth_m:.3f} m {unit_str}")
             
-            # TF発行用の情報をログに出力する
+            # TF発行用の情報をログに出力
             self.get_logger().info("--- Data for TF ---")
             self.get_logger().info(f"u (x) : {center_u:.2f}")
             self.get_logger().info(f"v (y) : {center_v:.2f}")
             self.get_logger().info(f"z (depth) : {median_depth_m:.3f} m")
             self.get_logger().info("-------------------")
 
-        # 結果画像の保存を行う
+            # 座標データのPublish
+            point_msg = Point()
+            point_msg.x = float(center_u)
+            point_msg.y = float(center_v)
+            point_msg.z = float(median_depth_m)
+            self.coord_pub.publish(point_msg)
+            self.get_logger().info("Published coordinates to /target_object_uvz")
+
+        # 結果画像の保存
         result_path = os.path.join(self.output_dir, f"segmented_{timestamp}.png")
         plot_results(image_pil, results)
         plt.savefig(result_path)
         plt.close()
         self.get_logger().info(f"Segmented image saved : {result_path}")
-        self.get_logger().info("Processing complete, plsease press Ctrl+C to exit.")
+        self.get_logger().info("Processing complete, please press Ctrl+C to exit.")
 
 
 def main(args=None):
