@@ -16,7 +16,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 
 
-class RealSenseSegmentWithDepth(Node):
+class MagcupImageDepthPub(Node):
     def __init__(self):
         super().__init__('realsense_segment_with_depth')
         self.bridge = CvBridge()
