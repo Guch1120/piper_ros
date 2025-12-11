@@ -1,34 +1,29 @@
-# FlexBE States and Behaviors for cotyaka_omega
+# cotyaka_omega のための FlexBE ステートとビヘイビア
 
-Generic template for a behaviors repository to be used for new projects
+新規プロジェクトで使用するためのビヘイビアリポジトリの汎用テンプレート
 
-Modify this README as needed for your specific project details.
+プロジェクトの詳細に合わせて、必要に応じてこの README を修正してください。
 
-Below we provide basic details, but you are free to delete or modify this README as you wish.
+以下に基本的な詳細を示しますが、この README は自由に削除または変更して構いません。
 
 ----
 
-This raw repository has several folders and files with the generic name `cotyaka_omega`.
+この生の（raw）リポジトリには、汎用名 `cotyaka_omega` を持つフォルダとファイルがいくつか含まれています。
 
+このリポジトリは、FlexBE ウィジェットの [`create_repo`](https://github.com/FlexBE/flexbe_behavior_engine/blob/ros2-devel/flexbe_widget/bin/create_repo) スクリプトによって使用され、独自のステートやビヘイビアを追加するためのベースとなるサンプルプロジェクトを作成します。
 
-This repository is used by the FlexBE widget 
-[`create_repo`](https://github.com/FlexBE/flexbe_behavior_engine/blob/ros2-devel/flexbe_widget/bin/create_repo) 
-script to create an example project that you can build off of to add your own states and behaviors.  
+`ros2 run flexbe_widget create_repo <my_new_project_name>` を使用すると、このリポジトリが複製され、関連する `cotyaka_omega` のテキストが必要に応じて `my_new_project_name` に変更されます。
 
-Using `ros2 run flexbe_widget create_repo <my_new_project_name>` will clone this repository, 
-and change the relevant `cotyaka_omega` text to `my_new_project_name` as needed.
+これは、適切な FlexBE export タグを使用して `package.xml` ファイルを設定します。
+作業の出発点として、バージョン `0.0.1` で維持されています。
 
-It sets up the `package.xml` files with proper FlexBE export tags.
-It is maintained at version `0.0.1` as the starting point for your work.
+ROS のガイドラインに準拠するためにライセンスファイルを提供していますが、`LICENSE` ファイルを置き換え、作成したステートやビヘイビアに対して任意のライセンスを適用することは自由です。
 
-We have provided a license file to conform to ROS guidelines; however, you are free to replace the 
-`LICENSE` file, and apply whatever license you choose to states and behaviors that you create.
+このリポジトリには、サンプルのビヘイビアと、独自のステート実装を作成するための例が含まれています。
 
-This repository contains an example behavior and examples for writing your own state implementations.
+## `cotyaka_omega_flexbe_states` 内のステート例
 
-## Example States in `cotyaka_omega_flexbe_states`
-
-Packages providing FlexBE states are identified by an export tag in the `package.xml`:
+FlexBE ステートを提供するパッケージは、`package.xml` 内の export タグによって識別されます：
 
 ```xml
   <export>
@@ -38,19 +33,17 @@ Packages providing FlexBE states are identified by an export tag in the `package
 ```
 
 * `example_state.py `
-  * Example state implementation with extra console logging to show the state life cycle.
+  * ステートのライフサイクルを表示するための、追加のコンソールログを含むステート実装例。
 
 * `example_action_state.py`
 
-> Note: These example states are defined with extra console logging that is useful when learning FlexBE, 
-> but you will typically not include so much of the `Logger.info` commands as in these examples.
+> 注：これらのサンプルステートには、FlexBE の学習に役立つ追加のコンソールログが定義されていますが、通常、これらの例ほど多くの `Logger.info` コマンドを含めることはありません。
 
-> Note: You are free to copy and modify these files to create your own files and publish under your own license terms.
-> As per the existing licenses, no warranty is implied.
+> 注：これらのファイルをコピーして修正し、独自のファイルを作成して、独自のライセンス条項の下で公開することは自由です。既存のライセンスに従い、保証は暗示されません。
 
-## Example Behaviors in `cotyaka_omega_flexbe_behaviors`
+## `cotyaka_omega_flexbe_behaviors` 内のビヘイビア例
 
-Packages providing FlexBE behaviors are identified by an export tag in the `package.xml`:
+FlexBE ビヘイビアを提供するパッケージは、`package.xml` 内の export タグによって識別されます：
 
 ```xml
   <export>
@@ -60,36 +53,31 @@ Packages providing FlexBE behaviors are identified by an export tag in the `pack
 ```
 
   * `example_behavior_sm.py`
-    * Most basic example state machine
+    * 最も基本的なステートマシンの例
 
   * `example_action_behavior_sm.py` 
-    * Uses the `ExampleActionState` with the standard action tutorials 
+    * 標準のアクションチュートリアルで `ExampleActionState` を使用します
 
-        [Understanding ROS2 Actions](https://docs.ros.org/en/iron/Tutorials/Beginner-CLI-Tools/Understanding-ROS2-Actions/Understanding-ROS2-Actions.html)
+        [ROS2 アクションの理解 (Understanding ROS2 Actions)](https://docs.ros.org/en/iron/Tutorials/Beginner-CLI-Tools/Understanding-ROS2-Actions/Understanding-ROS2-Actions.html)
 
-        [Introducing Turtlesim](https://docs.ros.org/en/iron/Tutorials/Beginner-CLI-Tools/Introducing-Turtlesim/Introducing-Turtlesim.html)
+        [Turtlesim の紹介 (Introducing Turtlesim)](https://docs.ros.org/en/iron/Tutorials/Beginner-CLI-Tools/Introducing-Turtlesim/Introducing-Turtlesim.html)
         
-        To execute the associated behavior in FlexBE, you need to first run the turtlesim node that provdes the action server
+        関連するビヘイビアを FlexBE で実行するには、まずアクションサーバーを提供する turtlesim ノードを実行する必要があります：
 
         `ros2 run turtlesim turtlesim_node`
         
-        To display the available actions:
+        利用可能なアクションを表示するには：
 
         `ros2 action list`
         
-        The action is defined by:
+        アクションは以下によって定義されます：
 
         `/turtle1/rotate_absolute:` [`turtlesim/action/RotateAbsolute`](https://docs.ros2.org/latest/api/turtlesim/action/RotateAbsolute.html)
 
-Behaviors typically edited and generated by the FlexBE UI.  
-These generated files are stored in the root workspace `install` folder.
-Presuming a `WORKSPACE_ROOT` environment variable exists, we provide a simple 
-[`copy_behavior`](cotyaka_omega_flexbe_behaviors/bin/copy_behavior) script to copy a saved behavior 
-&mdash; both the Python implementation and manifest `.xml` file &mdash; 
-to the project source folder for long term storage.
-Use `ros2 run cotyaka_omega_flexbe_behavior copy_behavior` to see the usage guide. 
-The script should be run from this repository's base folder.
+ビヘイビアは通常、FlexBE UI によって編集および生成されます。
+これらの生成されたファイルは、ルートワークスペースの `install` フォルダに保存されます。
+`WORKSPACE_ROOT` 環境変数が存在することを前提として、保存されたビヘイビア（Python 実装とマニフェスト `.xml` ファイルの両方）を長期保存用にプロジェクトのソースフォルダへコピーするためのシンプルな [`copy_behavior`](cotyaka_omega_flexbe_behaviors/bin/copy_behavior) スクリプトを提供しています。
+使用方法を確認するには、`ros2 run cotyaka_omega_flexbe_behavior copy_behavior` を使用してください。
+このスクリプトは、このリポジトリのベースフォルダから実行する必要があります。
 
-For a Quick-start and more comprehensive introduction to FlexBE, 
-see the [FlexBE Turtlesim Demonstrations](https://github.com/FlexBE/flexbe_turtlesim_demo).
-
+クイックスタートや FlexBE のより包括的な紹介については、[FlexBE Turtlesim Demonstrations](https://github.com/FlexBE/flexbe_turtlesim_demo) を参照してください。
