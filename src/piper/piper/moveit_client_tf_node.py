@@ -69,7 +69,7 @@ class MoveArmClient(Node):
         # 1. ゴールメッセージの作成
         goal_msg = MoveGroup.Goal()
         goal_msg.request.group_name = 'arm' 
-        goal_msg.request.allowed_planning_time = 5.0
+        goal_msg.request.allowed_planning_time = 8.0
         goal_msg.request.num_planning_attempts = 10 #試行回数
         
         # 基準となるフレームと、動かしたい先端リンクの名前
@@ -111,9 +111,9 @@ class MoveArmClient(Node):
         oc.header.frame_id = base_frame
         oc.link_name = end_effector_link
         oc.orientation = target_pose.orientation
-        oc.absolute_x_axis_tolerance = 0.5 
-        oc.absolute_y_axis_tolerance = 0.5
-        oc.absolute_z_axis_tolerance = 0.5
+        oc.absolute_x_axis_tolerance = 0.01 
+        oc.absolute_y_axis_tolerance = 0.01
+        oc.absolute_z_axis_tolerance = 0.01
         oc.weight = 1.0
         constraints.orientation_constraints.append(oc)
         #位置をゴールにセット
