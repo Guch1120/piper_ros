@@ -100,6 +100,28 @@
     use_custom_command = True
     custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 launch piper_gazebo piper_gazebo.launch.py; bash
     use_system_font = False
+  [[cmd_moveit_tf_interact]]
+    background_color = "#300a24"
+    background_darkness = 0.9
+    background_type = transparent
+    cursor_color = "#aaaaaa"
+    font = Monospace 10
+    foreground_color = "#ffffff"
+    show_titlebar = False
+    use_custom_command = True
+    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client_tf_interactive; bash
+    use_system_font = False
+  [[cmd_moveit_tf]]
+    background_color = "#300a24"
+    background_darkness = 0.9
+    background_type = transparent
+    cursor_color = "#aaaaaa"
+    font = Monospace 10
+    foreground_color = "#ffffff"
+    show_titlebar = False
+    use_custom_command = True
+    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client_tf; bash
+    use_system_font = False
 [layouts]
   [[default]]
     [[[window0]]]
@@ -118,7 +140,7 @@
       fullscreen = False
       size = 1920, 1043
       title = @robo25-Alienware-m15-R3:/ros2_ws
-      last_active_term = 6854fada-49cc-4de9-9ade-25f6d9a9b88c
+      last_active_term = 81ab64ea-4a43-44dc-aa01-d0580c85e002
       last_active_window = True
     [[[child1]]]
       type = VPaned
@@ -178,13 +200,13 @@
       type = Terminal
       parent = child9
       order = 0
-      profile = default
+      profile = cmd_moveit_tf_interact
       uuid = 6854fada-49cc-4de9-9ade-25f6d9a9b88c
     [[[terminal11]]]
       type = Terminal
       parent = child9
       order = 1
-      profile = default
+      profile = cmd_moveit_tf
       uuid = 81ab64ea-4a43-44dc-aa01-d0580c85e002
     [[[terminal12]]]
       type = Terminal
