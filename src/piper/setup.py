@@ -33,7 +33,8 @@ setup(
             'piper_moveit_bridge = piper.moveit_bridge:main',
             'moveit_client = piper.moveit_client_node:main ',
             'moveit_client_tf = piper.moveit_client_tf_node:main',
-            'moveit_client_tf_interactive = piper.moveit_client_tf_interactive:main'
+            'moveit_client_tf_interactive = piper.moveit_client_tf_interactive:main',
+            'pick_and_place_trajectory = piper.pick_and_place_trajectry:main'
         ],
     },
 )
