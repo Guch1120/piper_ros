@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import rclpy
 from flexbe_core import EventState, Logger
-from flexbe_core.proxy import ProxyActionClient, ProxyTransformListener
+from flexbe_core.proxy import ProxyActionClient, ProxyTransformListener, ProxyPublisher
 from moveit_msgs.action import MoveGroup
 from moveit_msgs.msg import Constraints, PositionConstraint, OrientationConstraint, BoundingVolume
 from shape_msgs.msg import SolidPrimitive
@@ -34,6 +34,22 @@ class MoveItTfClientParamState(EventState):
         self._ort_tol = orient_tolerance
         self._topic = action_topic
         
+        # ProxyTransformListenerのノード確認・割り当て
+        if ProxyTransformListener._node is None:
+            if ProxyPublisher._node is not None:
+                ProxyTransformListener._node = ProxyPublisher._node
+                Logger.loginfo('ProxyTransformListener._node was None. Fixed using ProxyPublisher._node.')
+            else:
+                Logger.logerr('Cannot set ProxyTransformListener node! ProxyPublisher._node is also None.')
+
+        # ProxyActionClientのノード確認・割り当て
+        if ProxyActionClient._node is None:
+            if ProxyPublisher._node is not None:
+                ProxyActionClient._node = ProxyPublisher._node
+                Logger.loginfo('ProxyActionClient._node was None. Fixed using ProxyPublisher._node.')
+            else:
+                Logger.logerr('Cannot set ProxyActionClient node! ProxyPublisher._node is also None.')
+        
         self._client = ProxyActionClient({self._topic: MoveGroup})
         self._tf_listener = ProxyTransformListener()
         self._error = False
@@ -48,7 +64,13 @@ class MoveItTfClientParamState(EventState):
 
         # TF取得 (基準フレーム -> ターゲットフレーム)
         try:
-            t = self._tf_listener.listener().lookup_transform(
+            # TF待機 (Bufferを使用)
+            # buffer を使用して can_transform を呼ぶ
+            if not self._tf_listener.buffer.can_transform(self._ref_frame, self._target_frame, rclpy.time.Time()):
+                Logger.logwarn(f'Transform {self._ref_frame} -> {self._target_frame} not yet available. Waiting...')
+            
+            #  buffer.lookup_transform を使用する
+            t = self._tf_listener.buffer.lookup_transform(
                 self._ref_frame, self._target_frame, rclpy.time.Time())
         except Exception as e:
             Logger.logerr(f'Could not get transform {self._ref_frame} -> {self._target_frame}: {e}')

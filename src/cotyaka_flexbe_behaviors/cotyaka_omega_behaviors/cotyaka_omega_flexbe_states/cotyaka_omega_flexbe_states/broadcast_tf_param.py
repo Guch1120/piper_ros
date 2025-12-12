@@ -4,10 +4,11 @@ from flexbe_core import EventState, Logger
 from flexbe_core.proxy import ProxyPublisher
 from geometry_msgs.msg import TransformStamped
 from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
-import tf_transformations
-import math
 
-class BroadcastStaticTfParamState(EventState):
+from scipy.spatial.transform import Rotation as R
+
+
+class BroadcastStaticTFParamState(EventState):
     '''
     パラメータで指定された座標にStatic TFを発行するState。
 
@@ -17,51 +18,62 @@ class BroadcastStaticTfParamState(EventState):
     -- rpy_val      list   [roll, pitch, yaw] (ラジアン)
 
     <= done         発行完了
+    <= failed       発行失敗
     '''
 
+    # FlexBE UIのために引数を1行で記述
     def __init__(self, parent_frame='base_link', child_frame='interactive_set', xyz_val=[0.0, 0.0, 0.0], rpy_val=[0.0, 0.0, 0.0]):
-        super(BroadcastStaticTfParamState, self).__init__(outcomes=['done'])
+        super(BroadcastStaticTFParamState, self).__init__(outcomes=['done'])
+
         self._parent_frame = parent_frame
         self._child_frame = child_frame
         self._xyz_val = xyz_val
         self._rpy_val = rpy_val
-        self._node = ProxyPublisher._node        
+
+        self._node = ProxyPublisher._node
         self._broadcaster = StaticTransformBroadcaster(self._node)
 
     def on_enter(self, userdata):
-        t = TransformStamped()
-        t.header.stamp = self._node.get_clock().now().to_msg()
-        t.header.frame_id = self._parent_frame
-        t.child_frame_id = self._child_frame
+        try:
+            t = TransformStamped()
+            t.header.stamp = self._node.get_clock().now().to_msg()
+            t.header.frame_id = self._parent_frame
+            t.child_frame_id = self._child_frame
 
-        t.transform.translation.x = float(self._xyz_val[0])
-        t.transform.translation.y = float(self._xyz_val[1])
-        t.transform.translation.z = float(self._xyz_val[2])
+            # パラメータが文字列で渡ってくる可能性を考慮しつつfloat変換
+            x = float(self._xyz_val[0])
+            y = float(self._xyz_val[1])
+            z = float(self._xyz_val[2])
+            
+            roll = float(self._rpy_val[0])
+            pitch = float(self._rpy_val[1])
+            yaw = float(self._rpy_val[2])
 
-        qx, qy, qz, qw = self.euler_to_quaternion(
-            float(self._rpy_val[0]), float(self._rpy_val[1]), float(self._rpy_val[2]))
-        
-        t.transform.rotation.x = qx
-        t.transform.rotation.y = qy
-        t.transform.rotation.z = qz
-        t.transform.rotation.w = qw
+            # Translation
+            t.transform.translation.x = x
+            t.transform.translation.y = y
+            t.transform.translation.z = z
 
-        self._broadcaster.sendTransform(t)
-        Logger.loginfo(f'Static TF Broadcasted (Param): {self._parent_frame} -> {self._child_frame}')
+            # Rotation (RPY → Quaternion) using scipy
+            rot = R.from_euler('xyz', [roll, pitch, yaw])
+            qx, qy, qz, qw = rot.as_quat()
+
+            t.transform.rotation.x = qx
+            t.transform.rotation.y = qy
+            t.transform.rotation.z = qz
+            t.transform.rotation.w = qw
+
+            self._broadcaster.sendTransform(t)
+
+            # 値確認用ログ（重要）
+            Logger.loginfo(
+                f'Static TF Broadcasted: {self._parent_frame} -> {self._child_frame} | '
+                f'XYZ=[{x:.3f}, {y:.3f}, {z:.3f}]'
+            )
+            
+        except Exception as e:
+            Logger.logerr(f'Failed to broadcast TF: {e}')
+            return # on_enterでのreturnは本来影響しないが、エラーログを残す
 
     def execute(self, userdata):
         return 'done'
-
-    def euler_to_quaternion(self, roll, pitch, yaw):
-        cy = math.cos(yaw * 0.5)
-        sy = math.sin(yaw * 0.5)
-        cp = math.cos(pitch * 0.5)
-        sp = math.sin(pitch * 0.5)
-        cr = math.cos(roll * 0.5)
-        sr = math.sin(roll * 0.5)
-
-        w = cr * cp * cy + sr * sp * sy
-        x = sr * cp * cy - cr * sp * sy
-        y = cr * sp * cy + sr * cp * sy
-        z = cr * cp * sy - sr * sp * cy
-        return x, y, z, w

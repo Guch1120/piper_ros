@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import rclpy
 from flexbe_core import EventState, Logger
-from flexbe_core.proxy import ProxyActionClient
+from flexbe_core.proxy import ProxyActionClient, ProxyPublisher
 from moveit_msgs.action import MoveGroup
 from moveit_msgs.msg import Constraints, JointConstraint
 
@@ -19,16 +19,26 @@ class MoveItJointClientParamState(EventState):
     <= failed        移動失敗
     '''
 
-    def __init__(self, group_name='arm', joint_names=[], target_joints=[], tolerance=0.01, action_topic='move_action'):
-        super(MoveItJointClientParamState, self).__init__(outcomes=['reached', 'failed'])
-        self._group_name = group_name
-        self._joint_names = joint_names
-        self._target_joints = target_joints
-        self._tolerance = tolerance
-        self._topic = action_topic
-        self._client = ProxyActionClient({self._topic: MoveGroup})
-        self._error = False
+    def __init__(self, group_name='arm', joint_names=['joint1','joint2','joint3','joint4','joint5','joint6'], target_joints=[0.0,0.0,0.0,0.0,0.0,0.0], tolerance=0.01, action_topic='move_action'):
+            super(MoveItJointClientParamState, self).__init__(outcomes=['reached', 'failed'])
+            self._group_name = group_name
+            self._joint_names = joint_names
+            self._target_joints = target_joints
+            self._tolerance = tolerance
+            self._topic = action_topic
 
+            # --- 修正箇所: ここから ---
+            # ProxyActionClientのノードが未設定の場合、ProxyPublisherからノードを借りる
+            if ProxyActionClient._node is None:
+                if ProxyPublisher._node is not None:
+                    ProxyActionClient._node = ProxyPublisher._node
+                    Logger.loginfo('ProxyActionClient._node was None. Fixed using ProxyPublisher._node.')
+                else:
+                    Logger.logerr('Both ProxyActionClient and ProxyPublisher have no node!')
+            # --- 修正箇所: ここまで ---
+            self._client = ProxyActionClient({self._topic: MoveGroup})
+            self._error = False
+            
     def on_enter(self, userdata):
         self._error = False
         
