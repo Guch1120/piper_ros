@@ -103,8 +103,8 @@ class MagcupImageDepthPub(Node):
         # RGBとDepthの両方が揃ったら処理を開始する
         if self.latest_rgb is not None and self.latest_depth is not None:
             self.process_frame(self.latest_rgb, self.latest_depth)
-            self.frame_processed = True
-            rclpy.shutdown()
+            # self.frame_processed = True
+            # rclpy.shutdown()
 
     # フレーム処理を実行
     def process_frame(self, rgb_image, depth_image):

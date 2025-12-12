@@ -1,5 +1,13 @@
 #!/bin/bash
 set -e
+echo "setuptools のバージョンを 58.2.0 にダウングレードします..."
+pip3 install setuptools==58.2.0
+if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ] ; then
+    echo "rosdep の初期化を行います..."
+    rosdep init
+else
+    echo "rosdep は既に初期化されています。スキップします。"
+fi
 
 rosdep update
 
