@@ -255,3 +255,10 @@ Terminatorの「レイアウト保存」機能でコマンド設定を維持す�
 5. 設定ウィンドウを閉じます。
 
 これで、次回起動時もこのレイアウトとコマンド設定が復元されます。
+
+
+# 円弧軌道・三角軌道・台形軌道・直線軌道のmoveit動作
+moveit_client_interactive_nodeを起動した状態(=tfを出している状態)で実行する．
+```
+ros2 run piper pick_and_place_trajectory
+```
