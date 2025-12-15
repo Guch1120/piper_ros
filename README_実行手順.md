@@ -262,3 +262,8 @@ moveit_client_interactive_nodeを起動した状態(=tfを出している状態)
 ```
 ros2 run piper pick_and_place_trajectory
 ```
+
+# ビルドを簡単にする魔法のコマンド
+```
+alias cb='colcon build --symlink-install'
+```
