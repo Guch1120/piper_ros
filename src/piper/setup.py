@@ -34,7 +34,10 @@ setup(
             'moveit_client = piper.moveit_client_node:main ',
             'moveit_client_tf = piper.moveit_client_tf_node:main',
             'moveit_client_tf_interactive = piper.moveit_client_tf_interactive:main',
-            'pick_and_place_trajectory = piper.pick_and_place_trajectry:main'
+            'pick_and_place_trajectory = piper.pick_and_place_trajectry:main',
+            'gripper_open_test = piper.gripper_open_test_node:main',
+            'gripper_close_test = piper.gripper_close_test_node:main',
+
         ],
     },
 )
