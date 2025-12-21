@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<behavior name="test">
+
+    <executable package_path="cotyaka_omega_flexbe_behaviors.test_sm" class="testSM" />
+    <tagstring>test</tagstring>
+    <author>Yamaguchi Takuma</author>
+    <date>Mon Dec 15 2025</date>
+    <description>
+        test 'grasp and slide '
+
+    </description>
+
+
+    <!-- Contained Behaviors -->
+
+    <!-- Available Parameters -->
+
+</behavior>
