@@ -5,7 +5,6 @@ from rclpy.parameter import Parameter
 from rcl_interfaces.msg import SetParametersResult
 from geometry_msgs.msg import TransformStamped
 from tf2_ros import TransformBroadcaster
-from rclpy.clock import Clock, ClockType  # 追加したimport
 import math
 
 class MoveItClientTfInteractive(Node):
@@ -13,8 +12,8 @@ class MoveItClientTfInteractive(Node):
         super().__init__('moveit_client_tf_interactive_node')
 
         # --- 設定: フレーム名（固定） ---
-        self.parent_frame = 'base_link'      
-        self.child_frame = 'interactive_set'   
+        self.parent_frame = 'base_link'      # 親フレーム名（必要に応じて変更してください）
+        self.child_frame = 'interactive_set'   # 子フレーム名（必要に応じて変更してください）
 
         # --- TFブロードキャスターの初期化 ---
         self.tf_broadcaster = TransformBroadcaster(self)
@@ -23,7 +22,7 @@ class MoveItClientTfInteractive(Node):
         # 起動時にコマンドライン引数で指定可能、なければデフォルト値が使われる
         self.declare_parameter('x', 0.2)
         self.declare_parameter('y', 0.0)
-        self.declare_parameter('z', 0.2) # 初期値を届く範囲(0.2)にしておくと安全
+        self.declare_parameter('z', 0.1)
         self.declare_parameter('roll', 0.0)
         self.declare_parameter('pitch', 0.0)
         self.declare_parameter('yaw', 0.0)
@@ -72,27 +71,29 @@ class MoveItClientTfInteractive(Node):
     def broadcast_timer_callback(self):
         """定期的にTFを発行する"""
         t = TransformStamped()
+
         # ヘッダー設定
         t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = self.parent_frame
         t.child_frame_id = self.child_frame
-        # 位置・姿勢設定
+
+        # 位置設定
         t.transform.translation.x = self.tx
         t.transform.translation.y = self.ty
         t.transform.translation.z = self.tz
 
-        # 姿勢（オイラー角→クォータニオン変換）
+        # 姿勢設定 (Euler -> Quaternion)
         qx, qy, qz, qw = self.euler_to_quaternion(self.t_roll, self.t_pitch, self.t_yaw)
         t.transform.rotation.x = qx
         t.transform.rotation.y = qy
         t.transform.rotation.z = qz
         t.transform.rotation.w = qw
 
-        # 送信
+        # 発行
         self.tf_broadcaster.sendTransform(t)
 
     def euler_to_quaternion(self, roll, pitch, yaw):
-        '''オイラー角（ラジアン）をクォータニオンに変換'''
+        """オイラー角(rad)をクォータニオン(x, y, z, w)に変換"""
         cy = math.cos(yaw * 0.5)
         sy = math.sin(yaw * 0.5)
         cp = math.cos(pitch * 0.5)

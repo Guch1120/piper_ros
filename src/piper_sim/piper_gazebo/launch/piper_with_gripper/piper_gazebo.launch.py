@@ -21,21 +21,10 @@ def generate_launch_description():
     pkg_share = FindPackageShare(package=package_name).find(package_name) 
     urdf_model_path = os.path.join(pkg_share, f'urdf/{urdf_name}')
 
-    # Ensure GAZEBO_MODEL_PATH includes the install/share directory
-    install_dir = os.path.join(os.getcwd(), 'install')
-    piper_description_share = os.path.join(install_dir, 'piper_description', 'share')
-    
-    if 'GAZEBO_MODEL_PATH' in os.environ:
-        model_path =  os.environ['GAZEBO_MODEL_PATH'] + ':' + install_dir + '/share' + ':' + piper_description_share
-    else:
-        model_path =  install_dir + '/share' + ':' + piper_description_share
-
     # Start Gazebo server
     start_gazebo_cmd =  ExecuteProcess(
         cmd=['gazebo', '--verbose','-s', 'libgazebo_ros_init.so', '-s', 'libgazebo_ros_factory.so'],
-        output='screen',
-        additional_env={'GAZEBO_MODEL_PATH': model_path,
-                        'GAZEBO_MODEL_DATABASE_URI': ''})
+        output='screen')
 
 
     # URDFファイルに $(find ...) のような記述があるため、xacroでコンパイルする必要があります

@@ -54,12 +54,7 @@ def load_resource_as_video_frames(
             img_np = np.array(img_pil.convert("RGB").resize((image_size, image_size)))
             assert img_np.dtype == np.uint8, "np.uint8 is expected for JPEG images"
             img_np = img_np / 255.0
-
-            try:
-                img = torch.from_numpy(img_np).permute(2, 0, 1)
-            except TypeError:
-                # Fallback for "expected np.ndarray (got numpy.ndarray)" error
-                img = torch.as_tensor(img_np).permute(2, 0, 1)
+            img = torch.from_numpy(img_np).permute(2, 0, 1)
             # float16 precision should be sufficient for image tensor storage
             img = img.to(dtype=torch.float16)
             # normalize by mean and std

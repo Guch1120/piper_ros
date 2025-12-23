@@ -89,7 +89,7 @@ class PiperRosNode(Node):
         rate = self.create_rate(200)  # 200 Hz
         enable_flag = False
         # Set timeout (seconds)
-        timeout = 20
+        timeout = 5
         # Record the time before entering the loop
         start_time = time.time()
         elapsed_time_flag = False
