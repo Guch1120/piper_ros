@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<behavior name="test_griper">
+
+    <executable package_path="cotyaka_omega_flexbe_behaviors.test_griper_sm" class="test_griperSM" />
+    <tagstring>test</tagstring>
+    <author>Yamaguchi Takuma</author>
+    <date>Mon Dec 15 2025</date>
+    <description>
+        test gripper opne and close
+
+    </description>
+
+
+    <!-- Contained Behaviors -->
+
+    <!-- Available Parameters -->
+
+</behavior>
