@@ -768,10 +768,14 @@ def build_sam3_video_model(
 
     # Load checkpoint if provided
     if load_from_HF and checkpoint_path is None:
+        print("Downloading checkpoint...", flush=True)
         checkpoint_path = download_ckpt_from_hf()
+        print("Checkpoint downloaded.", flush=True)
     if checkpoint_path is not None:
+        print(f"Loading checkpoint from {checkpoint_path}...", flush=True)
         with g_pathmgr.open(checkpoint_path, "rb") as f:
             ckpt = torch.load(f, map_location="cpu", weights_only=True)
+        print("Checkpoint loaded into memory.", flush=True)
         if "model" in ckpt and isinstance(ckpt["model"], dict):
             ckpt = ckpt["model"]
 

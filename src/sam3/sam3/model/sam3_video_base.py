@@ -912,7 +912,7 @@ class Sam3VideoBase(nn.Module):
 
         # Step 1: add new objects from the detector to SAM2 inference states
         if len(new_det_fa_inds_local) > 0:
-            new_det_fa_inds_local_t = torch.from_numpy(new_det_fa_inds_local)
+            new_det_fa_inds_local_t = torch.as_tensor(new_det_fa_inds_local)
             new_det_masks: Tensor = det_out["mask"][new_det_fa_inds_local_t]
             # initialize SAM2 with new object masks
             tracker_states_local = self._tracker_add_new_objects(
@@ -965,14 +965,15 @@ class Sam3VideoBase(nn.Module):
             obj_id_to_mask[obj_id] = mask  # (1, H_video, W_video)
 
         # Part 2: masks from new detections
-        new_det_fa_inds_t = torch.from_numpy(new_det_fa_inds)
+        new_det_fa_inds_t = torch.as_tensor(new_det_fa_inds)
         new_det_low_res_masks = det_out["mask"][new_det_fa_inds_t].unsqueeze(1)
-        new_det_low_res_masks = fill_holes_in_mask_scores(
-            new_det_low_res_masks,
-            max_area=self.fill_hole_area,
-            fill_holes=True,
-            remove_sprinkles=True,
-        )
+        if new_det_low_res_masks.numel() > 0:
+            new_det_low_res_masks = fill_holes_in_mask_scores(
+                new_det_low_res_masks,
+                max_area=self.fill_hole_area,
+                fill_holes=True,
+                remove_sprinkles=True,
+            )
         new_masklet_video_res_masks = F.interpolate(
             new_det_low_res_masks,
             size=(orig_vid_height, orig_vid_width),
