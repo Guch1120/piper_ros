@@ -18,3 +18,4 @@ oculus_reader/oculus_reader
 **/__pycache__/
 .thumbs
 record3d/output/
+.config/terminator/

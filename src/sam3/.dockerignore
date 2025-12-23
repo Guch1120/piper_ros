@@ -55,3 +55,5 @@ checkpoints/
 *.pt
 *.pth
 *.onnx
+
+config
