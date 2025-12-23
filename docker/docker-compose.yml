@@ -15,12 +15,12 @@ services:
       #terminatorの設定ファイルをマウント
       - ../.config/terminator/config:/root/.config/terminator/config:rw
       #gitのssh鍵をマウント
-      - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
-      - ~/.ssh/id_rsa.pub:/root/.ssh/id_rsa.pub:ro
-      # usbを認識をマウント
+      # - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
+      # - ~/.ssh/id_rsa.pub:/root/.ssh/id_rsa.pub:ro
+      - ~/.ssh:/root/.ssh:ro
+
+      # usbを認識をマウント（realsense）
       - /dev:/dev
-      # ホストのios通信用
-      - /var/run/usbmuxd:/var/run/usbmuxd:rw
       # Hugging Faceのキャッシュディレクトリ
       - ~/.cache/huggingface:/root/.cache/huggingface
     # 環境変数 (GUI用)
