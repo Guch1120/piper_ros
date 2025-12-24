@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<behavior name="aaa">
+
+    <executable package_path="cotyaka_omega_flexbe_behaviors.aaa_sm" class="aaaSM" />
+    <tagstring>test</tagstring>
+    <author>Yamaguchi  Takuma</author>
+    <date>Wed Dec 24 2025</date>
+    <description>
+        fuck you 
+    </description>
+
+
+    <!-- Contained Behaviors -->
+
+    <!-- Available Parameters -->
+
+</behavior>
