@@ -23,9 +23,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'sam3_node = sam3_ros.sam3_node:main',
-            'segment_with_depth_pub = sam3_ros.segment_with_depth_pub_node:main', 
-            'TF_pub_node = sam3_ros.Sam3TfPublisher:main',
+        'sam3_node = sam3_ros.sam3_node:main',
+        'segment_with_depth_pub = sam3_ros.segment_with_depth_pub_node:main',
+        'tf_pub_node = sam3_ros.TF_pub_node:main',
         ],
     },
 )

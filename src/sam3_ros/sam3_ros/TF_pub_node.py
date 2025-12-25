@@ -10,7 +10,7 @@ import traceback
 
 class Sam3TfPublisher(Node):
     """
-    画像座標と深度から, マグカップのTF(target_mug)を
+    画像座標と深度から, ターゲットのTF(target_object)を
     ワールド座標系(map)に生成して配信するノード
     """
 
@@ -52,7 +52,7 @@ class Sam3TfPublisher(Node):
         self.execute_calculation_and_broadcast_TF(u, v, depth)
 
     # 画像座標(u, v)と深度(depth)からワールド座標系でのTFを計算し, 配信する
-    def execute_calculation_and_broadcast_TF(self, u, v, depth, camera_frame='camera_color_optical_frame', target_frame='map'):
+    def execute_calculation_and_broadcast_TF(self, u, v, depth, camera_frame='camera_color_optical_frame', target_frame='camera_link'):
         try:
             if depth <= 0.0:
                 self.get_logger().warn('Invalid depth received.')
@@ -92,14 +92,14 @@ class Sam3TfPublisher(Node):
             t = TransformStamped()
             t.header.stamp = self.get_clock().now().to_msg()
             t.header.frame_id = target_frame
-            t.child_frame_id = 'target_mug'
+            t.child_frame_id = 'target_object'
             t.transform.translation.x = point_world.point.x
             t.transform.translation.y = point_world.point.y
             t.transform.translation.z = point_world.point.z
             t.transform.rotation.w = 1.0
 
             self.static_broadcaster.sendTransform(t)
-            self.get_logger().info('Broadcast TF [target_mug] SUCCESS.')
+            self.get_logger().info('Broadcast TF [target_object] SUCCESS.')
             return True
 
         except Exception:
