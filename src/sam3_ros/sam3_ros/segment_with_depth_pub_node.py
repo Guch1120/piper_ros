@@ -17,6 +17,17 @@ import matplotlib.pyplot as plt
 
 
 class SegmentWithDepthPub(Node):
+    
+    """
+    RealsenseのRGB-D画像を受け取り,
+    SAM3で指定オブジェクトをセグメンテーションし,
+    セグメント領域の重心座標(u, v)と深度値(z)を1回だけパブリッシュするノード.
+    input_textで指定したオブジェクトを検出する(例: "bottle", "cup", "book" など)
+    結果は/asets/saved_framesに保存される.
+    
+    物体追跡やTF発行はこのノードでできていない.
+    """
+    
     def __init__(self):
         super().__init__('segment_with_depth_pub_node')
         self.bridge = CvBridge()
