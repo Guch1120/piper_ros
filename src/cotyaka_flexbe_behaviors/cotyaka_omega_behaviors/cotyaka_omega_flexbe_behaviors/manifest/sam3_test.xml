@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<behavior name="sam3_test">
+
+    <executable package_path="cotyaka_omega_flexbe_behaviors.sam3_test_sm" class="sam3_testSM" />
+    <tagstring>test</tagstring>
+    <author>Yamaguchi Takuma</author>
+    <date>Thu Dec 25 2025</date>
+    <description>
+        test
+
+    </description>
+
+
+    <!-- Contained Behaviors -->
+
+    <!-- Available Parameters -->
+
+</behavior>
