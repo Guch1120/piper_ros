@@ -87,7 +87,6 @@ class Sam3ServiceNode(Node):
             return
 
         try:
-            # ===== 安全な変換（cv_bridgeのみ使用）=====
             rgb = self.bridge.imgmsg_to_cv2(
                 self.latest_rgb_msg,
                 desired_encoding='rgb8'
@@ -125,19 +124,21 @@ class Sam3ServiceNode(Node):
             res = Point(x=u, y=v, z=z)
             self.pub_result.publish(res)
 
-            # ===== デバッグ画像（SAM3公式描画をそのまま使う）=====
+            # ===== デバッグ画像（余白なし・最大表示）=====
 
-            # 念のため既存 figure を全消去
             plt.close('all')
 
-            # SAM3公式の可視化（figureは内部で作られる）
+            # SAM3公式可視化
             plot_results(image_pil, results)
 
-            # 今「描かれている」figureを取得
             fig = plt.gcf()
+
+            plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+            fig.set_size_inches(12, 9, forward=True)
+            fig.tight_layout(pad=0)
+
             fig.canvas.draw()
 
-            # canvas → numpy
             w, h = fig.canvas.get_width_height()
             img = np.frombuffer(
                 fig.canvas.tostring_rgb(),

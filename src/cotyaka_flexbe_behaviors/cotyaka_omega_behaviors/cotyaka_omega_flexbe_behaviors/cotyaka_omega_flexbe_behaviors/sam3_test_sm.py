@@ -36,6 +36,7 @@ from flexbe_core import ConcurrencyContainer
 from flexbe_core import Logger
 from flexbe_core import OperatableStateMachine
 from flexbe_core import PriorityContainer
+from cotyaka_omega_flexbe_states.broadcast_tf_from_vison import PublishObjectTFState
 from cotyaka_omega_flexbe_states.sam3_detect_object import DetectObjectWithSAM3State
 
 # Additional imports can be added inside the following tags
@@ -64,6 +65,7 @@ class sam3_testSM(Behavior):
         PriorityContainer.initialize_ros(node)
         Logger.initialize(node)
         DetectObjectWithSAM3State.initialize_ros(node)
+        PublishObjectTFState.initialize_ros(node)
 
         # Additional initialization code can be added inside the following tags
         # [MANUAL_INIT]
@@ -73,7 +75,7 @@ class sam3_testSM(Behavior):
         # Behavior comments:
 
     def create(self):
-        # x:30 y:365, x:130 y:365
+        # x:573 y:184, x:130 y:365
         _state_machine = OperatableStateMachine(outcomes=['finished', 'failed'])
 
         # Additional creation code can be added inside the following tags
@@ -87,6 +89,12 @@ class sam3_testSM(Behavior):
                                        transitions={'succeeded': 'finished', 'failed': 'failed', 'timeout': 'failed'},
                                        autonomy={'succeeded': Autonomy.Off, 'failed': Autonomy.Off, 'timeout': Autonomy.Off},
                                        remapping={'u': 'u', 'v': 'v', 'z': 'z'})
+
+            # x:269 y:38
+            OperatableStateMachine.add('broadcast tf',
+                                       PublishObjectTFState(parent_frame="map", child_frame="target_object", camera_frame="camera_link"),
+                                       transitions={},
+                                       autonomy={})
 
         return _state_machine
 
