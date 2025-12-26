@@ -29,6 +29,7 @@ class DetectObjectWithSAM3State(EventState):
 
     def on_enter(self, userdata):
         Logger.loginfo(f'[SAM3 State] Requesting: {self.object_name}')
+        Logger.loginfo(f'[SAM3 State] Waiting for response... (timeout: {self._timeout_sec} sec)')
         
         # リクエスト送信
         msg = String()
