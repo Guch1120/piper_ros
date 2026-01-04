@@ -9,11 +9,11 @@ import torch
 sys.path.append(os.getcwd())
 
 try:
-    from sam3_ros.sam3_online_tracker import Sam3OnlineTracker
+    from sam3_ros.sam3_ros.test_online_tracker import Sam3OnlineTracker
 except ImportError:
     # Try adding the parent directory to path
     sys.path.append(os.path.dirname(os.getcwd()))
-    from sam3_ros.sam3_online_tracker import Sam3OnlineTracker
+    from sam3_ros.sam3_ros.test_online_tracker import Sam3OnlineTracker
 
 def main():
     print("Initializing tracker...", flush=True)
