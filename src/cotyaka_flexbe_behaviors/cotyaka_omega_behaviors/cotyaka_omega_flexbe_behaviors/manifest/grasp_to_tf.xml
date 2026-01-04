@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<behavior name="Grasp_to_TF">
+
+    <executable package_path="cotyaka_omega_flexbe_behaviors.grasp_to_tf_sm" class="Grasp_to_TFSM" />
+    <tagstring>parts</tagstring>
+    <author>Yamaguchi Takuma</author>
+    <date>Sun Jan 04 2026</date>
+    <description>
+        move zero position and grasp on TF
+    </description>
+
+
+    <!-- Contained Behaviors -->
+
+    <!-- Available Parameters -->
+
+</behavior>
