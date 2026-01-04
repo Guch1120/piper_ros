@@ -7,7 +7,7 @@ from rclpy.duration import Duration
 
 import tf2_ros
 from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
-import tf2_geometry_msgs 
+import tf2_geometry_msgs
 
 from geometry_msgs.msg import PointStamped, TransformStamped
 
@@ -15,18 +15,6 @@ from geometry_msgs.msg import PointStamped, TransformStamped
 class BroadcastTFfromVision(EventState):
     """
     FlexBEのuserdata(u,v,z) から TF(child_frame) を parent_frame に発行するState
-
-    -- parent_frame   string  親フレーム（例: 'base_link'）
-    -- child_frame    string  発行する子フレーム（例: 'target_object'）
-    -- camera_frame   string  uvz の基準（例: 'camera_color_optical_frame'）
-
-    ># u float
-    ># v float
-    ># z float
-
-    <= succeeded
-    <= tf_not_found
-    <= failed
     """
 
     def __init__(self,
@@ -42,10 +30,10 @@ class BroadcastTFfromVision(EventState):
         self._child_frame = child_frame
         self._camera_frame = camera_frame
 
-        # ★ FlexBEが管理するNodeを使う（これが最重要）
+        # FlexBE 管理 Node
         self._node = ProxyPublisher._node
 
-        # TF関連もこのNodeにぶら下げる
+        # TF
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer, self._node)
         self._broadcaster = StaticTransformBroadcaster(self._node)
@@ -60,44 +48,58 @@ class BroadcastTFfromVision(EventState):
 
     def on_enter(self, userdata):
         self._outcome = None
-        Logger.loginfo('[TF State] Publishing object TF...')
 
         try:
             u = float(userdata.u)
             v = float(userdata.v)
             z = float(userdata.z)
 
+            Logger.loginfo(
+                f'[TF State] Input uvz: u={u:.2f}, v={v:.2f}, z={z:.3f} [m]'
+            )
+
             if z <= 0.0:
-                Logger.logwarn('[TF State] Invalid depth (z <= 0).')
+                Logger.logwarn('[TF State] Invalid depth (z <= 0)')
                 self._outcome = 'failed'
                 return
 
-            # 画像座標 -> カメラ座標
-            x = (u - self.cx) * z / self.fx
-            y = (v - self.cy) * z / self.fy
+            # 画像座標 → カメラ座標（optical frame）
+            x_cam = (u - self.cx) * z / self.fx
+            y_cam = (v - self.cy) * z / self.fy
+            z_cam = z
+
+            Logger.loginfo(
+                f'[TF State] Camera({self._camera_frame}): '
+                f'x={x_cam:.3f}, y={y_cam:.3f}, z={z_cam:.3f}'
+            )
 
             p = PointStamped()
             p.header.frame_id = self._camera_frame
             p.header.stamp = self._node.get_clock().now().to_msg()
-            p.point.x = x
-            p.point.y = y
-            p.point.z = z
+            p.point.x = x_cam
+            p.point.y = y_cam
+            p.point.z = z_cam
 
-            # TFが無いと変換できないので待つ
-            can = self._tf_buffer.can_transform(
+            # TF確認
+            if not self._tf_buffer.can_transform(
                 self._parent_frame,
                 self._camera_frame,
                 rclpy.time.Time(),
                 timeout=Duration(seconds=2.0)
-            )
-            if not can:
+            ):
                 Logger.logwarn(
                     f'[TF State] TF not found: {self._camera_frame} -> {self._parent_frame}'
                 )
                 self._outcome = 'tf_not_found'
                 return
 
+            # 座標変換
             pw = self._tf_buffer.transform(p, self._parent_frame)
+
+            Logger.loginfo(
+                f'[TF State] Parent({self._parent_frame}): '
+                f'x={pw.point.x:.3f}, y={pw.point.y:.3f}, z={pw.point.z:.3f}'
+            )
 
             # Static TF 発行
             t = TransformStamped()
@@ -112,8 +114,10 @@ class BroadcastTFfromVision(EventState):
             self._broadcaster.sendTransform(t)
 
             Logger.loginfo(
-                f'[TF State] Broadcasted: {self._parent_frame} -> {self._child_frame}'
+                f'[TF State] Broadcasted TF: '
+                f'{self._parent_frame} -> {self._child_frame}'
             )
+
             self._outcome = 'succeeded'
 
         except Exception as e:
@@ -121,5 +125,4 @@ class BroadcastTFfromVision(EventState):
             self._outcome = 'failed'
 
     def execute(self, userdata):
-        # on_enterで即決めているので、ここは返すだけ
         return self._outcome

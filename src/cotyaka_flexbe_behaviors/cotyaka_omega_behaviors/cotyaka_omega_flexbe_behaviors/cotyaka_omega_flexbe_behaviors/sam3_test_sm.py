@@ -85,7 +85,7 @@ class sam3_testSM(Behavior):
         with _state_machine:
             # x:30 y:40
             OperatableStateMachine.add('detect',
-                                       DetectObjectWithSAM3State(object_name="cup"),
+                                       DetectObjectWithSAM3State(object_name="pen"),
                                        transitions={'succeeded': 'tf', 'failed': 'failed', 'timeout': 'failed'},
                                        autonomy={'succeeded': Autonomy.Off, 'failed': Autonomy.Off, 'timeout': Autonomy.Off},
                                        remapping={'u': 'u', 'v': 'v', 'z': 'z'})
