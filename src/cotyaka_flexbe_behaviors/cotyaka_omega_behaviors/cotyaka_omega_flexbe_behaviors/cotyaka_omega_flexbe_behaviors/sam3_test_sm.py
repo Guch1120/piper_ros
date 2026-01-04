@@ -36,7 +36,7 @@ from flexbe_core import ConcurrencyContainer
 from flexbe_core import Logger
 from flexbe_core import OperatableStateMachine
 from flexbe_core import PriorityContainer
-from cotyaka_omega_flexbe_states.broadcast_tf_from_vison import PublishObjectTFState
+from cotyaka_omega_flexbe_states.broadcast_tf_from_vison import BroadcastTFfromVision
 from cotyaka_omega_flexbe_states.sam3_detect_object import DetectObjectWithSAM3State
 
 # Additional imports can be added inside the following tags
@@ -64,8 +64,8 @@ class sam3_testSM(Behavior):
         ConcurrencyContainer.initialize_ros(node)
         PriorityContainer.initialize_ros(node)
         Logger.initialize(node)
+        BroadcastTFfromVision.initialize_ros(node)
         DetectObjectWithSAM3State.initialize_ros(node)
-        PublishObjectTFState.initialize_ros(node)
 
         # Additional initialization code can be added inside the following tags
         # [MANUAL_INIT]
@@ -85,16 +85,17 @@ class sam3_testSM(Behavior):
         with _state_machine:
             # x:30 y:40
             OperatableStateMachine.add('detect',
-                                       DetectObjectWithSAM3State(object_name="object"),
-                                       transitions={'succeeded': 'finished', 'failed': 'failed', 'timeout': 'failed'},
+                                       DetectObjectWithSAM3State(object_name="cup"),
+                                       transitions={'succeeded': 'tf', 'failed': 'failed', 'timeout': 'failed'},
                                        autonomy={'succeeded': Autonomy.Off, 'failed': Autonomy.Off, 'timeout': Autonomy.Off},
                                        remapping={'u': 'u', 'v': 'v', 'z': 'z'})
 
-            # x:269 y:38
-            OperatableStateMachine.add('broadcast tf',
-                                       PublishObjectTFState(parent_frame="map", child_frame="target_object", camera_frame="camera_link"),
-                                       transitions={},
-                                       autonomy={})
+            # x:296 y:49
+            OperatableStateMachine.add('tf',
+                                       BroadcastTFfromVision(parent_frame="camera_link", child_frame="target", camera_frame="camera_link"),
+                                       transitions={'succeeded': 'finished', 'tf_not_found': 'failed', 'failed': 'failed'},
+                                       autonomy={'succeeded': Autonomy.Off, 'tf_not_found': Autonomy.Off, 'failed': Autonomy.Off},
+                                       remapping={'u': 'u', 'v': 'v', 'z': 'z'})
 
         return _state_machine
 
