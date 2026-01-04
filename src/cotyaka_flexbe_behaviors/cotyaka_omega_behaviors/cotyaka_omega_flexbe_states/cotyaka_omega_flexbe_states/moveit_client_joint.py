@@ -5,7 +5,7 @@ from flexbe_core.proxy import ProxyActionClient
 from moveit_msgs.action import MoveGroup
 from moveit_msgs.msg import Constraints, JointConstraint
 
-class MoveItJointClientState(EventState):
+class MoveItClientJoint(EventState):
     '''
     MoveItを使用して指定された関節角度へ移動するState。
 
@@ -21,7 +21,7 @@ class MoveItJointClientState(EventState):
     '''
 
     def __init__(self, group_name='arm', joint_names=[], tolerance=0.01, action_topic='move_action'):
-        super(MoveItJointClientState, self).__init__(outcomes=['reached', 'failed'],
+        super(MoveItClientJoint, self).__init__(outcomes=['reached', 'failed'],
                                                      input_keys=['target_joints'])
         self._group_name = group_name
         self._joint_names = joint_names

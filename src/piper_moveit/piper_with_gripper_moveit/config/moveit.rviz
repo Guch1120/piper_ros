@@ -448,30 +448,16 @@ Visualization Manager:
                               camera_infra2_frame:
                                 camera_infra2_optical_frame:
                                   {}
-                              target:
-                                {}
                           link7:
                             {}
                           link8:
                             {}
+                        target:
+                          {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/Image
-      Enabled: false
-      Max Value: 1
-      Median window: 5
-      Min Value: 0
-      Name: Image
-      Normalize Range: true
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /camera/image_raw
-      Value: false
-    - Class: rviz_default_plugins/Image
-      Enabled: false
+      Enabled: true
       Max Value: 1
       Median window: 5
       Min Value: 0
@@ -483,9 +469,9 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /sam3/debug_image
-      Value: false
+      Value: true
     - Class: rviz_default_plugins/Image
-      Enabled: false
+      Enabled: true
       Max Value: 1
       Median window: 5
       Min Value: 0
@@ -497,9 +483,9 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /camera/camera/color/image_raw
-      Value: false
+      Value: true
     - Class: rviz_default_plugins/Image
-      Enabled: false
+      Enabled: true
       Max Value: 1
       Median window: 5
       Min Value: 0
@@ -511,7 +497,7 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /camera/camera/aligned_depth_to_color/image_raw
-      Value: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -584,7 +570,7 @@ Window Geometry:
     collapsed: false
   MotionPlanning - Trajectory Slider:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000100000000000002b40000036dfc020000000afb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000003f00fffffffb000000100044006900730070006c006100790073010000003b000000ef000000c700fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e00670100000130000001b20000016900fffffffb0000000a0049006d00610067006502000004f9000001db00000271000001e4fb0000000800480065006c0070000000029a0000006e0000006e00fffffffb0000000a0056006900650077007301000002e8000000c0000000a000fffffffb0000000a0049006d00610067006502000004ca000000f000000259000001a4fb0000000a0049006d0061006700650200000c5b000001e40000027e000001d0fb0000000a0049006d0061006700650200000c5e00000063000002640000016efb0000000a0049006d0061006700650200000a42000002750000022f0000017f000002150000036d00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000100000000000002b40000036dfc020000000afb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000003f00fffffffb000000100044006900730070006c006100790073010000003b000000ef000000c700fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e00670100000130000001b20000016900fffffffb0000000a0049006d00610067006502000004f9000001db00000271000001e4fb0000000800480065006c0070000000029a0000006e0000006e00fffffffb0000000a0056006900650077007301000002e8000000c0000000a000fffffffb0000000a0049006d0061006700650300000a430000026b00000259000001a4fb0000000a0049006d0061006700650300000c5b000001e40000027e000001d0fb0000000a0049006d0061006700650300000c5e00000063000002640000016efb0000000a0049006d0061006700650200000a42000002750000022f0000017f000002150000036d00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
     collapsed: false
   Width: 1231

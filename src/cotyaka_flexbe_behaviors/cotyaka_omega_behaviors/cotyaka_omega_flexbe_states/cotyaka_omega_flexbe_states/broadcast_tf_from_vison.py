@@ -6,21 +6,34 @@ import rclpy
 from rclpy.duration import Duration
 
 import tf2_ros
+# PointStamped の変換に必須のモジュール
+import tf2_geometry_msgs 
 from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
-import tf2_geometry_msgs
 
+from sensor_msgs.msg import CameraInfo
 from geometry_msgs.msg import PointStamped, TransformStamped
 
 
 class BroadcastTFfromVision(EventState):
     """
-    FlexBEのuserdata(u,v,z) から TF(child_frame) を parent_frame に発行するState
+    userdata(u,v,z) から TF(child_frame) を parent_frame に発行する FlexBE State
+    一度計算して TF を発行したらすぐに succeeded で終了する (One-shot)
+    
+    -- parent_frame     string  親フレーム（必ず 'base_link' や 'world' を指定すること）
+    -- child_frame      string  発行する子フレーム名（例: 'target'）
+    -- camera_frame     string  uvzの基準（'camera_color_optical_frame' を推奨）
+    -- camera_info_topic string CameraInfo トピック名
+    -- wait_info_sec    float   CameraInfo を待機するタイムアウト
+    -- tf_timeout_sec   float   TF 変換のタイムアウト
     """
 
     def __init__(self,
                  parent_frame='base_link',
-                 child_frame='target_object',
-                 camera_frame='camera_color_optical_frame'):
+                 child_frame='target',
+                 camera_frame='camera_color_optical_frame',
+                 camera_info_topic='/camera/camera/color/camera_info',
+                 wait_info_sec=0.5,
+                 tf_timeout_sec=2.0):
         super(BroadcastTFfromVision, self).__init__(
             outcomes=['succeeded', 'tf_not_found', 'failed'],
             input_keys=['u', 'v', 'z']
@@ -29,79 +42,100 @@ class BroadcastTFfromVision(EventState):
         self._parent_frame = parent_frame
         self._child_frame = child_frame
         self._camera_frame = camera_frame
+        self._camera_info_topic = camera_info_topic
+        self._wait_info_sec = float(wait_info_sec)
+        self._tf_timeout = Duration(seconds=float(tf_timeout_sec))
 
-        # FlexBE 管理 Node
+        # FlexBE managed node
         self._node = ProxyPublisher._node
 
-        # TF
+        # TF Buffer and Listener
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer, self._node)
+        # 静的TF発行（一度発行すればその位置に固定される）
         self._broadcaster = StaticTransformBroadcaster(self._node)
 
-        # Camera intrinsics
-        self.fx = 909.4475708007812
-        self.fy = 907.5896606445312
-        self.cx = 637.9448852539062
-        self.cy = 378.9811706542969
+        # Debug Publishers
+        self._pub_cam_point = self._node.create_publisher(PointStamped, '/sam3/point_cam', 1)
+        self._pub_parent_point = self._node.create_publisher(PointStamped, '/sam3/point_parent', 1)
 
-        self._outcome = None
+        self._fx = self._fy = self._cx = self._cy = None
+        self._got_info = False
+
+        # Subscriber for CameraInfo
+        self._sub_info = self._node.create_subscription(
+            CameraInfo, self._camera_info_topic, self._info_cb, 1
+        )
+
+        self._calculation_done = False
+
+    def _info_cb(self, msg: CameraInfo):
+        try:
+            # K = [fx 0 cx; 0 fy cy; 0 0 1]
+            self._fx = float(msg.k[0])
+            self._fy = float(msg.k[4])
+            self._cx = float(msg.k[2])
+            self._cy = float(msg.k[5])
+            self._got_info = True
+        except Exception as e:
+            Logger.logwarn(f'[TF State] CameraInfo parse error: {e}')
 
     def on_enter(self, userdata):
-        self._outcome = None
+        # 状態に入るたびにフラグをリセット
+        self._calculation_done = False
+        Logger.loginfo(f'[TF State] Entering for target: {self._child_frame}')
+
+    def execute(self, userdata):
+        # すでに一度計算が完了していればその結果（outcome）を返す
+        if self._calculation_done:
+            return 'succeeded'
+
+        # 1. CameraInfo 待機
+        if not self._got_info:
+            # CameraInfoがまだ来ていない場合は execute のループを継続（ブロッキング回避）
+            return None 
 
         try:
-            u = float(userdata.u)
-            v = float(userdata.v)
-            z = float(userdata.z)
-
-            Logger.loginfo(
-                f'[TF State] Input uvz: u={u:.2f}, v={v:.2f}, z={z:.3f} [m]'
-            )
+            # 2. 入力データの取得
+            u, v, z = float(userdata.u), float(userdata.v), float(userdata.z)
 
             if z <= 0.0:
                 Logger.logwarn('[TF State] Invalid depth (z <= 0)')
-                self._outcome = 'failed'
-                return
+                return 'failed'
 
-            # 画像座標 → カメラ座標（optical frame）
-            x_cam = (u - self.cx) * z / self.fx
-            y_cam = (v - self.cy) * z / self.fy
+            # 3. 2Dピクセル座標 -> 3Dカメラ座標（Optical Frame 基準）
+            x_cam = (u - self._cx) * z / self._fx
+            y_cam = (v - self._cy) * z / self._fy
             z_cam = z
 
-            Logger.loginfo(
-                f'[TF State] Camera({self._camera_frame}): '
-                f'x={x_cam:.3f}, y={y_cam:.3f}, z={z_cam:.3f}'
-            )
-
+            # PointStamped メッセージ構築
             p = PointStamped()
             p.header.frame_id = self._camera_frame
+            # 現在時刻ではなく「0」を指定して最新の変換を利用、またはノード時刻を使用
             p.header.stamp = self._node.get_clock().now().to_msg()
             p.point.x = x_cam
             p.point.y = y_cam
             p.point.z = z_cam
 
-            # TF確認
+            self._pub_cam_point.publish(p)
+
+            # 4. TFの利用可能性確認
             if not self._tf_buffer.can_transform(
                 self._parent_frame,
                 self._camera_frame,
                 rclpy.time.Time(),
-                timeout=Duration(seconds=2.0)
+                timeout=self._tf_timeout
             ):
-                Logger.logwarn(
-                    f'[TF State] TF not found: {self._camera_frame} -> {self._parent_frame}'
-                )
-                self._outcome = 'tf_not_found'
-                return
+                Logger.logwarn(f'[TF State] No TF from {self._camera_frame} to {self._parent_frame}')
+                return 'tf_not_found'
 
-            # 座標変換
-            pw = self._tf_buffer.transform(p, self._parent_frame)
+            # 5. カメラ座標系から世界（親）座標系へ点を変換
+            # ここで camera_color_optical_frame -> base_link の変換が行われる
+            pw = self._tf_buffer.transform(p, self._parent_frame, timeout=self._tf_timeout)
+            self._pub_parent_point.publish(pw)
 
-            Logger.loginfo(
-                f'[TF State] Parent({self._parent_frame}): '
-                f'x={pw.point.x:.3f}, y={pw.point.y:.3f}, z={pw.point.z:.3f}'
-            )
-
-            # Static TF 発行
+            # 6. 静的 TF として発行
+            # これにより target は parent_frame (base_link) に対して固定される
             t = TransformStamped()
             t.header.stamp = self._node.get_clock().now().to_msg()
             t.header.frame_id = self._parent_frame
@@ -109,20 +143,16 @@ class BroadcastTFfromVision(EventState):
             t.transform.translation.x = pw.point.x
             t.transform.translation.y = pw.point.y
             t.transform.translation.z = pw.point.z
-            t.transform.rotation.w = 1.0
+            t.transform.rotation.w = 1.0 # 回転は考慮せず並進のみ
 
             self._broadcaster.sendTransform(t)
 
-            Logger.loginfo(
-                f'[TF State] Broadcasted TF: '
-                f'{self._parent_frame} -> {self._child_frame}'
-            )
-
-            self._outcome = 'succeeded'
+            Logger.loginfo(f'[TF State] SUCCESS: Broadcasted {self._child_frame} on {self._parent_frame}')
+            Logger.loginfo(f'[TF State] Resulting Pos: x={pw.point.x:.3f}, y={pw.point.y:.3f}, z={pw.point.z:.3f}')
+            
+            self._calculation_done = True
+            return 'succeeded'
 
         except Exception as e:
-            Logger.logerr(f'[TF State] Exception: {e}')
-            self._outcome = 'failed'
-
-    def execute(self, userdata):
-        return self._outcome
+            Logger.logerr(f'[TF State] Critical Exception: {e}')
+            return 'failed'

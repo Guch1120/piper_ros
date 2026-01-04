@@ -138,7 +138,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 topic pub /enable_flag std_msgs/msg/Bool "data: false"; bash
+    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 topic pub /enable_flag std_msgs/msg/Bool "data: false --once"; bash
     use_system_font = False
 [layouts]
   [[default]]

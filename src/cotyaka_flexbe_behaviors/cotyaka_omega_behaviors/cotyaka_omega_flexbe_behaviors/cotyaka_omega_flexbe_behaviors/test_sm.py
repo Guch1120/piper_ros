@@ -52,7 +52,7 @@ class testSM(Behavior):
     """
     Define test.
 
-    test 'grasp and slide '
+    test 'grasp and slide
 
     """
 

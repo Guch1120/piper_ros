@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<behavior name="pick_and_place_with_using_TF">
+
+    <executable package_path="cotyaka_omega_flexbe_behaviors.pick_and_place_with_using_tf_sm" class="pick_and_place_with_using_TFSM" />
+    <tagstring></tagstring>
+    <author>Yamaguchi Takuma</author>
+    <date>Sun Jan 04 2026</date>
+    <description>
+        pick and place with using TF
+
+    </description>
+
+
+    <!-- Contained Behaviors -->
+    <contains name="sam3_test" />
+    <contains name="Grasp_to_TF" />
+
+    <!-- Available Parameters -->
+
+</behavior>

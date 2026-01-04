@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright 2025 Yamaguchi Takuma
+# Copyright 2026 Yamaguchi Takuma
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,9 +23,9 @@
 ###########################################################
 
 """
-Define sam3_test.
+Define pick_and_place_with_using_TF.
 
-Created on Thu Dec 25 2025
+Created on Sun Jan 04 2026
 @author: Yamaguchi Takuma
 """
 
@@ -36,8 +36,9 @@ from flexbe_core import ConcurrencyContainer
 from flexbe_core import Logger
 from flexbe_core import OperatableStateMachine
 from flexbe_core import PriorityContainer
-from cotyaka_omega_flexbe_states.broadcast_tf_from_vison import BroadcastTFfromVision
-from cotyaka_omega_flexbe_states.sam3_detect_object import DetectObjectWithSAM3State
+from cotyaka_omega_flexbe_behaviors.grasp_to_tf_sm import Grasp_to_TFSM
+from cotyaka_omega_flexbe_behaviors.sam3_test_sm import sam3_testSM
+from cotyaka_omega_flexbe_states.moveit_param_client_joint import MoveItJointClientParamState
 
 # Additional imports can be added inside the following tags
 # [MANUAL_IMPORT]
@@ -45,17 +46,17 @@ from cotyaka_omega_flexbe_states.sam3_detect_object import DetectObjectWithSAM3S
 # [/MANUAL_IMPORT]
 
 
-class sam3_testSM(Behavior):
+class pick_and_place_with_using_TFSM(Behavior):
     """
-    Define sam3_test.
+    Define pick_and_place_with_using_TF.
 
-    test
+    pick and place with using TF
 
     """
 
     def __init__(self, node):
         super().__init__()
-        self.name = 'sam3_test'
+        self.name = 'pick_and_place_with_using_TF'
 
         # parameters of this behavior
 
@@ -64,8 +65,9 @@ class sam3_testSM(Behavior):
         ConcurrencyContainer.initialize_ros(node)
         PriorityContainer.initialize_ros(node)
         Logger.initialize(node)
-        BroadcastTFfromVision.initialize_ros(node)
-        DetectObjectWithSAM3State.initialize_ros(node)
+        MoveItJointClientParamState.initialize_ros(node)
+        self.add_behavior(Grasp_to_TFSM, 'Grasp_to_TF', node)
+        self.add_behavior(sam3_testSM, 'sam3_test', node)
 
         # Additional initialization code can be added inside the following tags
         # [MANUAL_INIT]
@@ -75,27 +77,32 @@ class sam3_testSM(Behavior):
         # Behavior comments:
 
     def create(self):
-        # x:573 y:184, x:130 y:365
+        # x:830 y:332, x:483 y:347
         _state_machine = OperatableStateMachine(outcomes=['finished', 'failed'])
+        _state_machine.userdata.target_frame = ""
 
         # Additional creation code can be added inside the following tags
         # [MANUAL_CREATE]
 
         # [/MANUAL_CREATE]
         with _state_machine:
-            # x:30 y:40
-            OperatableStateMachine.add('detect',
-                                       DetectObjectWithSAM3State(object_name="apple"),
-                                       transitions={'succeeded': 'tf', 'failed': 'failed', 'timeout': 'failed'},
-                                       autonomy={'succeeded': Autonomy.Off, 'failed': Autonomy.Off, 'timeout': Autonomy.Off},
-                                       remapping={'u': 'u', 'v': 'v', 'z': 'z'})
+            # x:114 y:178
+            OperatableStateMachine.add('move_serch',
+                                       MoveItJointClientParamState(group_name='arm', joint_names=['joint1','joint2','joint3','joint4','joint5','joint6'], target_joints=[0.0,0.34,-0.65,0.0,0.96,0.0], tolerance=0.01, action_topic='move_action'),
+                                       transitions={'reached': 'finished', 'failed': 'failed'},
+                                       autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
 
-            # x:296 y:49
-            OperatableStateMachine.add('tf',
-                                       BroadcastTFfromVision(parent_frame="base_link", child_frame="target", camera_frame="camera_color_optical_frame", camera_info_topic='/camera/camera/aligned_depth_to_color/camera_info', wait_info_sec=0.5, tf_timeout_sec=2.0),
-                                       transitions={'succeeded': 'finished', 'tf_not_found': 'failed', 'failed': 'failed'},
-                                       autonomy={'succeeded': Autonomy.Off, 'tf_not_found': Autonomy.Off, 'failed': Autonomy.Off},
-                                       remapping={'u': 'u', 'v': 'v', 'z': 'z'})
+            # x:377 y:70
+            OperatableStateMachine.add('sam3_test',
+                                       self.use_behavior(sam3_testSM, 'sam3_test'),
+                                       transitions={'finished': 'Grasp_to_TF', 'failed': 'failed'},
+                                       autonomy={'finished': Autonomy.Inherit, 'failed': Autonomy.Inherit})
+
+            # x:718 y:67
+            OperatableStateMachine.add('Grasp_to_TF',
+                                       self.use_behavior(Grasp_to_TFSM, 'Grasp_to_TF'),
+                                       transitions={'finished': 'finished', 'failed': 'failed'},
+                                       autonomy={'finished': Autonomy.Inherit, 'failed': Autonomy.Inherit})
 
         return _state_machine
 
