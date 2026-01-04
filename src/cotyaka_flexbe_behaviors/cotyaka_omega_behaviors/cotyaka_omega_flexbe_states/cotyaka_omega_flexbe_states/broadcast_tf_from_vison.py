@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 from flexbe_core import EventState, Logger
 from flexbe_core.proxy import ProxyPublisher
-
 import rclpy
 from rclpy.duration import Duration
-
 import tf2_ros
-# PointStamped の変換に必須のモジュール
 import tf2_geometry_msgs 
 from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
-
 from sensor_msgs.msg import CameraInfo
 from geometry_msgs.msg import PointStamped, TransformStamped
+import math
 
 
 class BroadcastTFfromVision(EventState):
@@ -140,13 +137,40 @@ class BroadcastTFfromVision(EventState):
             t.header.stamp = self._node.get_clock().now().to_msg()
             t.header.frame_id = self._parent_frame
             t.child_frame_id = self._child_frame
-            t.transform.translation.x = pw.point.x
-            t.transform.translation.y = pw.point.y
-            t.transform.translation.z = pw.point.z
-            t.transform.rotation.w = 1.0 # 回転は考慮せず並進のみ
-
+            # rotationはlink6の姿勢に合わせることでmoveitで到達不可姿勢を避ける
+            try:
+            # base_link -> link6 の姿勢を取得してtarget にコピー
+                tf_link6 = self._tf_buffer.lookup_transform(
+                    self._parent_frame,   # base_link
+                    'link6',              
+                    rclpy.time.Time(),
+                    timeout=self._tf_timeout
+                )
+                q = tf_link6.transform.rotation
+                t.transform.rotation = q
+            # link6 の -Z 方向に 0.06m
+                d = 0.06
+            # クォータニオン → 回転行列の -Z 列だけ計算
+            # R * (0,0,-d)
+                x = -d * (2*(q.x*q.z + q.w*q.y))
+                y = -d * (2*(q.y*q.z - q.w*q.x))
+                z = -d * (1 - 2*(q.x*q.x + q.y*q.y))
+            # --- 位置に加算 ---
+                t.transform.translation.x = pw.point.x + x
+                t.transform.translation.y = pw.point.y + y
+                t.transform.translation.z = pw.point.z + z
+            except Exception as e:
+                Logger.logwarn(f"[TF State] Could not get rotation from {self._parent_frame} -> link6: {e}")
+                # フォールバック（回転なし・オフセットなし）
+                t.transform.rotation.x = 0.0
+                t.transform.rotation.y = 0.0
+                t.transform.rotation.z = 0.0
+                t.transform.rotation.w = 1.0
+                t.transform.translation.x = pw.point.x
+                t.transform.translation.y = pw.point.y
+                t.transform.translation.z = pw.point.z
+                
             self._broadcaster.sendTransform(t)
-
             Logger.loginfo(f'[TF State] SUCCESS: Broadcasted {self._child_frame} on {self._parent_frame}')
             Logger.loginfo(f'[TF State] Resulting Pos: x={pw.point.x:.3f}, y={pw.point.y:.3f}, z={pw.point.z:.3f}')
             

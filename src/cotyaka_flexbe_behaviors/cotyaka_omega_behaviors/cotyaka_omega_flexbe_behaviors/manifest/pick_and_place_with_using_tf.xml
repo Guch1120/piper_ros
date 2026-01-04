@@ -3,7 +3,7 @@
 <behavior name="pick_and_place_with_using_TF">
 
     <executable package_path="cotyaka_omega_flexbe_behaviors.pick_and_place_with_using_tf_sm" class="pick_and_place_with_using_TFSM" />
-    <tagstring></tagstring>
+    <tagstring>grasp</tagstring>
     <author>Yamaguchi Takuma</author>
     <date>Sun Jan 04 2026</date>
     <description>
