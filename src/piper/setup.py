@@ -31,12 +31,13 @@ setup(
             'piper_read_slave_joint = piper.piper_read_slave_joint:main',
             'piper_single_ctrl_moveit = piper.piper_single_ctrl_moveit_node:main',
             'piper_moveit_bridge = piper.moveit_bridge:main',
+            'piper_moveit_bridge_smooth = piper.moveit_bridge_smoth:main',
             'moveit_client = piper.moveit_client_node:main ',
             'moveit_client_tf = piper.moveit_client_tf_node:main',
             'moveit_client_tf_interactive = piper.moveit_client_tf_interactive:main',
             'pick_and_place_trajectory = piper.pick_and_place_trajectry:main',
             'gripper_open_test = piper.gripper_open_test_node:main',
-            'gripper_close_test = piper.gripper_close_test_node:main'
+            'gripper_close_test = piper.gripper_close_test_node:main',
         ],
     },
 )
