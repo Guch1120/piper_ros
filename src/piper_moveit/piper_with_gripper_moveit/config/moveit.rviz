@@ -4,6 +4,7 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
+        - /Global Options1
         - /MotionPlanning1
         - /TF1
         - /TF1/Frames1
@@ -371,7 +372,7 @@ Visualization Manager:
         camera_color_frame:
           Value: false
         camera_color_optical_frame:
-          Value: false
+          Value: true
         camera_depth_frame:
           Value: false
         camera_depth_optical_frame:
@@ -392,8 +393,6 @@ Visualization Manager:
           Value: false
         gripper_base:
           Value: false
-        interactive_set:
-          Value: true
         link1:
           Value: false
         link2:
@@ -410,8 +409,10 @@ Visualization Manager:
           Value: false
         link8:
           Value: false
-        world:
+        target:
           Value: true
+        world:
+          Value: false
       Marker Scale: 1
       Name: TF
       Show Arrows: true
@@ -420,8 +421,6 @@ Visualization Manager:
       Tree:
         world:
           base_link:
-            interactive_set:
-              {}
             link1:
               link2:
                 link3:
@@ -449,6 +448,8 @@ Visualization Manager:
                               camera_infra2_frame:
                                 camera_infra2_optical_frame:
                                   {}
+                              target:
+                                {}
                           link7:
                             {}
                           link8:
@@ -469,6 +470,48 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /camera/image_raw
       Value: false
+    - Class: rviz_default_plugins/Image
+      Enabled: false
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: Image
+      Normalize Range: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /sam3/debug_image
+      Value: false
+    - Class: rviz_default_plugins/Image
+      Enabled: false
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: Image
+      Normalize Range: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /camera/camera/color/image_raw
+      Value: false
+    - Class: rviz_default_plugins/Image
+      Enabled: false
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: Image
+      Normalize Range: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /camera/camera/aligned_depth_to_color/image_raw
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -487,26 +530,46 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 1.9612269401550293
+      Distance: 2.687363862991333
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.07799187302589417
-        Y: -0.11677245050668716
-        Z: -0.04927435889840126
+        X: 0.0745459571480751
+        Y: -0.02939952351152897
+        Z: -0.14757907390594482
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.4997970461845398
+      Pitch: 0.3647969365119934
       Target Frame: world
       Value: Orbit (rviz_default_plugins)
-      Yaw: 4.9251813888549805
-    Saved: ~
+      Yaw: 4.870203018188477
+    Saved:
+      - Class: rviz_default_plugins/Orbit
+        Distance: 1.9612269401550293
+        Enable Stereo Rendering:
+          Stereo Eye Separation: 0.05999999865889549
+          Stereo Focal Distance: 1
+          Swap Stereo Eyes: false
+          Value: false
+        Focal Point:
+          X: 0.07799187302589417
+          Y: -0.11677245050668716
+          Z: -0.04927435889840126
+        Focal Shape Fixed Size: true
+        Focal Shape Size: 0.05000000074505806
+        Invert Z Axis: false
+        Name: Orbit
+        Near Clip Distance: 0.009999999776482582
+        Pitch: 0.4997970461845398
+        Target Frame: world
+        Value: Orbit (rviz_default_plugins)
+        Yaw: 4.9251813888549805
 Window Geometry:
   Displays:
     collapsed: false
@@ -521,9 +584,9 @@ Window Geometry:
     collapsed: false
   MotionPlanning - Trajectory Slider:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000100000000000002b40000036dfc0200000007fb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000003f00fffffffb000000100044006900730070006c006100790073010000003b000000ef000000c700fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e00670100000130000001b20000016900fffffffb0000000a0049006d00610067006502000004f9000001db00000271000001e4fb0000000800480065006c0070000000029a0000006e0000006e00fffffffb0000000a0056006900650077007301000002e8000000c0000000a000fffffffb0000000a0049006d00610067006502000004ca000000f000000259000001a4000002150000036d00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000100000000000002b40000036dfc020000000afb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000003f00fffffffb000000100044006900730070006c006100790073010000003b000000ef000000c700fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e00670100000130000001b20000016900fffffffb0000000a0049006d00610067006502000004f9000001db00000271000001e4fb0000000800480065006c0070000000029a0000006e0000006e00fffffffb0000000a0056006900650077007301000002e8000000c0000000a000fffffffb0000000a0049006d00610067006502000004ca000000f000000259000001a4fb0000000a0049006d0061006700650200000c5b000001e40000027e000001d0fb0000000a0049006d0061006700650200000c5e00000063000002640000016efb0000000a0049006d0061006700650200000a42000002750000022f0000017f000002150000036d00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
     collapsed: false
   Width: 1231
-  X: 11
-  Y: 48
+  X: 1938
+  Y: 11

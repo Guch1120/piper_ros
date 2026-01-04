@@ -111,6 +111,7 @@ class Sam3ServiceNode(Node):
             if len(indices) == 0:
                 return
 
+            # indices は (row, col) つまり (y, x)
             v = float(np.mean(indices[:, 0]))
             u = float(np.mean(indices[:, 1]))
 
@@ -131,10 +132,19 @@ class Sam3ServiceNode(Node):
             # SAM3公式可視化
             plot_results(image_pil, results)
 
+            # --- 重心位置の追加描画 ---
+            # カレントの軸（gca）に対して描画
+            plt.scatter(u, v, color='red', marker='+', s=500, linewidth=3, label='Center of Gravity')
+            plt.text(u + 5, v - 5, f'CG({u:.1f}, {v:.1f})', 
+                     color='red', fontsize=14, fontweight='bold',
+                     bbox=dict(facecolor='white', alpha=0.5, edgecolor='none'))
+            # ------------------------
+
             fig = plt.gcf()
 
             plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
             fig.set_size_inches(12, 9, forward=True)
+            # tight_layout は scatter 等を追加した後に呼ぶと安全
             fig.tight_layout(pad=0)
 
             fig.canvas.draw()
@@ -150,8 +160,6 @@ class Sam3ServiceNode(Node):
             # Publish
             img_msg = self.bridge.cv2_to_imgmsg(img, encoding='rgb8')
             self.pub_debug.publish(img_msg)
-
-
 
             self.get_logger().info(
                 f'Published: u={u:.1f}, v={v:.1f}, z={z:.3f}'
