@@ -26,6 +26,8 @@ setup(
         'sam3_node = sam3_ros.sam3_node:main',
         'segment_with_depth_pub = sam3_ros.segment_with_depth_pub_node:main',
         'tf_pub_node = sam3_ros.TF_pub_node:main',
+        'sam3_node_for_tracker = sam3_ros.sam3_node_pub_BB_position:main',
+        'sam3_hybrid_tracker = sam3_ros.Tracker_node:main',
         ],
     },
 )

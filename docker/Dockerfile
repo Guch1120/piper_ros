@@ -83,7 +83,7 @@ RUN pip3 install --pre --ignore-installed torch==2.9.0 torchvision torchaudio --
 RUN apt-get update && apt-get install -y \
     mpg123 \
     && rm -rf /var/lib/apt/lists/*
-RUN pip3 install gTTS lzfse
+RUN pip3 install gTTS lzfse opencv-contrib-python
 
 # ワークスペースの作成
 RUN mkdir -p /ros2_ws/src
