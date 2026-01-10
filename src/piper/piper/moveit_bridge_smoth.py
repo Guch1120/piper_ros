@@ -6,6 +6,7 @@ from rclpy.executors import MultiThreadedExecutor
 from control_msgs.action import FollowJointTrajectory
 from sensor_msgs.msg import JointState
 import threading
+import time
 
 class PiperMoveItBridge(Node):
     def __init__(self):

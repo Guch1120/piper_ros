@@ -113,7 +113,6 @@ class BroadcastTFfromVision(EventState):
             p.point.x = x_cam
             p.point.y = y_cam
             p.point.z = z_cam
-
             self._pub_cam_point.publish(p)
 
             # 4. TFの利用可能性確認
@@ -170,12 +169,27 @@ class BroadcastTFfromVision(EventState):
                 t.transform.translation.y = pw.point.y
                 t.transform.translation.z = pw.point.z
                 
+            # 7. TF 発行
             self._broadcaster.sendTransform(t)
-            Logger.loginfo(f'[TF State] SUCCESS: Broadcasted {self._child_frame} on {self._parent_frame}')
-            Logger.loginfo(f'[TF State] Resulting Pos: x={pw.point.x:.3f}, y={pw.point.y:.3f}, z={pw.point.z:.3f}')
+            Logger.loginfo(f'[TF State] Broadcasted TF: {self._child_frame} -> {self._parent_frame}')
             
-            self._calculation_done = True
-            return 'succeeded'
+            # 8 同期確認 発行したTFが自分のバッファで引けるようになるまで待つ
+            # ここが「succeeded」を返す前の最終チェック
+            propagation_timeout = Duration(seconds=0.5)
+            if self._tf_buffer.can_transform(
+                self._parent_frame,
+                self._child_frame,
+                rclpy.time.Time(),
+                timeout=propagation_timeout
+            ):
+                Logger.loginfo(f'[TF State] SUCCESS: Verified {self._child_frame} is active.')
+                self._calculation_done = True
+                return 'succeeded'            
+            else:
+                # 0.5秒待っても見つからない場合は、まだ反映されていないので次回ループで再試行
+                # (Noneを返してステートに留まる)
+                Logger.logwarn('[TF State] Waiting for TF propagation...')
+                return None
 
         except Exception as e:
             Logger.logerr(f'[TF State] Critical Exception: {e}')

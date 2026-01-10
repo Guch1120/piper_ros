@@ -101,7 +101,10 @@ class Sam3ServiceNode(Node):
             state = self.processor.set_image(image_pil)
             results = self.processor.set_text_prompt(target, state)
 
+            # ===== 検出結果なしの場合=====
             if len(results['masks']) == 0:
+                fail_res = Point(x=0.0, y=0.0, z=-1.0)
+                self.pub_result.publish(fail_res)
                 self.get_logger().info('Nothing detected.')
                 return
 

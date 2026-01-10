@@ -86,6 +86,7 @@ class MoveItJointClientParamState(EventState):
         if self._client.has_result(self._topic):
             result = self._client.get_result(self._topic)
             if result.error_code.val == 1: # SUCCESS
+                Logger.loginfo(f'moveit_param_client_joint SUCCESS')
                 return 'reached'
             else:
                 Logger.logwarn(f'MoveIt failed with error code: {result.error_code.val}')
