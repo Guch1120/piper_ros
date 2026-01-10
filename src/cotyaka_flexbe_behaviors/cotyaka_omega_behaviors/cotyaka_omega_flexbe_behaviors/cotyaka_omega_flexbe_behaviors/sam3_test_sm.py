@@ -37,6 +37,7 @@ from flexbe_core import Logger
 from flexbe_core import OperatableStateMachine
 from flexbe_core import PriorityContainer
 from cotyaka_omega_flexbe_states.broadcast_tf_from_vison import BroadcastTFfromVision
+from cotyaka_omega_flexbe_states.moveit_param_client_joint import MoveItJointClientParamState
 from cotyaka_omega_flexbe_states.sam3_detect_object import DetectObjectWithSAM3State
 
 # Additional imports can be added inside the following tags
@@ -66,6 +67,7 @@ class sam3_testSM(Behavior):
         Logger.initialize(node)
         BroadcastTFfromVision.initialize_ros(node)
         DetectObjectWithSAM3State.initialize_ros(node)
+        MoveItJointClientParamState.initialize_ros(node)
 
         # Additional initialization code can be added inside the following tags
         # [MANUAL_INIT]
@@ -75,7 +77,7 @@ class sam3_testSM(Behavior):
         # Behavior comments:
 
     def create(self):
-        # x:573 y:184, x:130 y:365
+        # x:606 y:239, x:500 y:244
         _state_machine = OperatableStateMachine(outcomes=['finished', 'failed'])
 
         # Additional creation code can be added inside the following tags
@@ -83,19 +85,31 @@ class sam3_testSM(Behavior):
 
         # [/MANUAL_CREATE]
         with _state_machine:
-            # x:30 y:40
+            # x:69 y:31
             OperatableStateMachine.add('detect',
                                        DetectObjectWithSAM3State(object_name="apple"),
-                                       transitions={'succeeded': 'tf', 'failed': 'failed', 'timeout': 'failed'},
+                                       transitions={'succeeded': 'tf', 'failed': 'Pose for init', 'timeout': 'failed'},
                                        autonomy={'succeeded': Autonomy.Off, 'failed': Autonomy.Off, 'timeout': Autonomy.Off},
                                        remapping={'u': 'u', 'v': 'v', 'z': 'z'})
 
-            # x:296 y:49
+            # x:36 y:296
+            OperatableStateMachine.add('pose of detect',
+                                       MoveItJointClientParamState(group_name='arm', joint_names=['joint1','joint2','joint3','joint4','joint5','joint6'], target_joints=[0.15,1.29,-1.1,-0.18,0.66,0.25], tolerance=0.01, action_topic='move_action'),
+                                       transitions={'reached': 'detect', 'failed': 'failed'},
+                                       autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
+
+            # x:532 y:35
             OperatableStateMachine.add('tf',
                                        BroadcastTFfromVision(parent_frame="base_link", child_frame="target", camera_frame="camera_color_optical_frame", camera_info_topic='/camera/camera/aligned_depth_to_color/camera_info', wait_info_sec=0.5, tf_timeout_sec=2.0),
                                        transitions={'succeeded': 'finished', 'tf_not_found': 'failed', 'failed': 'failed'},
                                        autonomy={'succeeded': Autonomy.Off, 'tf_not_found': Autonomy.Off, 'failed': Autonomy.Off},
                                        remapping={'u': 'u', 'v': 'v', 'z': 'z'})
+
+            # x:172 y:188
+            OperatableStateMachine.add('Pose for init',
+                                       MoveItJointClientParamState(group_name='arm', joint_names=['joint1','joint2','joint3','joint4','joint5','joint6'], target_joints=[0.0,0.0,0.0,0.0,0.0,0.0], tolerance=0.01, action_topic='move_action'),
+                                       transitions={'reached': 'pose of detect', 'failed': 'failed'},
+                                       autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
 
         return _state_machine
 

@@ -38,7 +38,6 @@ from flexbe_core import OperatableStateMachine
 from flexbe_core import PriorityContainer
 from cotyaka_omega_flexbe_behaviors.grasp_to_tf_sm import Grasp_to_TFSM
 from cotyaka_omega_flexbe_behaviors.sam3_test_sm import sam3_testSM
-from cotyaka_omega_flexbe_states.moveit_param_client_joint import MoveItJointClientParamState
 
 # Additional imports can be added inside the following tags
 # [MANUAL_IMPORT]
@@ -65,7 +64,7 @@ class pick_and_place_with_using_TFSM(Behavior):
         ConcurrencyContainer.initialize_ros(node)
         PriorityContainer.initialize_ros(node)
         Logger.initialize(node)
-        MoveItJointClientParamState.initialize_ros(node)
+
         self.add_behavior(Grasp_to_TFSM, 'Grasp_to_TF', node)
         self.add_behavior(sam3_testSM, 'sam3_test', node)
 
@@ -86,12 +85,6 @@ class pick_and_place_with_using_TFSM(Behavior):
 
         # [/MANUAL_CREATE]
         with _state_machine:
-            # x:125 y:75
-            OperatableStateMachine.add('move_serch',
-                                       MoveItJointClientParamState(group_name='arm', joint_names=['joint1','joint2','joint3','joint4','joint5','joint6'], target_joints=[0.0,0.34,-0.65,0.0,0.96,0.0], tolerance=0.01, action_topic='move_action'),
-                                       transitions={'reached': 'sam3_test', 'failed': 'failed'},
-                                       autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
-
             # x:377 y:70
             OperatableStateMachine.add('sam3_test',
                                        self.use_behavior(sam3_testSM, 'sam3_test'),
