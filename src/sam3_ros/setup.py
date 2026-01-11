@@ -28,6 +28,7 @@ setup(
         'tf_pub_node = sam3_ros.TF_pub_node:main',
         'sam3_node_for_tracker = sam3_ros.sam3_node_pub_BB_position:main',
         'sam3_hybrid_tracker = sam3_ros.Tracker_node:main',
+        'sam3_node_for_videoTracker = sam3_ros.test_sam3_node_for_videoTracker:main',
         ],
     },
 )

@@ -148,7 +148,7 @@ class BroadcastTFfromVision(EventState):
                 q = tf_link6.transform.rotation
                 t.transform.rotation = q
             # link6 の -Z 方向に 0.06m
-                d = 0.06
+                d = 0.08
             # クォータニオン → 回転行列の -Z 列だけ計算
             # R * (0,0,-d)
                 x = -d * (2*(q.x*q.z + q.w*q.y))
