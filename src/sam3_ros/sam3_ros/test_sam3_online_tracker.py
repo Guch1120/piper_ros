@@ -7,7 +7,7 @@ from sam3.model.utils.misc import copy_data_to_device
 import gc
 
 class Sam3OnlineTracker:
-    def __init__(self, checkpoint_path=None, device="cuda", max_frames=15): # ★15フレーム(0.5秒)に制限
+    def __init__(self, checkpoint_path=None, device="cuda", max_frames=8): # ★8フレーム(ギリギリ)に設定
         print("Sam3OnlineTracker: Initializing...", flush=True)
         self.device = device
         
@@ -15,10 +15,10 @@ class Sam3OnlineTracker:
         gc.collect()
         torch.cuda.empty_cache()
 
-        # FP32 (OOM回避のためフレーム数を削る方針)
+        # ★基本はFP32でロード (型エラー回避のため)
         self.dtype = torch.float32
         
-        print(f"Sam3OnlineTracker: Building model on {device} (FP32, Default Size)...", flush=True)
+        print(f"Sam3OnlineTracker: Building model on {device} (FP32 Weights + Autocast)...", flush=True)
         
         self.model = build_sam3_video_model(
             checkpoint_path=checkpoint_path,
@@ -26,18 +26,19 @@ class Sam3OnlineTracker:
             apply_temporal_disambiguation=True,
         )
         
-        # ★重要: 解像度変更は削除 (AssertionError回避)
-        # self.model.image_size = 512  <-- DELETE
-        
         self.model.to(device)
         self.model.eval()
         
+        # 変数初期化
         self.inference_state = None
         self.max_frames = max_frames
-        self.lost_count = 0 
-        print(f"Sam3OnlineTracker: Model built. Memory limit: {self.max_frames} frames.", flush=True)
+        self.lost_count = 0
+        self.current_text_prompt = None
+        
+        print(f"Sam3OnlineTracker: Ready. Max Memory: {self.max_frames} frames.", flush=True)
 
     def reset_state(self):
+        """メモリを解放し、ステートを初期化"""
         if self.inference_state is not None:
             del self.inference_state
             self.inference_state = None
@@ -47,10 +48,14 @@ class Sam3OnlineTracker:
 
     @torch.inference_mode()
     def init_track(self, image_np, text_prompt=None, mask_prompt=None):
-        # Autocast有効化
+        """追跡初期化。Autocastを使用してVRAMを節約"""
         with torch.autocast(device_type=self.device, dtype=torch.float16):
             self.reset_state()
             
+            # 自動復帰用にプロンプトを保存
+            if text_prompt is not None:
+                self.current_text_prompt = text_prompt
+
             img_pil = Image.fromarray(image_np)
             
             self.inference_state = self.model.init_state(
@@ -69,52 +74,64 @@ class Sam3OnlineTracker:
                     obj_id=0,
                     masks=mask_tensor
                 )
-            elif text_prompt is not None:
+            elif self.current_text_prompt is not None:
                 self.model.add_prompt(
                     self.inference_state,
                     frame_idx=0,
                     obj_id=0,
-                    text_str=text_prompt
+                    text_str=self.current_text_prompt
                 )
             
             masks = self._run_propagate(start_idx=0)
+            
+            # 初期化失敗（見つからなかった）場合
+            if not masks or len(masks) == 0:
+                self.reset_state()
+                return None
+                
             return masks
 
     @torch.inference_mode()
     def step(self, image_np):
+        """毎フレームの処理"""
+        # まだ初期化されていない場合 -> 自動復帰を試みる
         if self.inference_state is None:
-            return None
+            if self.current_text_prompt is not None:
+                return self.init_track(image_np)
+            else:
+                return None
         
         with torch.autocast(device_type=self.device, dtype=torch.float16):
-            # ロスト判定 (10フレームまで許容)
-            if self.lost_count > 10: 
-                print("[Tracker] Object lost for too long. Resetting memory.", flush=True)
+            # 1. ロスト判定 (5フレーム見失ったらリセットして再検索)
+            if self.lost_count > 5: 
                 self.reset_state()
-                return None
+                return self.init_track(image_np) 
 
             current_num_frames = self.inference_state["num_frames"]
             
-            # メモリ上限管理
+            # 2. メモリ上限管理 (8フレーム超えたらハンドオーバー)
             if current_num_frames >= self.max_frames:
                 last_mask = self._get_mask(current_num_frames - 1)
                 
                 if last_mask and len(last_mask) > 0:
-                    # メモリ掃除を行ってからハンドオーバー
-                    gc.collect() 
+                    # メモリ掃除してから継続
+                    gc.collect()
                     return self.init_track(image_np, mask_prompt=last_mask[0])
                 else:
-                    print("[Memory] Limit reached & Object Lost. Resetting.", flush=True)
+                    # 上限に来たが見失っている -> リセット
                     self.reset_state()
-                    return None
+                    return self.init_track(image_np)
 
+            # 3. 画像処理
             img_pil = Image.fromarray(image_np)
             new_frame_tensor, _, _ = self._process_image(img_pil)
-            new_frame_tensor = new_frame_tensor.to(self.device)
+            
+            # FP32モデルへの入力なので、Tensor自体はFP32でOK (Autocastが面倒を見る)
+            new_frame_tensor = new_frame_tensor.to(self.device) 
             
             self._append_frame_to_state(new_frame_tensor)
             
             frame_idx = self.inference_state["num_frames"] - 1
-            
             masks = self._run_propagate(start_idx=frame_idx)
             
             if masks and len(masks) > 0:
@@ -135,15 +152,17 @@ class Sam3OnlineTracker:
         return self._get_mask(start_idx)
 
     def _process_image(self, img_pil):
-        image_size = self.model.image_size # デフォルト(1024)を使用
-        img_mean = torch.tensor(self.model.image_mean, dtype=torch.float32)[:, None, None]
-        img_std = torch.tensor(self.model.image_std, dtype=torch.float32)[:, None, None]
+        image_size = self.model.image_size # 1024
+        
+        # FP32 Tensorで確保
+        img_mean = torch.tensor(self.model.image_mean, device=self.device, dtype=torch.float32)[:, None, None]
+        img_std = torch.tensor(self.model.image_std, device=self.device, dtype=torch.float32)[:, None, None]
         
         img_np = np.array(img_pil.convert("RGB").resize((image_size, image_size)))
         img_np = img_np / 255.0
         img = torch.as_tensor(img_np).permute(2, 0, 1)
         
-        img = img.to(dtype=torch.float32)
+        img = img.to(device=self.device, dtype=torch.float32)
         img -= img_mean
         img /= img_std
         return img.unsqueeze(0), img_pil.height, img_pil.width
@@ -159,6 +178,7 @@ class Sam3OnlineTracker:
         
         input_box_embedding_dim = 258
         input_points_embedding_dim = 257
+        
         new_stage = FindStage(
             img_ids=[state["num_frames"] - 1],
             text_ids=[0],
