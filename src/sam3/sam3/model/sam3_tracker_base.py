@@ -266,8 +266,20 @@ class Sam3TrackerBase(torch.nn.Module):
         B = backbone_features.size(0)
         device = backbone_features.device
         assert backbone_features.size(1) == self.sam_prompt_embed_dim
-        assert backbone_features.size(2) == self.sam_image_embedding_size
-        assert backbone_features.size(3) == self.sam_image_embedding_size
+        # [Fix] Allow dynamic backbone feature size (don't assert on fixed sam_image_embedding_size)
+        # assert backbone_features.size(2) == self.sam_image_embedding_size
+        # assert backbone_features.size(3) == self.sam_image_embedding_size
+
+        # [Fix] Update prompt encoder image size dynamically if needed
+        curr_embedding_size = (backbone_features.size(2), backbone_features.size(3))
+        # print(f"DEBUG: _forward_sam_heads backbone_size={curr_embedding_size}, encoder_size={self.sam_prompt_encoder.image_embedding_size}")
+        
+        if curr_embedding_size != self.sam_prompt_encoder.image_embedding_size:
+             # print(f"DEBUG: Updating PromptEncoder size to {curr_embedding_size}")
+             self.sam_prompt_encoder.image_embedding_size = curr_embedding_size
+             self.sam_prompt_encoder.input_image_size = (curr_embedding_size[0]*self.backbone_stride, curr_embedding_size[1]*self.backbone_stride)
+             # Also update mask_input_size
+             self.sam_prompt_encoder.mask_input_size = (4 * curr_embedding_size[0], 4 * curr_embedding_size[1])
 
         # a) Handle point prompts
         if point_inputs is not None:
@@ -832,6 +844,15 @@ class Sam3TrackerBase(torch.nn.Module):
 
         if isinstance(self.maskmem_backbone, SimpleMaskEncoder):
             pix_feat = pix_feat.view_as(pix_feat)
+            
+            # [Fix] Update mask_downsampler interpol_size dynamically
+            resolution_scaling = 16 # total_stride in SimpleMaskDownSampler
+            expected_interpol_size = [pix_feat.shape[-2] * resolution_scaling, pix_feat.shape[-1] * resolution_scaling]
+            current_interpol_size = self.maskmem_backbone.mask_downsampler.interpol_size
+            if current_interpol_size is not None and list(current_interpol_size) != expected_interpol_size:
+                 # print(f"DEBUG: Updating mask_downsampler interpol from {current_interpol_size} to {expected_interpol_size}")
+                 self.maskmem_backbone.mask_downsampler.interpol_size = expected_interpol_size
+            
             maskmem_out = self.maskmem_backbone(
                 pix_feat, mask_for_mem, skip_mask_sigmoid=True
             )

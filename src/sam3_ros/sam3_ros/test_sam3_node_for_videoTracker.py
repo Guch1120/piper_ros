@@ -9,6 +9,7 @@ import numpy as np
 import torch
 import os
 
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 # パス調整
 try:
     from sam3_ros.test_sam3_online_tracker import Sam3OnlineTracker
@@ -30,7 +31,7 @@ class Sam3VideoOnlineTracker(Node):
         
         self.get_logger().info(f"Loading SAM3 Video Model on {self.device}...")
         # Tracker側の設定は変更なし
-        self.tracker = Sam3OnlineTracker(device=self.device, checkpoint_path=str(ckpt_path), max_frames=8)
+        self.tracker = Sam3OnlineTracker(device=self.device, checkpoint_path=str(ckpt_path), max_frames=4)
         self.get_logger().info("SAM3 Video Ready.")
 
         self.latest_cv_image = None

@@ -71,6 +71,12 @@ class TransformerDecoderLayer(nn.Module):
         return tensor if pos is None else tensor + pos
 
     def forward_ffn(self, tgt):
+        # [Fix] Ensure tgt matches weight dtype (needed because autocast is disabled)
+        weight_dtype = self.linear1.weight.dtype
+        if tgt.dtype != weight_dtype:
+             # print(f"DEBUG: forward_ffn casting tgt {tgt.dtype} to {weight_dtype}")
+             tgt = tgt.to(dtype=weight_dtype)
+
         with torch.amp.autocast(device_type="cuda", enabled=False):
             tgt2 = self.linear2(self.dropout3(self.activation(self.linear1(tgt))))
         tgt = tgt + self.dropout4(tgt2)

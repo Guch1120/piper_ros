@@ -461,6 +461,56 @@ class Attention(nn.Module):
             return q, k
 
         assert self.freqs_cis is not None
+
+        # [Fix] Dynamically recompute freqs_cis if dimensions mismatch (e.g. valid size change)
+        # q is (B, nHead, L, C) or (B, H, W, C) depending on reshape in forward
+        # But here inside _apply_rope, q is (B, nHead, L, C)
+        # However, apply_rotary_enc expects spatial dims.
+        # Actually, in forward(), q is reshaped to (B, L, 3, nHead, C) -> permute -> (B, nHead, L, C)
+        # But wait, apply_rotary_enc does: xq_ = xq.reshape(*xq.shape[:-1], -1, 2)
+        # And reshape_for_broadcast checks x.shape[-2] vs freqs_cis.shape[0]
+        # xq_ shape[-2] is the sequence length L.
+        # freqs_cis shape is (L, C/2) ? No.
+        # compute_axial_cis returns (H, W, C/something)?
+        # Let's see compute_axial_cis: returns (H, W, C/2) flattened?
+        # No, it returns (H, W, ...) -> combined
+        # Wait, compute_axial_cis returns flattened?
+        # freqs_x = outer(t_x, freqs_x) -> (H, D/2)
+        # freqs_y = outer(t_y, freqs_y) -> (W, D/2)
+        # polar -> complex
+        # cat -> (H, W, D) ? No.
+
+        # Let's look at compute_axial_cis again.
+        # t_x is (H*W)
+        # t_x, t_y = init_t_xy(end_x, end_y...) -> t_x is (H*W)
+        # freqs_cis_x -> (H*W, D/4)
+        # cat -> (H*W, D/2)
+        # So freqs_cis is (L, D/2).
+        
+        # Check if length matches
+        seq_len = q.shape[-2]
+        if self.freqs_cis.shape[0] != seq_len:
+             # Recompute
+             # Assume square aspect ratio for simplicity as per original code structure implies or infer from seq_len
+             size = int(math.sqrt(seq_len))
+             if size * size == seq_len:
+                 new_freqs = self.compute_cis(
+                    end_x=size,
+                    end_y=size,
+                    scale_pos=1.0 # Assuming no scaling for now, or use cached scale logic
+                 )
+                 if self.cls_token:
+                     # Add dummy for CLS if needed (though existing code handled it)
+                     # But wait, logic above says:
+                     # t = torch.zeros(..., device=freqs_cis.device)
+                     # cls_freqs_cis = ...
+                     # freqs_cis = cat(...)
+                     t = torch.zeros(self.head_dim // 2, dtype=torch.float32, device=q.device)
+                     cls_freqs_cis = torch.polar(torch.ones_like(t), t)[None, :]
+                     new_freqs = torch.cat([cls_freqs_cis, new_freqs], dim=0)
+
+                 self.freqs_cis = new_freqs.to(q.device)
+
         return apply_rotary_enc(q, k, freqs_cis=self.freqs_cis)
 
     def forward(self, x: Tensor) -> Tensor:
