@@ -24,6 +24,7 @@ class Sam3OnlineTracker:
             checkpoint_path=checkpoint_path,
             device=device,
             apply_temporal_disambiguation=True,
+            compile=False, # ユーザー懸念のため明示的に無効化
         )
         
         self.model.to(device)
@@ -40,56 +41,56 @@ class Sam3OnlineTracker:
     def reset_state(self):
         """メモリを解放し、ステートを初期化"""
         if self.inference_state is not None:
+            # inference_stateの削除だけ行う
             del self.inference_state
             self.inference_state = None
             self.lost_count = 0
-            gc.collect()
-            torch.cuda.empty_cache()
+            # gc.collect() # 頻繁に呼ぶとフレーム落ちの原因になるため削除
+            # torch.cuda.empty_cache()
 
     @torch.inference_mode()
     def init_track(self, image_np, text_prompt=None, mask_prompt=None):
-        """追跡初期化。Autocastを使用してVRAMを節約"""
-        with torch.autocast(device_type=self.device, dtype=torch.float16):
-            self.reset_state()
-            
-            # 自動復帰用にプロンプトを保存
-            if text_prompt is not None:
-                self.current_text_prompt = text_prompt
+        """追跡初期化。標準のFP32(またはモデルのデフォルト精度)で実行"""
+        self.reset_state()
+        
+        # 自動復帰用にプロンプトを保存
+        if text_prompt is not None:
+            self.current_text_prompt = text_prompt
 
-            img_pil = Image.fromarray(image_np)
+        img_pil = Image.fromarray(image_np)
+        
+        self.inference_state = self.model.init_state(
+            resource_path=[img_pil],
+            video_loader_type="cv2",
+        )
+        
+        if mask_prompt is not None:
+            mask_tensor = torch.tensor(mask_prompt, dtype=torch.bool, device=self.device)
+            if mask_tensor.ndim == 2:
+                mask_tensor = mask_tensor.unsqueeze(0)
             
-            self.inference_state = self.model.init_state(
-                resource_path=[img_pil],
-                video_loader_type="cv2",
+            self.model.add_prompt(
+                self.inference_state,
+                frame_idx=0,
+                obj_id=0,
+                masks=mask_tensor
             )
+        elif self.current_text_prompt is not None:
+            self.model.add_prompt(
+                self.inference_state,
+                frame_idx=0,
+                obj_id=0,
+                text_str=self.current_text_prompt
+            )
+        
+        masks = self._run_propagate(start_idx=0)
+        
+        # 初期化失敗（見つからなかった）場合
+        if not masks or len(masks) == 0:
+            self.reset_state()
+            return None
             
-            if mask_prompt is not None:
-                mask_tensor = torch.tensor(mask_prompt, dtype=torch.bool, device=self.device)
-                if mask_tensor.ndim == 2:
-                    mask_tensor = mask_tensor.unsqueeze(0)
-                
-                self.model.add_prompt(
-                    self.inference_state,
-                    frame_idx=0,
-                    obj_id=0,
-                    masks=mask_tensor
-                )
-            elif self.current_text_prompt is not None:
-                self.model.add_prompt(
-                    self.inference_state,
-                    frame_idx=0,
-                    obj_id=0,
-                    text_str=self.current_text_prompt
-                )
-            
-            masks = self._run_propagate(start_idx=0)
-            
-            # 初期化失敗（見つからなかった）場合
-            if not masks or len(masks) == 0:
-                self.reset_state()
-                return None
-                
-            return masks
+        return masks
 
     @torch.inference_mode()
     def step(self, image_np):
@@ -101,45 +102,43 @@ class Sam3OnlineTracker:
             else:
                 return None
         
-        with torch.autocast(device_type=self.device, dtype=torch.float16):
-            # 1. ロスト判定 (5フレーム見失ったらリセットして再検索)
-            if self.lost_count > 5: 
-                self.reset_state()
-                return self.init_track(image_np) 
+        # 1. ロスト判定 (5フレーム見失ったらリセットして再検索)
+        if self.lost_count > 5: 
+            self.reset_state()
+            return self.init_track(image_np) 
 
-            current_num_frames = self.inference_state["num_frames"]
+        current_num_frames = self.inference_state["num_frames"]
+        
+        # 2. メモリ上限管理 (8フレーム超えたらハンドオーバー)
+        if current_num_frames >= self.max_frames:
+            last_mask = self._get_mask(current_num_frames - 1)
             
-            # 2. メモリ上限管理 (8フレーム超えたらハンドオーバー)
-            if current_num_frames >= self.max_frames:
-                last_mask = self._get_mask(current_num_frames - 1)
-                
-                if last_mask and len(last_mask) > 0:
-                    # メモリ掃除してから継続
-                    gc.collect()
-                    return self.init_track(image_np, mask_prompt=last_mask[0])
-                else:
-                    # 上限に来たが見失っている -> リセット
-                    self.reset_state()
-                    return self.init_track(image_np)
-
-            # 3. 画像処理
-            img_pil = Image.fromarray(image_np)
-            new_frame_tensor, _, _ = self._process_image(img_pil)
-            
-            # FP32モデルへの入力なので、Tensor自体はFP32でOK (Autocastが面倒を見る)
-            new_frame_tensor = new_frame_tensor.to(self.device) 
-            
-            self._append_frame_to_state(new_frame_tensor)
-            
-            frame_idx = self.inference_state["num_frames"] - 1
-            masks = self._run_propagate(start_idx=frame_idx)
-            
-            if masks and len(masks) > 0:
-                self.lost_count = 0
+            if last_mask and len(last_mask) > 0:
+                # メモリ掃除してから継続 (gcは重いので削除)
+                return self.init_track(image_np, mask_prompt=last_mask[0])
             else:
-                self.lost_count += 1
-            
-            return masks
+                # 上限に来たが見失っている -> リセット
+                self.reset_state()
+                return self.init_track(image_np)
+
+        # 3. 画像処理
+        img_pil = Image.fromarray(image_np)
+        new_frame_tensor, _, _ = self._process_image(img_pil)
+        
+        # Tensorをデバイスへ転送
+        new_frame_tensor = new_frame_tensor.to(self.device) 
+        
+        self._append_frame_to_state(new_frame_tensor)
+        
+        frame_idx = self.inference_state["num_frames"] - 1
+        masks = self._run_propagate(start_idx=frame_idx)
+        
+        if masks and len(masks) > 0:
+            self.lost_count = 0
+        else:
+            self.lost_count += 1
+        
+        return masks
 
     def _run_propagate(self, start_idx):
         for _ in self.model.propagate_in_video(
