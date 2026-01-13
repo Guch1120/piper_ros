@@ -151,6 +151,39 @@
     use_custom_command = True
     custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 run sam3_ros sam3_node; bash
     use_system_font = False
+  [[cmd_sam3_node_tracker]]
+    background_color = "#300a24"
+    background_darkness = 0.9
+    background_type = transparent
+    cursor_color = "#aaaaaa"
+    font = Monospace 10
+    foreground_color = "#ffffff"
+    show_titlebar = False
+    use_custom_command = True
+    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 run sam3_ros sam3_hybrid_tracker ; bash
+    use_system_font = False
+  [[cmd_piper_start_action]]
+    background_color = "#300a24"
+    background_darkness = 0.9
+    background_type = transparent
+    cursor_color = "#aaaaaa"
+    font = Monospace 10
+    foreground_color = "#ffffff"
+    show_titlebar = False
+    use_custom_command = True
+    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 launch piper start_single_moveit_piper_action.launch.py ; bash
+    use_system_font = False
+  [[cmd_activate_can]]
+    background_color = "#300a24"
+    background_darkness = 0.9
+    background_type = transparent
+    cursor_color = "#aaaaaa"
+    font = Monospace 10
+    foreground_color = "#ffffff"
+    show_titlebar = False
+    use_custom_command = True
+    custom_command = bash  /ros2_ws/run_ros_cmd.sh bash can_activate.sh can0 1000000;
+    use_system_font = False
 [layouts]
   [[default]]
     [[[window0]]]
@@ -164,19 +197,19 @@
       type = Window
       parent = ""
       order = 0
-      position = 0:27
+      position = 0:0
       maximised = True
       fullscreen = False
-      size = 1920, 1016
+      size = 1920, 1043
       title = @robo25-Alienware-m15-R3:/ros2_ws
-      last_active_term = 81ab64ea-4a43-44dc-aa01-d0580c85e002
+      last_active_term = 10e3a3f2-ce23-4e3b-965b-1430016c2c1d
       last_active_window = True
     [[[child1]]]
       type = VPaned
       parent = child0
       order = 0
-      position = 508
-      ratio = 0.5024727992087042
+      position = 522
+      ratio = 0.5028901734104047
     [[[child2]]]
       type = HPaned
       parent = child1
@@ -187,14 +220,14 @@
       type = VPaned
       parent = child2
       order = 0
-      position = 249
-      ratio = 0.49502982107355864
+      position = 255
+      ratio = 0.4932301740812379
     [[[child4]]]
       type = HPaned
       parent = child3
       order = 0
-      position = 479
-      ratio = 0.5015706806282723
+      position = 478
+      ratio = 0.5005235602094241
     [[[terminal5]]]
       type = Terminal
       parent = child4
@@ -205,14 +238,14 @@
       type = Terminal
       parent = child4
       order = 1
-      profile = default
-      uuid = 40b69007-7213-4d65-a60b-865613dcd80f
+      profile = cmd_activate_can
+      uuid = 10e3a3f2-ce23-4e3b-965b-1430016c2c1d
     [[[child7]]]
       type = HPaned
       parent = child3
       order = 1
-      position = 479
-      ratio = 0.5015706806282723
+      position = 478
+      ratio = 0.5005235602094241
     [[[terminal8]]]
       type = Terminal
       parent = child7
@@ -229,8 +262,8 @@
       type = VPaned
       parent = child2
       order = 1
-      position = 254
-      ratio = 0.5049701789264414
+      position = 262
+      ratio = 0.5067698259187621
     [[[child11]]]
       type = HPaned
       parent = child10
@@ -247,19 +280,19 @@
       type = Terminal
       parent = child11
       order = 1
-      profile = default
+      profile = cmd_sam3_node_tracker
       uuid = 81ab64ea-4a43-44dc-aa01-d0580c85e002
     [[[child14]]]
       type = HPaned
       parent = child10
       order = 1
-      position = 478
-      ratio = 0.5031578947368421
+      position = 480
+      ratio = 0.5052631578947369
     [[[terminal15]]]
       type = Terminal
       parent = child14
       order = 0
-      profile = cmd_piper_bridge
+      profile = default
       uuid = 79e6da3c-5668-4c46-bb35-75634b63a509
     [[[terminal16]]]
       type = Terminal
@@ -271,8 +304,8 @@
       type = VPaned
       parent = child1
       order = 1
-      position = 251
-      ratio = 0.5040160642570282
+      position = 257
+      ratio = 0.50293542074364
     [[[child18]]]
       type = HPaned
       parent = child17
@@ -301,7 +334,7 @@
       type = Terminal
       parent = child21
       order = 0
-      profile = cmd_piper_start
+      profile = cmd_piper_start_action
       uuid = 53a0e0dc-8601-4b28-8dcf-00e3f3f11356
     [[[terminal23]]]
       type = Terminal
