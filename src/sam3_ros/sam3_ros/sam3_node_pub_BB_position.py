@@ -17,6 +17,17 @@ import matplotlib.pyplot as plt
 
 
 class Sam3ServiceForTracker(Node):
+    
+    '''
+    sam3ノード
+    /sam3/request トピックで対象物の名前を受け取り、
+    RGB-D画像からSAM3で対象物を検出し、
+    重心の(u, v)座標と深度zを /sam3/result トピックに配信する。
+    また、検出した対象物のバウンディングボックスを /sam3/bbox トピックに配信する。
+    デバッグ用に検出結果の可視化画像を /sam3/debug_image トピックに配信する。
+    もし検出に失敗した場合、z座標を-1.0として通知する。
+    '''
+    
     def __init__(self):
         super().__init__('sam3_service_for_tracker')
         self.bridge = CvBridge()

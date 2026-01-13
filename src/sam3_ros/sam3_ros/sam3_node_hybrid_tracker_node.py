@@ -21,6 +21,18 @@ except ImportError:
     from test_sam3_online_tracker import Sam3OnlineTracker
 
 class Sam3HybridTracker(Node):
+    
+    '''
+    sam3ノード
+    /sam3/start_track トピックで対象物の名前を受け取る．
+    RGB画像から対象物をDaSiamRPNで追跡する.これはBB内を対象とした追跡処理.
+    一定間隔で過去の追跡履歴とSAM3の結果を照合し,追跡がズレている場合はSAM3で再初期化を行う.
+    重心の(u, v)座標を /sam3/track_result トピックで配信．
+    デバッグ用に追跡結果の可視化画像を /sam3/track_debug トピックに配信．
+    
+    実行するときはリクエストをros2 topic
+    '''
+    
     def __init__(self):
         super().__init__('sam3_hybrid_tracker')
         
