@@ -158,6 +158,8 @@ class Sam3HybridTracker(Node):
                 status_color = (0, 255, 0)
                 if color_dist > self.COLOR_DISTANCE_THRESHOLD:
                     status_color = (0, 165, 255) # オレンジ (警告色)
+                    # 色変化大 -> SAM3で再検証を即時トリガー
+                    self._trigger_async_verification(img_bgr, force=True)
 
                 cv2.rectangle(debug_img, (x, y), (x+w, y+h), status_color, 2)
                 cv2.putText(debug_img, f"{self.tracker_name}: {color_dist:.2f}", (x, y-10), 
@@ -262,20 +264,25 @@ class Sam3HybridTracker(Node):
 
     # --- 非同期検証用ロジック ---
     def verify_tracking_timer_cb(self):
-        """タイマーから呼ばれる。スレッドを起動するだけ"""
+        """タイマーから呼ばれる。"""
+        with self.lock:
+            if self.latest_cv_image is None: return
+            img = self.latest_cv_image
+        
+        self._trigger_async_verification(img, force=False)
+
+    def _trigger_async_verification(self, img_bgr, force=False):
+        """検証スレッドを起動するヘルパー。force=Trueなら時間経過を無視して直ちに実行"""
         if not self.tracking_active or self.is_verifying:
             return
 
-        if (self.get_clock().now() - self.last_sam3_init_time).nanoseconds / 1e9 < self.VERIFY_INTERVAL_SEC:
-            return
-            
-        # 画像をコピーしてスレッドに渡す
-        with self.lock:
-            if self.latest_cv_image is None: return
-            verify_img = self.latest_cv_image.copy()
-            verify_time = self.get_clock().now()
-        
+        if not force:
+            if (self.get_clock().now() - self.last_sam3_init_time).nanoseconds / 1e9 < self.VERIFY_INTERVAL_SEC:
+                return
+
         # スレッド起動
+        verify_img = img_bgr.copy()
+        verify_time = self.get_clock().now()
         thread = threading.Thread(target=self._worker_verify, args=(verify_img, verify_time))
         thread.start()
 
