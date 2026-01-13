@@ -1,24 +1,30 @@
 import torch
 import numpy as np
+import cv2
 from PIL import Image
 from sam3.model_builder import build_sam3_video_model
 from sam3.model.data_misc import FindStage, convert_my_tensors
 from sam3.model.utils.misc import copy_data_to_device
-import gc
+# import gc # Removed for performance
 
 class Sam3OnlineTracker:
-    def __init__(self, checkpoint_path=None, device="cuda", max_frames=8): # ★8フレーム(ギリギリ)に設定
+    def __init__(self, checkpoint_path=None, device="cuda", max_frames=10, processing_size=512):
         print("Sam3OnlineTracker: Initializing...", flush=True)
         self.device = device
         
-        # 徹底的なメモリ掃除
-        gc.collect()
-        torch.cuda.empty_cache()
+        # Determine best dtype
+        if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
+            self.dtype = torch.bfloat16
+            print("Sam3OnlineTracker: Using bfloat16 for best performance.")
+        else:
+            self.dtype = torch.float16
+            print("Sam3OnlineTracker: Using float16.")
 
-        # ★基本はFP32でロード (型エラー回避のため)
-        self.dtype = torch.float32
+        # Performance tuning: Image resolution
+        # Setting this lower (e.g. 512, 640) significantly speeds up the image encoder
+        self.processing_size = processing_size
         
-        print(f"Sam3OnlineTracker: Building model on {device} (FP32 Weights + Autocast)...", flush=True)
+        print(f"Sam3OnlineTracker: Building model on {device} (Resolution: {processing_size}x{processing_size})...", flush=True)
         
         self.model = build_sam3_video_model(
             checkpoint_path=checkpoint_path,
@@ -30,16 +36,17 @@ class Sam3OnlineTracker:
         self.model.to(device)
         self.model.eval()
         
-        # 変数初期化
+        # Initialize variables
         self.inference_state = None
         self.max_frames = max_frames
         self.lost_count = 0
         self.current_text_prompt = None
+        self.original_wh = (1024, 1024) # Default placeholder
         
         print(f"Sam3OnlineTracker: Ready. Max Memory: {self.max_frames} frames.", flush=True)
 
     def reset_state(self):
-        """メモリを解放し、ステートを初期化"""
+        """Reset state and clear memory efficienty"""
         if self.inference_state is not None:
             # inference_stateの削除だけ行う
             del self.inference_state
@@ -94,8 +101,8 @@ class Sam3OnlineTracker:
 
     @torch.inference_mode()
     def step(self, image_np):
-        """毎フレームの処理"""
-        # まだ初期化されていない場合 -> 自動復帰を試みる
+        """Per-frame processing"""
+        # Auto-recovery if not initialized
         if self.inference_state is None:
             if self.current_text_prompt is not None:
                 return self.init_track(image_np)
@@ -151,13 +158,15 @@ class Sam3OnlineTracker:
         return self._get_mask(start_idx)
 
     def _process_image(self, img_pil):
-        image_size = self.model.image_size # 1024
+        # Use the configured processing size
+        target_size = self.processing_size
         
-        # FP32 Tensorで確保
+        # Standardize normalization for SAM
         img_mean = torch.tensor(self.model.image_mean, device=self.device, dtype=torch.float32)[:, None, None]
         img_std = torch.tensor(self.model.image_std, device=self.device, dtype=torch.float32)[:, None, None]
         
-        img_np = np.array(img_pil.convert("RGB").resize((image_size, image_size)))
+        # Resize logic
+        img_np = np.array(img_pil.convert("RGB").resize((target_size, target_size)))
         img_np = img_np / 255.0
         img = torch.as_tensor(img_np).permute(2, 0, 1)
         
@@ -206,8 +215,15 @@ class Sam3OnlineTracker:
             if mask is not None and mask.numel() > 0:
                  if mask.sum() > 0:
                     mask_np = (mask.cpu().numpy().astype(np.uint8) * 255)
+                    # Handle multiple mask dimensions
                     if mask_np.ndim == 3:
                         mask_np = mask_np[0]
+                    
+                    # Resize mask back to original resolution
+                    target_w, target_h = self.original_wh
+                    if mask_np.shape[0] != target_h or mask_np.shape[1] != target_w:
+                         mask_np = cv2.resize(mask_np, (target_w, target_h), interpolation=cv2.INTER_NEAREST)
+
                     masks.append(mask_np)
         
         return masks
