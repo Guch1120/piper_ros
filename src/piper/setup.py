@@ -38,6 +38,7 @@ setup(
             'pick_and_place_trajectory = piper.pick_and_place_trajectry:main',
             'gripper_open_test = piper.gripper_open_test_node:main',
             'gripper_close_test = piper.gripper_close_test_node:main',
+            'piper_single_ctrl_moveit_action = piper.piper_single_ctrl_moveit_action_node:main',
         ],
     },
 )
