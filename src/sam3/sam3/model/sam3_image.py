@@ -3,7 +3,6 @@
 import os
 from copy import deepcopy
 from typing import Dict, List, Optional, Tuple
-import math
 
 import numpy as np
 import torch
@@ -153,8 +152,7 @@ class Sam3Image(torch.nn.Module):
         else:
             image = torch.stack([img_batch[i] for i in unique_ids.tolist()])
         # `img_batch` might be fp16 and offloaded to CPU
-        target_dtype = self.backbone.parameters().__next__().dtype if hasattr(self.backbone, "parameters") else torch.float32
-        image = image.to(dtype=target_dtype, device=self.device)
+        image = image.to(dtype=torch.float32, device=self.device)
         # Next time we call this function, we want to remember which indices we computed
         id_mapping = torch.full(
             (len(img_batch),), -1, dtype=torch.long, device=self.device
@@ -266,35 +264,8 @@ class Sam3Image(torch.nn.Module):
         bs = memory.shape[1]
         query_embed = self.transformer.decoder.query_embed.weight
         tgt = query_embed.unsqueeze(1).repeat(1, bs, 1)
-        
-        # [Fix] Ensure memory has same dtype as tgt (BF16/FP16 compatibility)
-        if memory is not None and tgt.dtype != memory.dtype:
-            # print(f"DEBUG: Casting memory {memory.dtype} to {tgt.dtype}")
-            memory = memory.to(dtype=tgt.dtype)
-        
-        # [Debug] Print dtypes
-        if memory is not None:
-             print(f"DEBUG: _run_decoder - memory: {memory.dtype}, tgt: {tgt.dtype}, query_embed: {query_embed.dtype}")
 
         apply_dac = self.transformer.decoder.dac and self.training
-        
-        # [Fix] Update spatial_shapes based on actual memory size to avoid attn_mask mismatch
-        # memory is (L, B, C). L = H*W.
-        if memory is not None:
-             seq_len = memory.shape[0]
-             # Assuming square feature map for simplicity and consistency with other fixes
-             cur_size = int(math.sqrt(seq_len))
-             if cur_size * cur_size == seq_len:
-                  # spatial_shapes is tensor of (n_levels, 2)
-                  # If mismatch, update it.
-                  # Note: encoder_out["spatial_shapes"] might be on device.
-                  sp_shapes = encoder_out["spatial_shapes"]
-                  if sp_shapes[0, 0] != cur_size:
-                       # print(f"DEBUG: Updating spatial_shapes from {sp_shapes[0]} to ({cur_size}, {cur_size})")
-                       new_shapes = torch.tensor([[cur_size, cur_size]], device=sp_shapes.device, dtype=sp_shapes.dtype)
-                       encoder_out["spatial_shapes"] = new_shapes
-
-
         hs, reference_boxes, dec_presence_out, dec_presence_feats = (
             self.transformer.decoder(
                 tgt=tgt,

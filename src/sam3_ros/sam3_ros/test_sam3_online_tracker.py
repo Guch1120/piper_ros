@@ -1,5 +1,3 @@
-# test_sam3_online_tracker.py
-
 import torch
 import numpy as np
 import cv2
@@ -7,17 +5,23 @@ from PIL import Image
 from sam3.model_builder import build_sam3_video_model
 from sam3.model.data_misc import FindStage, convert_my_tensors
 from sam3.model.utils.misc import copy_data_to_device
+# import gc # Removed for performance
 
 class Sam3OnlineTracker:
-    def __init__(self, checkpoint_path=None, device="cuda", max_frames=10, processing_size=384):
+    def __init__(self, checkpoint_path=None, device="cuda", max_frames=10, processing_size=512):
         print("Sam3OnlineTracker: Initializing...", flush=True)
         self.device = device
         
-        # Use float16 for better compatibility with RTX 20 series (Turing) and torch.compile
-        # Bfloat16 support on 20 series is limited and causes compilation skip/warnings
-        self.dtype = torch.float16
-        print("Sam3OnlineTracker: Using float16 weights (Forced for RTX 2070 compatibility).")
-        
+        # Determine best dtype
+        if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
+            self.dtype = torch.bfloat16
+            print("Sam3OnlineTracker: Using bfloat16 for best performance.")
+        else:
+            self.dtype = torch.float16
+            print("Sam3OnlineTracker: Using float16.")
+
+        # Performance tuning: Image resolution
+        # Setting this lower (e.g. 512, 640) significantly speeds up the image encoder
         self.processing_size = processing_size
         
         print(f"Sam3OnlineTracker: Building model on {device} (Resolution: {processing_size}x{processing_size})...", flush=True)
@@ -26,62 +30,45 @@ class Sam3OnlineTracker:
             checkpoint_path=checkpoint_path,
             device=device,
             apply_temporal_disambiguation=True,
-            compile=True, # [Optimization] Enable compilation for speed
         )
-        # [Fix] Overwrite default image_size (1008) with processing_size (384)
-        self.model.image_size = self.processing_size
-        if hasattr(self.model, "tracker"):
-             self.model.tracker.image_size = self.processing_size
         
-        # [Tuning] Adjust tracking parameters for low-res / robust tracking
-        # Lower threshold to detect objects more easily
-        self.model.score_threshold_detection = 0.35
-        # Reduce coasting persistence (don't keep 'Lost' tracks for too long)
-        self.model.max_trk_keep_alive = 8
-        # Update memory more frequently
-        self.model.recondition_every_nth_frame = 8
-        
-        # Cast model to the selected dtype to save VRAM
-        self.model.to(device, dtype=self.dtype)
+        self.model.to(device)
         self.model.eval()
         
-        # 掃除
-        torch.cuda.empty_cache()
-        
+        # Initialize variables
         self.inference_state = None
         self.max_frames = max_frames
         self.lost_count = 0
         self.current_text_prompt = None
-        self.original_wh = (1024, 1024)
-        
-        # Mean/Std
-        self.img_mean = torch.tensor(self.model.image_mean, device=device, dtype=self.dtype).view(-1, 1, 1)
-        self.img_std = torch.tensor(self.model.image_std, device=device, dtype=self.dtype).view(-1, 1, 1)
+        self.original_wh = (1024, 1024) # Default placeholder
         
         print(f"Sam3OnlineTracker: Ready. Max Memory: {self.max_frames} frames.", flush=True)
 
     def reset_state(self):
+        """Reset state and clear memory efficienty"""
         if self.inference_state is not None:
+            # We don't call gc.collect() every time to avoid stuttering
+            # Just clearing the reference is usually enough for PyTorch allocator
             del self.inference_state
             self.inference_state = None
             self.lost_count = 0
-            torch.cuda.empty_cache()
+            # torch.cuda.empty_cache() # Avoid synchronous GPU calls
 
     @torch.inference_mode()
     def init_track(self, image_np, text_prompt=None, mask_prompt=None):
-        # 【修正3】Autocastを復活させる（これが計算メモリをFP16並に下げる）
-        # bfloat16が使えるならbf16、そうでなければfloat16
-        # Use the same dtype for autocast
-        cast_dtype = self.dtype
-        
-        with torch.autocast(device_type=self.device, dtype=cast_dtype):
+        """Initialize tracking with Autocast"""
+        with torch.autocast(device_type=self.device, dtype=self.dtype):
             self.reset_state()
+
+            # Store original size for mask rescaling
             h, w = image_np.shape[:2]
             self.original_wh = (w, h)
             
+            # Save prompt for auto-recovery
             if text_prompt is not None:
                 self.current_text_prompt = text_prompt
 
+            # Resize input for model initialization
             img_pil = Image.fromarray(image_np)
             img_pil_resized = img_pil.resize((self.processing_size, self.processing_size), Image.BILINEAR)
             
@@ -90,26 +77,12 @@ class Sam3OnlineTracker:
                 video_loader_type="cv2",
             )
             
-            # Cast all floating point tensors in the state to self.dtype (bf16/fp16)
-            self._cast_inference_state(self.inference_state)
-            
-            # Explicitly verify/cast img_batch to be safe
-            if "input_batch" in self.inference_state:
-                ib = self.inference_state["input_batch"]
-                if hasattr(ib, "img_batch") and isinstance(ib.img_batch, torch.Tensor):
-                    if ib.img_batch.dtype != self.dtype:
-                        print(f"Warning: img_batch was {ib.img_batch.dtype}, casting to {self.dtype}")
-                        ib.img_batch = ib.img_batch.to(dtype=self.dtype)
-            
-            # Verify constants
-            if "constants" in self.inference_state:
-                consts = self.inference_state["constants"]
-                if "empty_geometric_prompt" in consts:
-                     # Force recursion on this object explicitly if needed
-                     self._cast_recursive_in_place(consts["empty_geometric_prompt"])
-
             if mask_prompt is not None:
+                # Resize mask prompt if necessary? 
+                # If mask prompt comes from original image, it needs to be resized to processing_size
+                # Assuming mask_prompt is boolean mask of original size
                 if mask_prompt.shape[-2:] != (self.processing_size, self.processing_size):
+                     # Resize mask prompt
                      mask_pil = Image.fromarray(mask_prompt.astype(np.uint8))
                      mask_pil = mask_pil.resize((self.processing_size, self.processing_size), Image.NEAREST)
                      mask_prompt = np.array(mask_pil).astype(bool)
@@ -134,49 +107,61 @@ class Sam3OnlineTracker:
             
             masks = self._run_propagate(start_idx=0)
             
+            # If initialization failed
             if not masks or len(masks) == 0:
                 self.reset_state()
                 return None
+                
             return masks
 
     @torch.inference_mode()
     def step(self, image_np):
+        """Per-frame processing"""
+        # Auto-recovery if not initialized
         if self.inference_state is None:
             if self.current_text_prompt is not None:
                 return self.init_track(image_np)
             else:
                 return None
         
-        # 【修正3】Autocast復活
-        cast_dtype = self.dtype
-        with torch.autocast(device_type=self.device, dtype=cast_dtype):
+        with torch.autocast(device_type=self.device, dtype=self.dtype):
+            # Update original size
             h, w = image_np.shape[:2]
             self.original_wh = (w, h)
 
-            if self.lost_count > 10:
+            # 1. Lost check
+            if self.lost_count > 10: # Increased tolerance as we want robustness
                 self.reset_state()
                 return self.init_track(image_np) 
 
             current_num_frames = self.inference_state["num_frames"]
             
+            # 2. Memory limits
             if current_num_frames >= self.max_frames:
+                # FIFO Strategy: Keep the initial frame and recent frames?
+                # SAM 2 API handles rolling buffer usually, but here we do manual reset?
+                # For continuous tracking, it's better to keep the last mask and restart.
+                
+                # Careful: The mask returned by _get_mask is RESIZED (Original).
+                # We need the processing-size mask for restart to avoid double resizing errors?
+                # Actually init_track helps resizing mask. So it is fine.
+                
                 last_mask = self._get_mask(current_num_frames - 1)
+                
                 if last_mask and len(last_mask) > 0:
+                    # Restart with the last known mask to clear extensive history
                     return self.init_track(image_np, mask_prompt=last_mask[0])
                 else:
                     self.reset_state()
                     return self.init_track(image_np)
 
+            # 3. Image Processing
             img_pil = Image.fromarray(image_np)
             new_frame_tensor, _, _ = self._process_image(img_pil)
             
             new_frame_tensor = new_frame_tensor.to(self.device) 
             
             self._append_frame_to_state(new_frame_tensor)
-            
-            # Ensure the newly expanded batch allows gradients if needed (though we use inference_mode)
-            # and verify dtype of the appended state parts if possible.
-            # (The _append_frame_to_state method is updated below to use self.dtype)
             
             frame_idx = self.inference_state["num_frames"] - 1
             masks = self._run_propagate(start_idx=frame_idx)
@@ -187,19 +172,7 @@ class Sam3OnlineTracker:
                 self.lost_count += 1
             
             return masks
-            
-    # _process_image の修正（dtype=self.dtype が float32 になるのでOK）
-    def _process_image(self, img_pil):
-        target_size = self.processing_size
-        img_np = np.array(img_pil.convert("RGB").resize((target_size, target_size)))
-        img_np = img_np / 255.0
-        img = torch.as_tensor(img_np).permute(2, 0, 1)
-        img = img.to(device=self.device, dtype=self.dtype) # self.dtype is float32
-        img -= self.img_mean
-        img /= self.img_std
-        return img.unsqueeze(0), img_pil.height, img_pil.width
 
-    # _run_propagate, _append_frame_to_state, _get_mask は変更なし
     def _run_propagate(self, start_idx):
         for _ in self.model.propagate_in_video(
             self.inference_state,
@@ -210,69 +183,73 @@ class Sam3OnlineTracker:
             pass
         return self._get_mask(start_idx)
 
+    def _process_image(self, img_pil):
+        # Use the configured processing size
+        target_size = self.processing_size
+        
+        # Standardize normalization for SAM
+        img_mean = torch.tensor(self.model.image_mean, device=self.device, dtype=torch.float32)[:, None, None]
+        img_std = torch.tensor(self.model.image_std, device=self.device, dtype=torch.float32)[:, None, None]
+        
+        # Resize logic
+        img_np = np.array(img_pil.convert("RGB").resize((target_size, target_size)))
+        img_np = img_np / 255.0
+        img = torch.as_tensor(img_np).permute(2, 0, 1)
+        
+        img = img.to(device=self.device, dtype=torch.float32)
+        img -= img_mean
+        img /= img_std
+        return img.unsqueeze(0), img_pil.height, img_pil.width
+
     def _append_frame_to_state(self, new_frame_tensor):
         state = self.inference_state
         device = self.device
+        
         input_batch = state["input_batch"]
         input_batch.img_batch = torch.cat([input_batch.img_batch, new_frame_tensor], dim=0)
+        
         state["num_frames"] += 1
+        
         input_box_embedding_dim = 258
         input_points_embedding_dim = 257
+        
         new_stage = FindStage(
             img_ids=[state["num_frames"] - 1],
             text_ids=[0],
-            input_boxes=[torch.zeros(input_box_embedding_dim, device=device, dtype=self.dtype)],
-            input_boxes_mask=[torch.empty(0, dtype=torch.bool, device=device)],
-            input_boxes_label=[torch.empty(0, dtype=torch.long, device=device)],
-            input_points=[torch.empty(0, input_points_embedding_dim, device=device, dtype=self.dtype)],
-            input_points_mask=[torch.empty(0, device=device)],
+            input_boxes=[torch.zeros(input_box_embedding_dim)],
+            input_boxes_mask=[torch.empty(0, dtype=torch.bool)],
+            input_boxes_label=[torch.empty(0, dtype=torch.long)],
+            input_points=[torch.empty(0, input_points_embedding_dim)],
+            input_points_mask=[torch.empty(0)],
             object_ids=[],
         )
         new_stage = convert_my_tensors(new_stage)
         new_stage = copy_data_to_device(new_stage, device)
+        
         input_batch.find_inputs.append(new_stage)
         input_batch.find_targets.append(None)
         input_batch.find_metadatas.append(None)
-    
-    def _cast_recursive_in_place(self, obj):
-         if isinstance(obj, torch.Tensor):
-             if obj.is_floating_point():
-                 return obj.to(dtype=self.dtype)
-             return obj
-         elif isinstance(obj, dict):
-             return {k: self._cast_recursive_in_place(v) for k, v in obj.items()}
-         elif isinstance(obj, list):
-             return [self._cast_recursive_in_place(v) for v in obj]
-         elif hasattr(obj, "__dict__"):
-             for k, v in obj.__dict__.items():
-                 setattr(obj, k, self._cast_recursive_in_place(v))
-             return obj
-         return obj
-
-    def _cast_inference_state(self, state):
-        # Apply to known keys that contain tensors
-        if "input_batch" in state:
-            self._cast_recursive_in_place(state["input_batch"])
-        if "constants" in state:
-            # Update dict in place
-            state["constants"] = self._cast_recursive_in_place(state["constants"])
-        if "visual_prompt_embed" in state:
-            state["visual_prompt_embed"] = self._cast_recursive_in_place(state["visual_prompt_embed"])
 
     def _get_mask(self, frame_idx):
         cached_outputs = self.inference_state["cached_frame_outputs"].get(frame_idx)
         if cached_outputs is None:
             return None
+            
         masks = []
         for obj_id in sorted(cached_outputs.keys()):
             mask = cached_outputs[obj_id]
             if mask is not None and mask.numel() > 0:
                  if mask.sum() > 0:
                     mask_np = (mask.cpu().numpy().astype(np.uint8) * 255)
+                    # Handle multiple mask dimensions
                     if mask_np.ndim == 3:
                         mask_np = mask_np[0]
+                    
+                    # Resize mask back to original resolution
                     target_w, target_h = self.original_wh
                     if mask_np.shape[0] != target_h or mask_np.shape[1] != target_w:
                          mask_np = cv2.resize(mask_np, (target_w, target_h), interpolation=cv2.INTER_NEAREST)
+
                     masks.append(mask_np)
+        
         return masks
