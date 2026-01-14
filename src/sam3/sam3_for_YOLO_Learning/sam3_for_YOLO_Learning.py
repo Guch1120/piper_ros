@@ -2,6 +2,12 @@ import sys
 import os
 import numpy as np  # Move numpy import to top to avoid conflict with torch/pycocotools
 
+# Force preload pycocotools to init before torch triggers CPU/Numpy conflict
+try:
+    import pycocotools.mask
+except ImportError:
+    pass
+
 # Add parent directory to path to find 'sam3' package
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 

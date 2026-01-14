@@ -5,4 +5,4 @@ names:
 - shelf
 path: /ros2_ws/src/sam3/sam3_for_YOLO_Learning/result
 train: images/train
-val: images/train
+val: images/val
