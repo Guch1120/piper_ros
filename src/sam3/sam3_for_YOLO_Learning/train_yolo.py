@@ -64,8 +64,8 @@ print("Global patches applied successfully.")
 def main():
     print(f"Python: {sys.version}")
     
-    # モデルパス設定
-    model_dir = "./yolov8_hsr/models"
+    #モデルパス設定
+    model_dir = "./yolov8_hsr/model"
     os.makedirs(model_dir, exist_ok=True)
     model_path = os.path.join(model_dir, "yolov8m.pt")
 
@@ -76,8 +76,8 @@ def main():
         print(f"Using local model at {model_path}")
 
     # data.yaml のパス自動修正
-    data_yaml_path = "./result/data.yaml"
-    abs_result_path = os.path.abspath("./result")
+    data_yaml_path = "./result_sam3/data.yaml"
+    abs_result_path = os.path.abspath("./result_sam3")
     
     if os.path.exists(data_yaml_path):
         with open(data_yaml_path, 'r') as f:
@@ -101,15 +101,15 @@ def main():
     # 学習実行
     # パッチがグローバル適用されたため、workers>0 でも動作する可能性が高い
     model.train(
-        data="./result/data.yaml",
+        data="./result_sam3/data.yaml",
         epochs=50,
         imgsz=640,
         batch=16,
         device=0,
         name="yolo_hsr_training",
         patience=20,
-        amp=True,     # 高速化のためAMP有効化（パッチで耐えられるか期待）
-        workers=8,    # 高速化のためマルチプロセス有効化（パッチで耐えられるか期待）
+        amp=False,     # 高速化のためAMP有効化（パッチで耐えられるか期待）
+        workers=0,    # 高速化のためマルチプロセス有効化（パッチで耐えられるか期待）
         exist_ok=True,
         plots=False   # 念のためプロットは無効のまま（ここは速度への影響小）
     )

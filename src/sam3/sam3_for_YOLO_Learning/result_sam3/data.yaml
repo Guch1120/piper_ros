@@ -1,0 +1,11 @@
+names:
+- Bin
+- Chair
+- Drawer
+- Long_table
+- Shelf
+- Tall_table
+# result_sam3があるディレクトリパス
+path: /ros2_ws/src/sam3/sam3_for_YOLO_Learning/result_sam3
+train: images/train
+val: images/val
