@@ -90,7 +90,7 @@ class sam3_testSM(Behavior):
                                        DetectObjectWithSAM3State(object_name="apple"),
                                        transitions={'succeeded': 'tf', 'failed': 'Pose for init', 'timeout': 'failed'},
                                        autonomy={'succeeded': Autonomy.Off, 'failed': Autonomy.Off, 'timeout': Autonomy.Off},
-                                       remapping={'u': 'u', 'v': 'v', 'z': 'z'})
+                                       remapping={'pose_array': 'pose_array'})
 
             # x:36 y:296
             OperatableStateMachine.add('pose of detect',
@@ -100,10 +100,10 @@ class sam3_testSM(Behavior):
 
             # x:532 y:35
             OperatableStateMachine.add('tf',
-                                       BroadcastTFfromVision(parent_frame="base_link", child_frame="target", camera_frame="camera_color_optical_frame", camera_info_topic='/camera/camera/aligned_depth_to_color/camera_info', wait_info_sec=0.5, tf_timeout_sec=2.0),
+                                       BroadcastTFfromVision(parent_frame="base_link", child_frame="target", camera_frame='camera_color_optical_frame', camera_info_topic='/camera/camera/color/camera_info', wait_info_sec=0.5, tf_timeout_sec=2.0),
                                        transitions={'succeeded': 'finished', 'tf_not_found': 'failed', 'failed': 'failed'},
                                        autonomy={'succeeded': Autonomy.Off, 'tf_not_found': Autonomy.Off, 'failed': Autonomy.Off},
-                                       remapping={'u': 'u', 'v': 'v', 'z': 'z'})
+                                       remapping={'pose_array': 'pose_array'})
 
             # x:172 y:188
             OperatableStateMachine.add('Pose for init',
