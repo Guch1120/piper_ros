@@ -88,7 +88,7 @@ class Grasp_to_TFSM(Behavior):
         with _state_machine:
             # x:30 y:40
             OperatableStateMachine.add('gripper_open',
-                                       PiperMoveItOpenState(target_value=0.098, joint_name='joint7', group_name='gripper', tolerance=0.01, action_topic='move_action'),
+                                       PiperMoveItOpenState(target_value=0.10, joint_name='joint7', group_name='gripper', tolerance=0.01, action_topic='move_action'),
                                        transitions={'reached': 'move_TF', 'failed': 'failed'},
                                        autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
 
