@@ -523,3 +523,7 @@ rqtで見るなら
 ```
 ros2 run rqt_graph rqt_graph
 ```
+
+# moveitの色々な設定
+src/piper_moveit/piper_with_gripper_moveit/configに色々書いている．ros2_controller_yamlやsrdfファイル，urdf.xacroファイルがある． \
+起動Launchファイルはsrc/piper_moveit/piper_with_gripper_moveit/launch/piper_real_moveit.launch.pyにある．
