@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:property name="finger_length" value="0.04" /> 
+  <xacro:property name="joint_z_offset" value="0.1358" /> 
   <xacro:macro name="piper_robot">
     <!-- world -->
     <link name="world"/>
@@ -294,9 +296,16 @@
         <parent link="gripper_base" />
         <child link="link8" />
         <axis xyz="0 0 -1" /> 
-        <limit lower="-0.035" upper="0" effort="10" velocity="1" />
+        <limit lower="0" upper="0.099" effort="10" velocity="1" />
         <mimic joint="joint7" multiplier="1" offset="0" />
     </joint>
+    <link name="tcp_link"/> 
+    <joint name="tcp_joint" type="fixed">
+        <origin xyz="0 0 ${joint_z_offset + (finger_length / 2)}" rpy="0 0 0" />
+        <parent link="gripper_base" />
+        <child link="tcp_link" />
+    </joint>
+
     <!-- Gazebo Materials -->
     <gazebo reference="base_link">
       <material>Gazebo/White</material>
@@ -330,7 +339,6 @@
     </gazebo>
     <!-- ros2_control -->
     <!-- ros2_control configuration removed from here, moved to piper_description_gazebo.xacro -->
-
     <!-- gazebo plugin removed from here, it should be in piper_description_gazebo.xacro -->
     
     <!-- RealSense D435i Camera -->

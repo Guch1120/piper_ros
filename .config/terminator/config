@@ -21,7 +21,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true enable_sync:=true enable_rgbd:=true; bash
+    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true enable_sync:=true enable_rgbd:=true pointcloud.enable:=true; bash
     use_system_font = False
   [[cmd_detic]]
     background_color = "#300a24"
@@ -197,12 +197,12 @@
       type = Window
       parent = ""
       order = 0
-      position = 0:0
+      position = 1920:0
       maximised = True
       fullscreen = False
       size = 1920, 1043
       title = @robo25-Alienware-m15-R3:/ros2_ws
-      last_active_term = 10e3a3f2-ce23-4e3b-965b-1430016c2c1d
+      last_active_term = 348d2f22-da8b-44eb-9b0b-a7ccebc4af00
       last_active_window = True
     [[[child1]]]
       type = VPaned
