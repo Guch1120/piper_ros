@@ -527,3 +527,12 @@ ros2 run rqt_graph rqt_graph
 # moveitの色々な設定
 src/piper_moveit/piper_with_gripper_moveit/configに色々書いている．ros2_controller_yamlやsrdfファイル，urdf.xacroファイルがある． \
 起動Launchファイルはsrc/piper_moveit/piper_with_gripper_moveit/launch/piper_real_moveit.launch.pyにある．
+
+
+
+
+# RealsenseでdepthをRGB空間に補完させずにする場合
+ノードを起動し、以下の点を確認してください。
+- align_depth.enable:=false で起動していること。
+- 物体を検出した際、Depthが取れない場合でも ObjectInfo.x/y に角度が出力され、ロボットが追従できること（サーボロジック側での対応が必要です）。
+- 中心付近で正しくDepthが取れること。
