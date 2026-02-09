@@ -184,6 +184,17 @@
     use_custom_command = True
     custom_command = bash  /ros2_ws/run_ros_cmd.sh bash can_activate.sh can0 1000000;
     use_system_font = False
+  [[cmd_yolov8-seg]]
+    background_color = "#300a24"
+    background_darkness = 0.9
+    background_type = transparent
+    cursor_color = "#aaaaaa"
+    font = Monospace 10
+    foreground_color = "#ffffff"
+    show_titlebar = False
+    use_custom_command = True
+    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 launch yolov8_ros yolov8_seg.launch.py; bash
+    use_system_font = False
 [layouts]
   [[default]]
     [[[window0]]]
@@ -197,19 +208,19 @@
       type = Window
       parent = ""
       order = 0
-      position = 1920:0
+      position = 0:27
       maximised = True
       fullscreen = False
-      size = 1920, 1043
+      size = 1920, 1016
       title = @robo25-Alienware-m15-R3:/ros2_ws
-      last_active_term = 348d2f22-da8b-44eb-9b0b-a7ccebc4af00
+      last_active_term = 81ab64ea-4a43-44dc-aa01-d0580c85e002
       last_active_window = True
     [[[child1]]]
       type = VPaned
       parent = child0
       order = 0
-      position = 522
-      ratio = 0.5028901734104047
+      position = 508
+      ratio = 0.5024727992087042
     [[[child2]]]
       type = HPaned
       parent = child1
@@ -220,8 +231,8 @@
       type = VPaned
       parent = child2
       order = 0
-      position = 255
-      ratio = 0.4932301740812379
+      position = 248
+      ratio = 0.49304174950298213
     [[[child4]]]
       type = HPaned
       parent = child3
@@ -262,8 +273,8 @@
       type = VPaned
       parent = child2
       order = 1
-      position = 262
-      ratio = 0.5067698259187621
+      position = 255
+      ratio = 0.5069582504970179
     [[[child11]]]
       type = HPaned
       parent = child10
@@ -274,13 +285,13 @@
       type = Terminal
       parent = child11
       order = 0
-      profile = cmd_sam3_node
+      profile = default
       uuid = 6854fada-49cc-4de9-9ade-25f6d9a9b88c
     [[[terminal13]]]
       type = Terminal
       parent = child11
       order = 1
-      profile = cmd_sam3_node_tracker
+      profile = cmd_yolov8-seg
       uuid = 81ab64ea-4a43-44dc-aa01-d0580c85e002
     [[[child14]]]
       type = HPaned
@@ -304,8 +315,8 @@
       type = VPaned
       parent = child1
       order = 1
-      position = 257
-      ratio = 0.50293542074364
+      position = 250
+      ratio = 0.5020080321285141
     [[[child18]]]
       type = HPaned
       parent = child17
