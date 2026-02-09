@@ -20,14 +20,38 @@ def _load_wrapped(*args, **kwargs):
 torch.load = _load_wrapped
 
 from ultralytics import YOLO
+from sensor_msgs.msg import PointCloud2, PointField
+from sensor_msgs_py import point_cloud2
+import tf2_ros
+from tf2_ros import Buffer, TransformListener
+# import tf_transformations # Removed to avoid dependency
+
 
 class YOLOv8SegNode(Node):
+    """
+    YOLOv8 Segmentation Node
+    
+    Subscribed Topics:
+    - /camera/camera/color/image_raw (sensor_msgs/Image): RGB画像
+    - /camera/camera/depth/image_rect_raw (sensor_msgs/Image): 生の深度画像 (Rectified Raw Depth, 16UC1)
+    - /camera/camera/color/camera_info (sensor_msgs/CameraInfo): RGBカメラの内部パラメータ
+    - /camera/camera/depth/camera_info (sensor_msgs/CameraInfo): Depthカメラの内部パラメータ
+    
+    Published Topics:
+    - ~/objects (piper_msgs/ObjectArray): 検出された物体の情報（クラス名, スコア, 角度誤差(x=Yaw, y=Pitch), 深度(z)）
+    - ~/result_mask (sensor_msgs/Image): 検出物体のバイナリマスク画像 (mono8)
+    - ~/result_debug (sensor_msgs/Image): バウンディングボックスとラベルを描画したデバッグ用画像 (bgr8)
+    
+    Services:
+    - ~/trigger (piper_msgs/YoloSeg): 1回だけ検出を実行するトリガー
+    - ~/enable (std_srvs/SetBool): 連続検出の有効/無効を切り替える
+    """
     def __init__(self):
         super().__init__('yolov8_seg_node')
 
         # Parameters
         self.declare_parameter('model_path', 'yolov8n-seg.pt')
-        self.declare_parameter('device', 'cpu') # 'cpu' or 'cuda'
+        self.declare_parameter('device', 'cuda') # 'cpu' or 'cuda'
         self.declare_parameter('conf_thres', 0.5)
         self.declare_parameter('iou_thres', 0.45)
         self.declare_parameter('auto_start', True)
@@ -83,6 +107,11 @@ class YOLOv8SegNode(Node):
         self.mask_pub = self.create_publisher(Image, '~/result_mask', 10)
         self.debug_pub = self.create_publisher(Image, '~/result_debug', 10)
         self.objects_pub = self.create_publisher(ObjectArray, '~/objects', 10)
+        self.result_cloud_pub = self.create_publisher(PointCloud2, '~/result_cloud', 10)
+        
+        # TF Buffer & Listener
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
         
         # Continuous Execution State
         self.target_classes = self.get_parameter('target_classes').get_parameter_value().string_array_value
@@ -204,6 +233,195 @@ class YOLOv8SegNode(Node):
         v_d = int(y_norm * fy_d + cy_d)
         
         return u_d, v_d
+
+    def generate_pointcloud(self, cv_depth, cv_rgb, combined_mask):
+        """
+        Generate Colored PointCloud2 from Depth image and RGB image, filtered by mask.
+        Corrects for RGB-Depth extrinsic calibration.
+        """
+        if self.depth_info is None or self.color_info is None:
+            return None
+
+        # 1. Look up transform from Depth to RGB
+        try:
+            # We want to transform Depth points (in Depth frame) to RGB frame (to color them and output in RGB frame)
+            # OR output in Depth frame and project RGB pixels to it?
+            # User wants "detected area pointcloud".
+            # Usually we visualize in RGB frame (Color Optical Frame).
+            # So: Points in Depth Frame -> Transform to RGB Frame -> Output
+            
+            # tf: Target=RGB, Source=Depth
+            t = self.tf_buffer.lookup_transform(
+                'camera_color_optical_frame', # Target
+                'camera_depth_optical_frame', # Source
+                rclpy.time.Time(),
+                timeout=rclpy.duration.Duration(seconds=0.1)
+            )
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+            # Fallback: identity if no TF (e.g. not published yet)
+            # self.get_logger().warn("TF lookup failed, assuming identity for point cloud")
+            return None # Skip if no TF for accuracy
+
+        # TF Matrix
+        trans = t.transform.translation
+        rot = t.transform.rotation
+        
+        # Convert to matrix manually to avoid dependency
+        tr_vec = [trans.x, trans.y, trans.z]
+        # rot is x, y, z, w
+        qx, qy, qz, qw = rot.x, rot.y, rot.z, rot.w
+        
+        # Quaternion to Rotation Matrix
+        R = np.array([
+            [1 - 2*qy**2 - 2*qz**2, 2*qx*qy - 2*qz*qw, 2*qx*qz + 2*qy*qw],
+            [2*qx*qy + 2*qz*qw, 1 - 2*qx**2 - 2*qz**2, 2*qy*qz - 2*qx*qw],
+            [2*qx*qz - 2*qy*qw, 2*qy*qz + 2*qx*qw, 1 - 2*qx**2 - 2*qy**2]
+        ])
+        
+        T_depth_to_rgb = np.eye(4)
+        T_depth_to_rgb[0:3, 0:3] = R
+        T_depth_to_rgb[0:3, 3] = tr_vec
+        
+        # Depth Intrinsics
+        fx_d = self.depth_info.k[0]
+        fy_d = self.depth_info.k[4]
+        cx_d = self.depth_info.k[2]
+        cy_d = self.depth_info.k[5]
+
+        # RGB Intrinsics
+        fx_rgb = self.color_info.k[0]
+        fy_rgb = self.color_info.k[4]
+        cx_rgb = self.color_info.k[2]
+        cy_rgb = self.color_info.k[5]
+        
+        h, w = cv_depth.shape
+        rgb_h, rgb_w = cv_rgb.shape[:2]
+
+        # 2. Downsample for performance (Step = 4 or 8)
+        step = 4 
+        
+        # Generate Grid
+        # u: column index, v: row index
+        v, u = np.mgrid[0:h:step, 0:w:step]
+        z = cv_depth[0:h:step, 0:w:step]
+        
+        # Filter valid depth
+        valid = (z > 0)
+        z = z[valid] / 1000.0 # mm to m
+        u = u[valid]
+        v = v[valid]
+        
+        # 3. Back-project to 3D (Depth Frame)
+        # X = (u - cx) * Z / fx
+        x = (u - cx_d) * z / fx_d
+        y = (v - cy_d) * z / fy_d
+        
+        # Points in Depth Frame: (N, 4) homogeneous
+        N = len(x)
+        if N == 0:
+            return None
+            
+        points_depth = np.vstack((x, y, z, np.ones(N)))
+        
+        # 4. Transform to RGB Frame
+        # points_rgb = T * points_depth
+        points_rgb = T_depth_to_rgb @ points_depth # (4, N)
+        
+        X_rgb = points_rgb[0, :]
+        Y_rgb = points_rgb[1, :]
+        Z_rgb = points_rgb[2, :]
+        
+        # 5. Project to RGB Image Plane to find color and check mask
+        # u_rgb = X * fx / Z + cx
+        # Check Z > 0 to avoid division by zero (behind camera)
+        valid_proj = Z_rgb > 0.01
+        
+        u_proj = (X_rgb[valid_proj] * fx_rgb / Z_rgb[valid_proj]) + cx_rgb
+        v_proj = (Y_rgb[valid_proj] * fy_rgb / Z_rgb[valid_proj]) + cy_rgb
+        
+        # Round to integers
+        u_proj = np.round(u_proj).astype(int)
+        v_proj = np.round(v_proj).astype(int)
+        
+        # Filter inside image bounds
+        in_bounds = (u_proj >= 0) & (u_proj < rgb_w) & (v_proj >= 0) & (v_proj < rgb_h)
+        
+        # Valid indices in the original points array
+        valid_indices = np.where(valid_proj)[0][in_bounds]
+        
+        # Final valid points
+        final_X = X_rgb[valid_indices]
+        final_Y = Y_rgb[valid_indices]
+        final_Z = Z_rgb[valid_indices]
+        
+        final_u = u_proj[in_bounds]
+        final_v = v_proj[in_bounds]
+        
+        # 6. Check Mask (is point inside detection?)
+        # combined_mask is (H, W), 255 or 0
+        # If mask is provided
+        if combined_mask is not None:
+             in_mask = combined_mask[final_v, final_u] > 0
+             
+             final_X = final_X[in_mask]
+             final_Y = final_Y[in_mask]
+             final_Z = final_Z[in_mask]
+             final_u = final_u[in_mask]
+             final_v = final_v[in_mask]
+        
+        if len(final_X) == 0:
+            return None
+
+        # 7. Get Colors
+        colors = cv_rgb[final_v, final_u] # (N, 3) BGR
+        
+        # Pack into PointCloud2
+        # Setup structured array for PC2
+        # Fields: x, y, z, rgb
+        
+        # RGB packing logic for ROS (float32 representing 0x00RRGGBB)
+        # However, PointCloud2 usually takes packed bytes or specific struct.
+        # Simplest way with sensor_msgs_py:
+        # data = [[x, y, z, r, g, b], ...] and use fields.
+        
+        # But standard is packed float/int.
+        # Let's use simple x, y, z fields first to test geometry.
+        # Adding color needs bit manipulation or helper.
+        
+        # Standard RGB packing:
+        # rgb = (r << 16) | (g << 8) | b
+        # stored as float32
+        
+        # We need to swap BGR to RGB
+        r = colors[:, 2].astype(np.uint32)
+        g = colors[:, 1].astype(np.uint32)
+        b = colors[:, 0].astype(np.uint32)
+        rgb_int = (r << 16) | (g << 8) | b
+        
+        # Re-interpret as float32
+        import struct
+        # Vectorized way to cast uint32 to float32 (same bits)
+        # Using a view
+        rgb_float = np.array(rgb_int, dtype=np.uint32).view(np.float32)
+        
+        # Combine
+        points_data = np.vstack((final_X, final_Y, final_Z, rgb_float)).T # (N, 4)
+        
+        # Create Header
+        header = self.latest_header
+        # Important: Frame ID should be what these points are in.
+        # We transformed to camera_color_optical_frame.
+        header.frame_id = "camera_color_optical_frame"
+        
+        fields = [
+            PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
+            PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
+            PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
+            PointField(name='rgb', offset=12, datatype=PointField.FLOAT32, count=1),
+        ]
+        
+        pc2_msg = point_cloud2.create_cloud(header, fields, points_data)
+        return pc2_msg
 
     def perform_inference(self, target_classes, response=None):
         # If response is None, it's called from image_callback (continuous), so we don't return response
@@ -328,6 +546,12 @@ class YOLOv8SegNode(Node):
 
             # Publish Objects
             self.objects_pub.publish(object_array_msg)
+            
+            # Generate and Publish PointCloud
+            if detected_count > 0:
+                pc2_msg = self.generate_pointcloud(cv_depth, cv_image, combined_mask)
+                if pc2_msg:
+                    self.result_cloud_pub.publish(pc2_msg)
             
             # Publish result images
             if detected_count > 0:

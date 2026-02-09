@@ -14,7 +14,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'device',
-            default_value='cpu',
+            default_value='cuda',
             description='Device to run inference on (cpu or cuda)'
         ),
         DeclareLaunchArgument(
@@ -27,6 +27,12 @@ def generate_launch_description():
             default_value='0.45',
             description='IoU threshold'
         ),
+        # Nodeは実行オプションで，
+        # package: setup.pyで定義したパッケージ名
+        # executable: entry_pointsで定義した実行ファイル名
+        # name: 実行時のノード名
+        # output: screenでターミナルに出力
+        # parameters: パラメータを設定
         Node(
             package='yolov8_ros',
             executable='yolov8_seg_node',
