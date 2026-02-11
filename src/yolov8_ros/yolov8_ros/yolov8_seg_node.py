@@ -7,6 +7,7 @@ from sensor_msgs.msg import Image, CameraInfo
 from piper_msgs.srv import YoloSeg
 from std_srvs.srv import SetBool
 from piper_msgs.msg import ObjectInfo, ObjectArray
+from std_msgs.msg import String
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 import cv2
 import numpy as np
@@ -55,7 +56,7 @@ class YOLOv8SegNode(Node):
         self.declare_parameter('conf_thres', 0.5)
         self.declare_parameter('iou_thres', 0.45)
         self.declare_parameter('auto_start', True)
-        self.declare_parameter('target_classes', [])
+        self.declare_parameter('target_classes', '') # Default to empty string
         
         self.model_path = self.get_parameter('model_path').get_parameter_value().string_value
         self.device = self.get_parameter('device').get_parameter_value().string_value
@@ -109,16 +110,34 @@ class YOLOv8SegNode(Node):
         self.objects_pub = self.create_publisher(ObjectArray, '~/objects', 10)
         self.result_cloud_pub = self.create_publisher(PointCloud2, '~/result_cloud', 10)
         
+        # Target Classes Subscriber
+        self.target_classes_sub = self.create_subscription(String, '~/target_classes', self.target_classes_callback, 10)
+        
         # TF Buffer & Listener
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         
         # Continuous Execution State
-        self.target_classes = self.get_parameter('target_classes').get_parameter_value().string_array_value
+        # Handle target_classes parameter (can be string array or comma-separated string)
+        # Force retrieve as string first to see if it works, or check type explicitly
+        target_classes_param = self.get_parameter('target_classes')
+        
+        raw_value = target_classes_param.value
+        self.get_logger().info(f"Target Classes Raw Value: {raw_value}, Type: {type(raw_value)}")
+
+        if isinstance(raw_value, str):
+            if raw_value:
+                 self.target_classes = [s.strip() for s in raw_value.split(',')]
+            else:
+                 self.target_classes = []
+        elif isinstance(raw_value, list):
+             self.target_classes = raw_value
+        else:
+             self.target_classes = []
+        
         self.continuous_enabled = self.get_parameter('auto_start').get_parameter_value().bool_value
         
-        
-        self.get_logger().info(f"YOLOv8 Segmentation Node Initialized. Auto-start: {self.continuous_enabled}")
+        self.get_logger().info(f"YOLOv8 Segmentation Node Initialized. Auto-start: {self.continuous_enabled}, Target Classes: {self.target_classes}")
 
     def color_info_callback(self, msg):
         self.color_info = msg
@@ -149,6 +168,19 @@ class YOLOv8SegNode(Node):
         
         return self.perform_inference(self.target_classes, response)
     
+    
+    def target_classes_callback(self, msg):
+        """Callback to update target classes dynamically from a string topic."""
+        raw_value = msg.data
+        if raw_value:
+             self.target_classes = [s.strip() for s in raw_value.split(',')]
+        else:
+             self.target_classes = []
+        self.get_logger().info(f"Target classes updated via topic to: {self.target_classes}")
+        
+        # Optionally trigger inference if continuous mode is disabled but we want to see result immediately?
+        # For now, just update state. If continuous is on, next frame will use it.
+
     def calculate_angle(self, center_x, center_y, camera_info):
         """Calculate yaw and pitch angles from image center to verified object center."""
         if camera_info is None:
@@ -442,7 +474,22 @@ class YOLOv8SegNode(Node):
             depth_h, depth_w = cv_depth.shape[:2]
 
             # Run Inference
-            results = self.model(cv_image, conf=self.conf_thres, iou=self.iou_thres, verbose=False)
+            # Prepare classes filter
+            classes_to_detect = None
+            if target_classes:
+                classes_to_detect = []
+                # Invert model names: name -> id
+                # self.model.names is usually {0: 'person', 1: 'bicycle', ...}
+                name_to_id = {v: k for k, v in self.model.names.items()}
+                
+                for name in target_classes:
+                    if name in name_to_id:
+                        classes_to_detect.append(name_to_id[name])
+                    else:
+                        self.get_logger().warn(f"Target class '{name}' not found in model classes.")
+            
+            # Pass classes argument to filter at inference level
+            results = self.model(cv_image, conf=self.conf_thres, iou=self.iou_thres, classes=classes_to_detect, verbose=False)
 
             object_array_msg = ObjectArray()
             object_array_msg.header = self.latest_header
@@ -460,9 +507,8 @@ class YOLOv8SegNode(Node):
                     class_name = self.model.names[class_id]
                     score = float(boxes[i][4])
                     
-                    # Filtering
-                    if target_classes and (class_name not in target_classes):
-                        continue
+                    # Filtering is now done at inference level, so we don't need to filter here again.
+                    # But checking just in case logic changes is fine.
                     
                     detected_count += 1
                     

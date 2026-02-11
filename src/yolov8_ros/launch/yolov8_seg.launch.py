@@ -27,6 +27,11 @@ def generate_launch_description():
             default_value='0.45',
             description='IoU threshold'
         ),
+        DeclareLaunchArgument(
+            'target_classes',
+            default_value='',
+            description='Target classes to detect (comma-separated, e.g. cup,bottle)'
+        ),
         # Nodeは実行オプションで，
         # package: setup.pyで定義したパッケージ名
         # executable: entry_pointsで定義した実行ファイル名
@@ -43,6 +48,7 @@ def generate_launch_description():
                 'device': LaunchConfiguration('device'),
                 'conf_thres': LaunchConfiguration('conf_thres'),
                 'iou_thres': LaunchConfiguration('iou_thres'),
+                'target_classes': LaunchConfiguration('target_classes'),
             }]
         )
     ])
