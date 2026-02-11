@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
-  <xacro:property name="finger_length" value="0.04" /> 
-  <xacro:property name="joint_z_offset" value="0.1358" /> 
+  <xacro:property name="finger_length" value="0.0" /> 
+  <xacro:property name="joint_z_offset" value="0.1058" /> 
   <xacro:macro name="piper_robot">
     <!-- world -->
     <link name="world"/>

@@ -1,6 +1,6 @@
 Panels:
   - Class: rviz_common/Displays
-    Help Height: 70
+    Help Height: 0
     Name: Displays
     Property Tree Widget:
       Expanded:
@@ -9,7 +9,7 @@ Panels:
         - /TF1
         - /TF1/Frames1
       Splitter Ratio: 0.5
-    Tree Height: 110
+    Tree Height: 274
   - Class: rviz_common/Help
     Name: Help
   - Class: rviz_common/Views
@@ -176,6 +176,10 @@ Visualization Manager:
             Show Axes: false
             Show Trail: false
             Value: true
+          tcp_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
           world:
             Alpha: 1
             Show Axes: false
@@ -333,6 +337,10 @@ Visualization Manager:
             Show Axes: false
             Show Trail: false
             Value: true
+          tcp_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
           world:
             Alpha: 1
             Show Axes: false
@@ -409,15 +417,15 @@ Visualization Manager:
           Value: false
         link8:
           Value: false
-        target:
+        tcp_link:
           Value: true
         world:
           Value: false
       Marker Scale: 1
       Name: TF
-      Show Arrows: true
+      Show Arrows: false
       Show Axes: true
-      Show Names: true
+      Show Names: false
       Tree:
         world:
           base_link:
@@ -452,12 +460,12 @@ Visualization Manager:
                             {}
                           link8:
                             {}
-                        target:
-                          {}
+                          tcp_link:
+                            {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/Image
-      Enabled: true
+      Enabled: false
       Max Value: 1
       Median window: 5
       Min Value: 0
@@ -469,9 +477,9 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /sam3/debug_image
-      Value: true
+      Value: false
     - Class: rviz_default_plugins/Image
-      Enabled: true
+      Enabled: false
       Max Value: 1
       Median window: 5
       Min Value: 0
@@ -483,9 +491,9 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /camera/camera/color/image_raw
-      Value: true
+      Value: false
     - Class: rviz_default_plugins/Image
-      Enabled: true
+      Enabled: false
       Max Value: 1
       Median window: 5
       Min Value: 0
@@ -497,7 +505,7 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /camera/camera/aligned_depth_to_color/image_raw
-      Value: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -516,25 +524,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 2.687363862991333
+      Distance: 0.9399695992469788
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.0745459571480751
-        Y: -0.02939952351152897
-        Z: -0.14757907390594482
+        X: 0.15643221139907837
+        Y: 0.11417648196220398
+        Z: 0.19151714444160461
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.3647969365119934
+      Pitch: 0.07979694753885269
       Target Frame: world
       Value: Orbit (rviz_default_plugins)
-      Yaw: 4.870203018188477
+      Yaw: 1.6270313262939453
     Saved:
       - Class: rviz_default_plugins/Orbit
         Distance: 1.9612269401550293
@@ -570,9 +578,9 @@ Window Geometry:
     collapsed: false
   MotionPlanning - Trajectory Slider:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000100000000000002b40000036dfc020000000afb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000003f00fffffffb000000100044006900730070006c006100790073010000003b000000ef000000c700fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e00670100000130000001b20000016900fffffffb0000000a0049006d00610067006502000004f9000001db00000271000001e4fb0000000800480065006c0070000000029a0000006e0000006e00fffffffb0000000a0056006900650077007301000002e8000000c0000000a000fffffffb0000000a0049006d0061006700650300000a430000026b00000259000001a4fb0000000a0049006d0061006700650300000c5b000001e40000027e000001d0fb0000000a0049006d0061006700650300000c5e00000063000002640000016efb0000000a0049006d0061006700650200000a42000002750000022f0000017f000002150000036d00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000100000000000002b40000036dfc020000000afb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000003f00fffffffb000000100044006900730070006c006100790073010000003b0000014d000000c700fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e0067010000018e000001740000016900fffffffb0000000a0049006d00610067006502000004f9000001db00000271000001e4fb0000000800480065006c0070000000029a0000006e0000006e00fffffffb0000000a005600690065007700730100000308000000a0000000a000fffffffb0000000a0049006d0061006700650200000a430000026b00000259000001a4fb0000000a0049006d0061006700650200000c5b000001e40000027e000001d0fb0000000a0049006d006100670065020000079c00000063000002640000016efb0000000a0049006d0061006700650200000a42000002750000022f0000017f000002150000036d00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
     collapsed: false
   Width: 1231
-  X: 1938
-  Y: 11
+  X: 1329
+  Y: 27
