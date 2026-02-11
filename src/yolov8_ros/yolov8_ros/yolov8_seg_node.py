@@ -12,6 +12,8 @@ from message_filters import Subscriber, ApproximateTimeSynchronizer
 import cv2
 import numpy as np
 import torch
+import struct
+
 # Monkey patch torch.load to default weights_only=False to fix YOLOv8 loading issue with PyTorch 2.6+
 _original_load = torch.load
 def _load_wrapped(*args, **kwargs):
@@ -25,8 +27,6 @@ from sensor_msgs.msg import PointCloud2, PointField
 from sensor_msgs_py import point_cloud2
 import tf2_ros
 from tf2_ros import Buffer, TransformListener
-# import tf_transformations # Removed to avoid dependency
-
 
 class YOLOv8SegNode(Node):
     """
@@ -42,6 +42,7 @@ class YOLOv8SegNode(Node):
     - ~/objects (piper_msgs/ObjectArray): 検出された物体の情報（クラス名, スコア, 角度誤差(x=Yaw, y=Pitch), 深度(z)）
     - ~/result_mask (sensor_msgs/Image): 検出物体のバイナリマスク画像 (mono8)
     - ~/result_debug (sensor_msgs/Image): バウンディングボックスとラベルを描画したデバッグ用画像 (bgr8)
+    - ~/result_cloud (sensor_msgs/PointCloud2): カラー点群
     
     Services:
     - ~/trigger (piper_msgs/YoloSeg): 1回だけ検出を実行するトリガー
@@ -118,8 +119,6 @@ class YOLOv8SegNode(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
         
         # Continuous Execution State
-        # Handle target_classes parameter (can be string array or comma-separated string)
-        # Force retrieve as string first to see if it works, or check type explicitly
         target_classes_param = self.get_parameter('target_classes')
         
         raw_value = target_classes_param.value
@@ -177,133 +176,40 @@ class YOLOv8SegNode(Node):
         else:
              self.target_classes = []
         self.get_logger().info(f"Target classes updated via topic to: {self.target_classes}")
-        
-        # Optionally trigger inference if continuous mode is disabled but we want to see result immediately?
-        # For now, just update state. If continuous is on, next frame will use it.
 
-    def calculate_angle(self, center_x, center_y, camera_info):
-        """Calculate yaw and pitch angles from image center to verified object center."""
-        if camera_info is None:
-            return 0.0, 0.0
-            
-        fx = camera_info.k[0]
-        fy = camera_info.k[4]
-        cx = camera_info.k[2]
-        cy = camera_info.k[5]
-        
-        # Angle = atan((x - cx) / fx)
-        yaw = np.arctan((center_x - cx) / fx)
-        pitch = np.arctan((center_y - cy) / fy)
-        
-        return float(yaw), float(pitch)
-
-    def project_rgb_to_depth(self, u_rgb, v_rgb, depth_z=1.0):
+    def calculate_3d_centroid(self, cv_depth, mask_binary, step=4):
         """
-        Approximate projection from RGB pixel to Depth pixel.
-        Assuming parallel axes and only baseline offset on X-axis (standard stereo).
+        Calculate the 3D centroid of the object defined by mask_binary.
         
-        u_depth = (u_rgb - cx_rgb) * (fx_depth / fx_rgb) + cx_depth + (baseline * fx_depth / Z)
-        v_depth = (v_rgb - cy_rgb) * (fy_depth / fy_rgb) + cy_depth
+        1. Projects Depth pixels to RGB Frame using extrinsic/intrinsic params.
+        2. Filter points that fall into 'mask_binary' (RGB frame).
+        3. Compute Median Z, and Mean X/Y/Z.
         
-        Since we don't know Z yet, we can't perfectly map the disparity.
-        HOWEVER, if we are just checking if it's "in view", we can approximate or use an iterative approach.
-        
-        BUT, the implementation plan says: "Servo to center".
-        If we assume the cameras are parallel, the center of RGB and center of Depth are offset by fixed baseline.
-        
-        For D435i: distance between RGB and Left IR (Depth origin) is ~15mm.
-        RGB is to the right of Depth (usually).
-        
-        Let's use a simpler check:
-        1. Calculate vector in RGB frame.
-        2. Rotate/Translate to Depth frame (Rigid transform).
-        3. Project back to Depth pixel.
-        
-        Simpler approximation for now (assuming Z >> baseline):
-        The angle from RGB is roughly the angle from Depth.
-        So verify if (yaw, pitch) is within Depth FOV.
-        """
-        if self.color_info is None or self.depth_info is None:
-            return -1, -1 # Invalid
-
-        # Intrinsic parameters
-        fx_rgb = self.color_info.k[0]
-        cx_rgb = self.color_info.k[2]
-        fy_rgb = self.color_info.k[4]
-        cy_rgb = self.color_info.k[5]
-        
-        fx_d = self.depth_info.k[0]
-        cx_d = self.depth_info.k[2]
-        fy_d = self.depth_info.k[4]
-        cy_d = self.depth_info.k[5]
-
-        # Calculate angle of the pixel in RGB frame
-        # x = (u - cx) * Z / fx
-        # We don't know Z, but we know the ray direction.
-        # ray_x = (u - cx) / fx
-        
-        # Baseline offset (RGB to Depth)
-        # T_rgb_depth = [-0.015, 0, 0] (approx 15mm for D435)
-        # But without TF, we can just use the angles.
-        # Since baseline is small, for objects > 0.5m, the parallax is small.
-        # We can try to map purely by angle first.
-        
-        # Normalized coordinates in RGB
-        x_norm = (u_rgb - cx_rgb) / fx_rgb
-        y_norm = (v_rgb - cy_rgb) / fy_rgb
-        
-        # Reproject to Depth (ignoring translation for infinite distance / far check)
-        # u_d_inf = x_norm * fx_d + cx_d
-        # v_d_inf = y_norm * fy_d + cy_d
-        
-        # Ideally, we should add disparity: disparity = (baseline * fx) / Z
-        # Since we want to know if it's in the frame, we can assume a minimum Z (e.g. 0.3m) 
-        # to see the worst case disparity or just check center.
-        
-        # Let's return the "infinity" projection pixel for now, as it's the target location for servoing.
-        u_d = int(x_norm * fx_d + cx_d)
-        v_d = int(y_norm * fy_d + cy_d)
-        
-        return u_d, v_d
-
-    def generate_pointcloud(self, cv_depth, cv_rgb, combined_mask):
-        """
-        Generate Colored PointCloud2 from Depth image and RGB image, filtered by mask.
-        Corrects for RGB-Depth extrinsic calibration.
+        Returns:
+            (x, y, z) in Camera Optical Frame (RGB Frame)
+            Or None if no valid points.
         """
         if self.depth_info is None or self.color_info is None:
             return None
 
-        # 1. Look up transform from Depth to RGB
+        # 1. Get Transform (Depth -> RGB)
         try:
-            # We want to transform Depth points (in Depth frame) to RGB frame (to color them and output in RGB frame)
-            # OR output in Depth frame and project RGB pixels to it?
-            # User wants "detected area pointcloud".
-            # Usually we visualize in RGB frame (Color Optical Frame).
-            # So: Points in Depth Frame -> Transform to RGB Frame -> Output
-            
-            # tf: Target=RGB, Source=Depth
             t = self.tf_buffer.lookup_transform(
                 'camera_color_optical_frame', # Target
                 'camera_depth_optical_frame', # Source
                 rclpy.time.Time(),
-                timeout=rclpy.duration.Duration(seconds=0.1)
+                timeout=rclpy.duration.Duration(seconds=0.05) # Fast timeout
             )
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-            # Fallback: identity if no TF (e.g. not published yet)
-            # self.get_logger().warn("TF lookup failed, assuming identity for point cloud")
-            return None # Skip if no TF for accuracy
+            return None
 
-        # TF Matrix
+        # Build Transform Matrix
         trans = t.transform.translation
         rot = t.transform.rotation
         
-        # Convert to matrix manually to avoid dependency
-        tr_vec = [trans.x, trans.y, trans.z]
-        # rot is x, y, z, w
         qx, qy, qz, qw = rot.x, rot.y, rot.z, rot.w
         
-        # Quaternion to Rotation Matrix
+        # Quaternion to Rot Matrix
         R = np.array([
             [1 - 2*qy**2 - 2*qz**2, 2*qx*qy - 2*qz*qw, 2*qx*qz + 2*qy*qw],
             [2*qx*qy + 2*qz*qw, 1 - 2*qx**2 - 2*qz**2, 2*qy*qz - 2*qx*qw],
@@ -312,153 +218,176 @@ class YOLOv8SegNode(Node):
         
         T_depth_to_rgb = np.eye(4)
         T_depth_to_rgb[0:3, 0:3] = R
-        T_depth_to_rgb[0:3, 3] = tr_vec
+        T_depth_to_rgb[0:3, 3] = [trans.x, trans.y, trans.z]
         
-        # Depth Intrinsics
-        fx_d = self.depth_info.k[0]
-        fy_d = self.depth_info.k[4]
-        cx_d = self.depth_info.k[2]
-        cy_d = self.depth_info.k[5]
-
-        # RGB Intrinsics
-        fx_rgb = self.color_info.k[0]
-        fy_rgb = self.color_info.k[4]
-        cx_rgb = self.color_info.k[2]
-        cy_rgb = self.color_info.k[5]
+        # Intrinsics
+        fx_d, fy_d = self.depth_info.k[0], self.depth_info.k[4]
+        cx_d, cy_d = self.depth_info.k[2], self.depth_info.k[5]
+        
+        fx_rgb, fy_rgb = self.color_info.k[0], self.color_info.k[4]
+        cx_rgb, cy_rgb = self.color_info.k[2], self.color_info.k[5]
         
         h, w = cv_depth.shape
-        rgb_h, rgb_w = cv_rgb.shape[:2]
+        rgb_h, rgb_w = self.latest_color_img.height, self.latest_color_img.width
 
-        # 2. Downsample for performance (Step = 4 or 8)
-        step = 4 
-        
-        # Generate Grid
-        # u: column index, v: row index
+        # 2. Downsample and Backproject
+        if mask_binary is None or np.count_nonzero(mask_binary) == 0:
+            return None
+            
         v, u = np.mgrid[0:h:step, 0:w:step]
         z = cv_depth[0:h:step, 0:w:step]
         
-        # Filter valid depth
         valid = (z > 0)
-        z = z[valid] / 1000.0 # mm to m
+        z = z[valid] / 1000.0 # m
         u = u[valid]
         v = v[valid]
         
-        # 3. Back-project to 3D (Depth Frame)
-        # X = (u - cx) * Z / fx
-        x = (u - cx_d) * z / fx_d
-        y = (v - cy_d) * z / fy_d
-        
-        # Points in Depth Frame: (N, 4) homogeneous
-        N = len(x)
-        if N == 0:
+        if len(z) == 0:
             return None
-            
-        points_depth = np.vstack((x, y, z, np.ones(N)))
+
+        # Backproject to Depth Frame 3D
+        x_d = (u - cx_d) * z / fx_d
+        y_d = (v - cy_d) * z / fy_d
         
-        # 4. Transform to RGB Frame
-        # points_rgb = T * points_depth
-        points_rgb = T_depth_to_rgb @ points_depth # (4, N)
+        N = len(x_d)
+        points_depth_hom = np.vstack((x_d, y_d, z, np.ones(N))) # (4, N)
+        
+        # Transform to RGB Frame
+        points_rgb = T_depth_to_rgb @ points_depth_hom # (4, N)
         
         X_rgb = points_rgb[0, :]
         Y_rgb = points_rgb[1, :]
         Z_rgb = points_rgb[2, :]
         
-        # 5. Project to RGB Image Plane to find color and check mask
-        # u_rgb = X * fx / Z + cx
-        # Check Z > 0 to avoid division by zero (behind camera)
+        # Project to RGB Image Plane
         valid_proj = Z_rgb > 0.01
         
-        u_proj = (X_rgb[valid_proj] * fx_rgb / Z_rgb[valid_proj]) + cx_rgb
-        v_proj = (Y_rgb[valid_proj] * fy_rgb / Z_rgb[valid_proj]) + cy_rgb
+        X_rgb = X_rgb[valid_proj]
+        Y_rgb = Y_rgb[valid_proj]
+        Z_rgb = Z_rgb[valid_proj]
         
-        # Round to integers
+        if len(Z_rgb) == 0:
+             return None
+
+        u_proj = (X_rgb * fx_rgb / Z_rgb) + cx_rgb
+        v_proj = (Y_rgb * fy_rgb / Z_rgb) + cy_rgb
+        
+        # Round and check bounds
         u_proj = np.round(u_proj).astype(int)
         v_proj = np.round(v_proj).astype(int)
         
-        # Filter inside image bounds
         in_bounds = (u_proj >= 0) & (u_proj < rgb_w) & (v_proj >= 0) & (v_proj < rgb_h)
         
-        # Valid indices in the original points array
-        valid_indices = np.where(valid_proj)[0][in_bounds]
+        u_proj = u_proj[in_bounds]
+        v_proj = v_proj[in_bounds]
         
-        # Final valid points
-        final_X = X_rgb[valid_indices]
-        final_Y = Y_rgb[valid_indices]
-        final_Z = Z_rgb[valid_indices]
+        # Check Mask
+        in_mask = mask_binary[v_proj, u_proj] > 0
         
-        final_u = u_proj[in_bounds]
-        final_v = v_proj[in_bounds]
+        # Filter 3D points
+        final_X = X_rgb[in_bounds][in_mask]
+        final_Y = Y_rgb[in_bounds][in_mask]
+        final_Z = Z_rgb[in_bounds][in_mask]
         
-        # 6. Check Mask (is point inside detection?)
-        # combined_mask is (H, W), 255 or 0
-        # If mask is provided
-        if combined_mask is not None:
-             in_mask = combined_mask[final_v, final_u] > 0
-             
-             final_X = final_X[in_mask]
-             final_Y = final_Y[in_mask]
-             final_Z = final_Z[in_mask]
-             final_u = final_u[in_mask]
-             final_v = final_v[in_mask]
-        
-        if len(final_X) == 0:
+        if len(final_Z) == 0:
             return None
+            
+        # Compute Centroid / Median
+        median_z = np.median(final_Z)
+        mean_x = np.mean(final_X)
+        mean_y = np.mean(final_Y)
+        
+        return float(mean_x), float(mean_y), float(median_z)
 
-        # 7. Get Colors
-        colors = cv_rgb[final_v, final_u] # (N, 3) BGR
+    def generate_pointcloud_v2(self, cv_depth, cv_rgb, combined_mask):
+        if self.depth_info is None or self.color_info is None:
+            return None
+            
+        try:
+             t = self.tf_buffer.lookup_transform('camera_color_optical_frame', 'camera_depth_optical_frame', rclpy.time.Time(), timeout=rclpy.duration.Duration(seconds=0.1))
+        except:
+             return None
+
+        trans = t.transform.translation
+        rot = t.transform.rotation
         
-        # Pack into PointCloud2
-        # Setup structured array for PC2
-        # Fields: x, y, z, rgb
+        qx, qy, qz, qw = rot.x, rot.y, rot.z, rot.w
+        R = np.array([
+            [1 - 2*qy**2 - 2*qz**2, 2*qx*qy - 2*qz*qw, 2*qx*qz + 2*qy*qw],
+            [2*qx*qy + 2*qz*qw, 1 - 2*qx**2 - 2*qz**2, 2*qy*qz - 2*qx*qw],
+            [2*qx*qz - 2*qy*qw, 2*qy*qz + 2*qx*qw, 1 - 2*qx**2 - 2*qy**2]
+        ])
+        T = np.eye(4)
+        T[0:3, 0:3] = R
+        T[0:3, 3] = [trans.x, trans.y, trans.z]
         
-        # RGB packing logic for ROS (float32 representing 0x00RRGGBB)
-        # However, PointCloud2 usually takes packed bytes or specific struct.
-        # Simplest way with sensor_msgs_py:
-        # data = [[x, y, z, r, g, b], ...] and use fields.
+        fx_d, fy_d, cx_d, cy_d = self.depth_info.k[0], self.depth_info.k[4], self.depth_info.k[2], self.depth_info.k[5]
+        fx_rgb, fy_rgb, cx_rgb, cy_rgb = self.color_info.k[0], self.color_info.k[4], self.color_info.k[2], self.color_info.k[5]
         
-        # But standard is packed float/int.
-        # Let's use simple x, y, z fields first to test geometry.
-        # Adding color needs bit manipulation or helper.
+        h, w = cv_depth.shape
+        step = 4
+        v, u = np.mgrid[0:h:step, 0:w:step]
+        z = cv_depth[0:h:step, 0:w:step]
+        valid = z > 0
+        z = z[valid] / 1000.0
+        u, v = u[valid], v[valid]
         
-        # Standard RGB packing:
-        # rgb = (r << 16) | (g << 8) | b
-        # stored as float32
+        if len(z) == 0: return None
         
-        # We need to swap BGR to RGB
+        x_d = (u - cx_d) * z / fx_d
+        y_d = (v - cy_d) * z / fy_d
+        
+        points_d = np.vstack((x_d, y_d, z, np.ones(len(x_d))))
+        points_rgb = T @ points_d
+        
+        X, Y, Z = points_rgb[0], points_rgb[1], points_rgb[2]
+        
+        valid_proj = Z > 0.01
+        X, Y, Z = X[valid_proj], Y[valid_proj], Z[valid_proj]
+        
+        u_proj = np.round((X * fx_rgb / Z) + cx_rgb).astype(int)
+        v_proj = np.round((Y * fy_rgb / Z) + cy_rgb).astype(int)
+        
+        rgb_h, rgb_w = cv_rgb.shape[:2]
+        in_bounds = (u_proj >= 0) & (u_proj < rgb_w) & (v_proj >= 0) & (v_proj < rgb_h)
+        
+        u_proj = u_proj[in_bounds]
+        v_proj = v_proj[in_bounds]
+        X, Y, Z = X[in_bounds], Y[in_bounds], Z[in_bounds]
+        
+        if combined_mask is not None:
+             in_mask = combined_mask[v_proj, u_proj] > 0
+             X, Y, Z = X[in_mask], Y[in_mask], Z[in_mask]
+             u_proj, v_proj = u_proj[in_mask], v_proj[in_mask]
+             
+        if len(X) == 0: return None
+        
+        colors = cv_rgb[v_proj, u_proj]
         r = colors[:, 2].astype(np.uint32)
         g = colors[:, 1].astype(np.uint32)
         b = colors[:, 0].astype(np.uint32)
         rgb_int = (r << 16) | (g << 8) | b
-        
-        # Re-interpret as float32
-        import struct
-        # Vectorized way to cast uint32 to float32 (same bits)
-        # Using a view
         rgb_float = np.array(rgb_int, dtype=np.uint32).view(np.float32)
         
-        # Combine
-        points_data = np.vstack((final_X, final_Y, final_Z, rgb_float)).T # (N, 4)
+        points_data = np.vstack((X, Y, Z, rgb_float)).T
         
-        # Create Header
         header = self.latest_header
-        # Important: Frame ID should be what these points are in.
-        # We transformed to camera_color_optical_frame.
         header.frame_id = "camera_color_optical_frame"
-        
         fields = [
             PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
             PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
             PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
             PointField(name='rgb', offset=12, datatype=PointField.FLOAT32, count=1),
         ]
-        
-        pc2_msg = point_cloud2.create_cloud(header, fields, points_data)
-        return pc2_msg
+        return point_cloud2.create_cloud(header, fields, points_data)
+
+    def calculate_angle_from_3d(self, x, y, z):
+        """Calculate Yaw/Pitch from 3D point in Camera frame."""
+        yaw = np.arctan2(x, z)
+        pitch = np.arctan2(y, z)
+        return float(yaw), float(pitch)
 
     def perform_inference(self, target_classes, response=None):
-        # If response is None, it's called from image_callback (continuous), so we don't return response
-        # We just publish topics.
-        
         if self.latest_color_img is None or self.latest_depth_img is None:
             if response:
                 response.success = False
@@ -466,155 +395,125 @@ class YOLOv8SegNode(Node):
             return response
 
         try:
-            # Convert ROS images to OpenCV
             cv_image = self.bridge.imgmsg_to_cv2(self.latest_color_img, desired_encoding='bgr8')
-            cv_depth = self.bridge.imgmsg_to_cv2(self.latest_depth_img, desired_encoding='passthrough') # 16UC1 (mm)
+            cv_depth = self.bridge.imgmsg_to_cv2(self.latest_depth_img, desired_encoding='passthrough')
             
             orig_h, orig_w = cv_image.shape[:2]
             depth_h, depth_w = cv_depth.shape[:2]
 
-            # Run Inference
-            # Prepare classes filter
             classes_to_detect = None
             if target_classes:
                 classes_to_detect = []
-                # Invert model names: name -> id
-                # self.model.names is usually {0: 'person', 1: 'bicycle', ...}
                 name_to_id = {v: k for k, v in self.model.names.items()}
-                
                 for name in target_classes:
                     if name in name_to_id:
                         classes_to_detect.append(name_to_id[name])
                     else:
                         self.get_logger().warn(f"Target class '{name}' not found in model classes.")
             
-            # Pass classes argument to filter at inference level
             results = self.model(cv_image, conf=self.conf_thres, iou=self.iou_thres, classes=classes_to_detect, verbose=False)
 
             object_array_msg = ObjectArray()
             object_array_msg.header = self.latest_header
             
-            # Combined mask for specific targets to publish
             combined_mask = np.zeros((orig_h, orig_w), dtype=np.uint8)
             detected_count = 0
+            
+            debug_points = [] # For visualization
 
             if results[0].masks is not None:
-                masks = results[0].masks.data.cpu().numpy() # (N, H, W) in model resolution
-                boxes = results[0].boxes.data.cpu().numpy() # (N, 6)
+                boxes = results[0].boxes.data.cpu().numpy()
 
                 for i, mask_tensor in enumerate(results[0].masks.data):
                     class_id = int(boxes[i][5])
                     class_name = self.model.names[class_id]
                     score = float(boxes[i][4])
                     
-                    # Filtering is now done at inference level, so we don't need to filter here again.
-                    # But checking just in case logic changes is fine.
-                    
                     detected_count += 1
                     
-                    # Resize mask to original image size
                     mask_np = mask_tensor.cpu().numpy()
                     mask_resized = cv2.resize(mask_np, (orig_w, orig_h), interpolation=cv2.INTER_NEAREST)
                     binary_mask = (mask_resized > 0.5).astype(np.uint8)
                     
-                    # Add to combined mask
                     combined_mask = cv2.bitwise_or(combined_mask, binary_mask)
 
-                    # Extract Contour
+                    # Extract Contour for UI
                     contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                    
                     contour_points = []
-                    center_x = 0
-                    center_y = 0
-                    
                     if contours:
-                        # Find largest contour
                         main_contour = max(contours, key=cv2.contourArea)
-                        
-                        # Calculate Moments for Center
-                        M = cv2.moments(main_contour)
-                        if M["m00"] != 0:
-                            center_x = int(M["m10"] / M["m00"])
-                            center_y = int(M["m01"] / M["m00"])
-                        else:
-                            # Fallback to bounding box center
-                            x, y, w, h = cv2.boundingRect(main_contour)
-                            center_x = int(x + w / 2)
-                            center_y = int(y + h / 2)
-                        
-                        # approxPolyDP to reduce points if needed
                         epsilon = 0.005 * cv2.arcLength(main_contour, True)
                         approx = cv2.approxPolyDP(main_contour, epsilon, True)
-                        
-                        # Flatten: [u1, v1, u2, v2, ...]
                         for pt in approx:
                             contour_points.extend([int(pt[0][0]), int(pt[0][1])])
 
-                    # --- New Angle & Depth Logic ---
+                    # Calculate true 3D centroid
+                    centroid_3d = self.calculate_3d_centroid(cv_depth, binary_mask, step=4)
                     
-                    # 1. Calculate Angle (Yaw, Pitch) from RGB intrinsics
-                    yaw, pitch = self.calculate_angle(center_x, center_y, self.color_info)
-                    
-                    # 2. Project RGB Center to Depth Frame
-                    u_d, v_d = self.project_rgb_to_depth(center_x, center_y)
-                    
-                    z_val = 0.0
-                    
-                    # 3. Check availability in Depth Frame
-                    if 0 <= u_d < depth_w and 0 <= v_d < depth_h:
-                        # Read depth at center (single pixel or small window)
-                        # Let's verify a 3x3 window for robustness
-                        depth_region = cv_depth[max(0, v_d-1):min(depth_h, v_d+2), max(0, u_d-1):min(depth_w, u_d+2)]
-                        valid_depths = depth_region[depth_region > 0]
+                    if centroid_3d:
+                        cx, cy, cz = centroid_3d
+                        yaw, pitch = self.calculate_angle_from_3d(cx, cy, cz)
+                        z_val = cz
+                        valid_status = "Valid 3D"
                         
-                        if valid_depths.size > 0:
-                            z_mm = np.median(valid_depths)
-                            z_val = z_mm / 1000.0 # mm to m
-                    
-                    # Create ObjectInfo
+                        # Store debug point
+                        if self.color_info:
+                             fx = self.color_info.k[0]
+                             fy = self.color_info.k[4]
+                             cx_p = self.color_info.k[2]
+                             cy_p = self.color_info.k[5]
+                             
+                             u_c = int((cx * fx / cz) + cx_p)
+                             v_c = int((cy * fy / cz) + cy_p)
+                             debug_points.append({'u': u_c, 'v': v_c, 'z': z_val, 'label': f"{z_val:.2f}m"})
+                    else:
+                        x1, y1, x2, y2 = boxes[i][0:4]
+                        center_x = (x1 + x2) / 2
+                        center_y = (y1 + y2) / 2
+                        if self.color_info:
+                             fx = self.color_info.k[0]
+                             cx_p = self.color_info.k[2]
+                             yaw = np.arctan((center_x - cx_p) / fx)
+                             pitch = 0.0 
+                        else:
+                             yaw, pitch = 0.0, 0.0
+                        z_val = 0.0
+                        valid_status = "No Depth"
+
                     obj_info = ObjectInfo()
                     obj_info.class_name = class_name
                     obj_info.score = score
-                    
-                    # Store Angles in X, Y
-                    obj_info.x = yaw   # Yaw Angle (rad)
-                    obj_info.y = pitch # Pitch Angle (rad)
-                    
-                    obj_info.z = z_val # Depth (m) or 0.0 if invalid
+                    obj_info.x = float(yaw)
+                    obj_info.y = float(pitch)
+                    obj_info.z = float(z_val)
                     obj_info.contour_points = contour_points
                     
                     object_array_msg.objects.append(obj_info)
                     
-                    # Log
                     if response: 
-                        status = "Valid" if z_val > 0 else "No Depth/OutOfFOV"
-                        self.get_logger().info(f"Target '{class_name}': Yaw={yaw:.3f}, Pitch={pitch:.3f}, Depth={z_val:.3f}m ({status})")
+                        self.get_logger().info(f"Target '{class_name}': Yaw={yaw:.3f}, Pitch={pitch:.3f}, Depth={z_val:.3f}m ({valid_status})")
 
-            # Publish Objects
             self.objects_pub.publish(object_array_msg)
             
-            # Generate and Publish PointCloud
             if detected_count > 0:
-                pc2_msg = self.generate_pointcloud(cv_depth, cv_image, combined_mask)
+                pc2_msg = self.generate_pointcloud_v2(cv_depth, cv_image, combined_mask)
                 if pc2_msg:
                     self.result_cloud_pub.publish(pc2_msg)
             
-            # Publish result images
             if detected_count > 0:
                 masked_img_msg = self.bridge.cv2_to_imgmsg(combined_mask * 255, encoding='mono8')
                 masked_img_msg.header = self.latest_header
                 self.mask_pub.publish(masked_img_msg)
                 
-                # Debug image with all detections
                 res_plotted = results[0].plot()
                 
-                # Draw center point and status on debug image
-                if object_array_msg.objects:
-                    for obj in object_array_msg.objects:
-                         # Re-calculate center for visualization (approx)
-                         # We don't have the center easily here without re-looping or storing
-                         # But results[0].plot() draws boxes.
-                         pass
+                # Draw Debug Points on Output Image
+                for pt in debug_points:
+                    u, v = pt['u'], pt['v']
+                    # Draw Circle
+                    cv2.circle(res_plotted, (u, v), 5, (0, 0, 255), -1)
+                    # Draw Text
+                    cv2.putText(res_plotted, pt['label'], (u + 10, v), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
                 debug_msg = self.bridge.cv2_to_imgmsg(res_plotted, encoding='bgr8')
                 debug_msg.header = self.latest_header
@@ -625,10 +524,9 @@ class YOLOv8SegNode(Node):
                     response.message = f"Detected {detected_count} target objects."
             else:
                 if response:
-                    response.success = True # Success technically, just nothing found
+                    response.success = True
                     response.message = "No target objects detected."
                 
-                # Debug image
                 debug_msg = self.bridge.cv2_to_imgmsg(cv_image, encoding='bgr8')
                 debug_msg.header = self.latest_header
                 self.debug_pub.publish(debug_msg)
