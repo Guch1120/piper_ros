@@ -42,6 +42,8 @@ setup(
             'gripper_close_test = piper.gripper_close_test_node:main',
             'piper_single_ctrl_moveit_action = piper.piper_single_ctrl_moveit_action_node:main',
             'keyboard_publisher = piper.keyboard_publisher:main',
+            'camera_calibration = piper.camera_calibration:main',
+            'rpy_calibration = piper.rpy_calibration:main',
         ],
     },
 )

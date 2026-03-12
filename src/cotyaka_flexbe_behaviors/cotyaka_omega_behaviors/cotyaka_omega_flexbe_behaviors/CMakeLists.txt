@@ -11,6 +11,11 @@ install(DIRECTORY
 )
 
 install(DIRECTORY
+  manifest
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(DIRECTORY
   config
   DESTINATION lib/${PROJECT_NAME}
 )
