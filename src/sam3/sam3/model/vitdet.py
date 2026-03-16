@@ -386,6 +386,7 @@ class Attention(nn.Module):
         self.rope_theta = rope_theta
         self.rope_pt_size = rope_pt_size
         self.rope_interp = rope_interp
+        self.dynamic_freqs_cis_cache = {}
 
         # init rel_pos embeddings and rope
         self._setup_rel_pos(rel_pos_zero_init)
@@ -461,7 +462,27 @@ class Attention(nn.Module):
             return q, k
 
         assert self.freqs_cis is not None
-        return apply_rotary_enc(q, k, freqs_cis=self.freqs_cis)
+        freqs_cis = self.freqs_cis
+        if freqs_cis.shape[0] != q.shape[-2]:
+            spatial_size = int(math.sqrt(q.shape[-2]))
+            assert spatial_size * spatial_size == q.shape[-2]
+            cache_key = (spatial_size, spatial_size, q.device)
+            if cache_key not in self.dynamic_freqs_cis_cache:
+                scale_pos = 1.0
+                if self.rope_interp:
+                    rope_pt_h = (
+                        self.rope_pt_size[0]
+                        if isinstance(self.rope_pt_size, tuple)
+                        else self.rope_pt_size
+                    )
+                    scale_pos = rope_pt_h / spatial_size
+                self.dynamic_freqs_cis_cache[cache_key] = self.compute_cis(
+                    end_x=spatial_size,
+                    end_y=spatial_size,
+                    scale_pos=scale_pos,
+                ).to(q.device)
+            freqs_cis = self.dynamic_freqs_cis_cache[cache_key]
+        return apply_rotary_enc(q, k, freqs_cis=freqs_cis)
 
     def forward(self, x: Tensor) -> Tensor:
         s = 1 if self.cls_token else 0  # used to exclude cls_token

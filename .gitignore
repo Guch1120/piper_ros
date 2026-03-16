@@ -18,3 +18,4 @@ oculus_reader/oculus_reader
 .thumbs
 record3d/output/
 src/sam3_ros/assets/saved_frames
+src/sam3/result/
