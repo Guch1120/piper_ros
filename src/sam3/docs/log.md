@@ -67,3 +67,15 @@
 - `854` の結果は `result/benchmark_val2017/20260317_035302_prompts_person_dog_car_res_854_n_6_compile_0_autocast_1_queries_default_textcache_0_layers_default_warmup_1_random_1_seed_123` に保存し、`person=5.2750FPS`, `avg_object_count=7.00` だった。
 - `854` は 5FPS を超えつつ、`840` より検出数の落ち幅が小さかったため、現時点の最良トレードオフとして採用した。
 - `run_sam3_groceries.py` の既定推論解像度を `SAM3_IMAGE_RESOLUTION=854` 相当に変更し、Docker 内再計測で `avg_set_image=0.1554s`, `avg_set_text_prompt=0.0286s`, `approx_fps=5.4353` を確認した。
+
+## 2026-03-17 ONNX/TensorRT image encoder の実装と評価
+- `scripts/export_sam3_encoder_onnx.py` を追加し、`SAM3` の `vision_backbone` を固定解像度 `854` 向け ONNX として export できるようにした。
+- `sam3/model/sam3_image_processor.py` に ONNX Runtime 経路を追加し、`set_image` の image encoder だけを ORT/TensorRT EP へ切り替えられるようにした。
+- `scripts/benchmark_val2017.py` に `--image-encoder-onnx`, `--onnx-provider`, `--onnx-trt-cache-dir` を追加し、PyTorch と ONNX の on/off 比較を同一条件で回せるようにした。
+- `sam3/model/vitdet.py` には ONNX export 用の RoPE 実数演算分岐を追加し、`view_as_complex` 非対応を回避した。
+- Docker 内では `onnxruntime-gpu`, `onnxscript` を導入し、`onnx==1.18.0`, `ml_dtypes==0.5.0` に調整して export を通した。
+- export 成果物は `result/onnx/sam3_encoder_res854.onnx` に保存した。
+- PyTorch 基準の再計測は `result/benchmark_val2017/20260317_042701_prompts_person_dog_car_res_854_n_4_compile_0_autocast_1_queries_default_textcache_1_layers_default_warmup_1_random_1_seed_123_onnx_off_provider_tensorrt` に保存し、`person=5.3579FPS`, `avg_set_image=0.1581s`, `avg_set_image_forward_image=0.1544s`, `avg_object_count=11.00` だった。
+- ONNX/TensorRT 経路の初回比較は `result/benchmark_val2017/20260317_042957_prompts_person_dog_car_res_854_n_2_compile_0_autocast_1_queries_default_textcache_1_layers_default_warmup_1_random_1_seed_123_onnx_sam3_encoder_res854_onnx_provider_tensorrt` に保存し、`person=8.9549FPS`, `avg_set_image=0.0883s`, `avg_set_image_forward_image=0.0860s` まで改善した。
+- ただし同じ ONNX/TensorRT ランでは `person/dog/car` すべて `avg_object_count=0.00` となり、検出精度が崩壊した。
+- 結論として、**速度面では 9FPS 近辺まで到達可能性が見えたが、現状の export/実行経路は精度維持条件を満たさないため不採用** とした。
