@@ -25,10 +25,15 @@ class Sam3Processor:
         use_autocast=None,
         autocast_dtype=torch.bfloat16,
         cache_text_features=True,
+        image_encoder_onnx_path=None,
+        onnx_provider="tensorrt",
+        onnx_trt_cache_dir="/tmp/ort_trt_cache",
+        onnx_trt_fp16=True,
     ):
         self.model = model
         self.resolution = resolution
         self.device = device
+        self.image_encoder_onnx_path = image_encoder_onnx_path
         self.transform = v2.Compose(
             [
                 v2.ToDtype(torch.uint8, scale=True),
@@ -44,6 +49,17 @@ class Sam3Processor:
         self.autocast_dtype = autocast_dtype
         self.cache_text_features = cache_text_features
         self.text_feature_cache = {}
+        self.onnx_provider = onnx_provider
+        self.onnx_trt_cache_dir = onnx_trt_cache_dir
+        self.onnx_trt_fp16 = onnx_trt_fp16
+        self.image_encoder_session = None
+        self.image_encoder_session_providers = []
+        self.image_encoder_io_binding = None
+        self.image_encoder_input_name = None
+        self.image_encoder_output_names = []
+        self.image_encoder_output_shapes = []
+        self.image_encoder_output_buffers = None
+        self._init_image_encoder_backend()
 
         self.find_stage = FindStage(
             img_ids=torch.tensor([0], device=device, dtype=torch.long),
@@ -54,6 +70,105 @@ class Sam3Processor:
             input_points=None,
             input_points_mask=None,
         )
+
+    def _init_image_encoder_backend(self):
+        if not self.image_encoder_onnx_path:
+            return
+        try:
+            import onnxruntime as ort
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "ONNX image encoder is requested but onnxruntime is not installed."
+            ) from exc
+
+        session_options = ort.SessionOptions()
+        session_options.graph_optimization_level = (
+            ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        )
+        providers = self._build_onnx_providers()
+        self.image_encoder_session = ort.InferenceSession(
+            self.image_encoder_onnx_path,
+            sess_options=session_options,
+            providers=providers,
+        )
+        self.image_encoder_session_providers = (
+            self.image_encoder_session.get_providers()
+        )
+        self.image_encoder_input_name = self.image_encoder_session.get_inputs()[0].name
+        self.image_encoder_output_names = [
+            output.name for output in self.image_encoder_session.get_outputs()
+        ]
+        self.image_encoder_output_shapes = self._infer_onnx_output_shapes()
+        self.image_encoder_output_buffers = None
+
+    def _build_onnx_providers(self):
+        if self.onnx_provider == "cpu":
+            return ["CPUExecutionProvider"]
+        if self.onnx_provider == "cuda":
+            return ["CUDAExecutionProvider", "CPUExecutionProvider"]
+        if self.onnx_provider == "tensorrt":
+            return [
+                (
+                    "TensorrtExecutionProvider",
+                    {
+                        "trt_fp16_enable": "True" if self.onnx_trt_fp16 else "False",
+                        "trt_engine_cache_enable": "True",
+                        "trt_engine_cache_path": self.onnx_trt_cache_dir,
+                    },
+                ),
+                "CUDAExecutionProvider",
+                "CPUExecutionProvider",
+            ]
+        raise ValueError(f"Unsupported ONNX provider: {self.onnx_provider}")
+
+    def _infer_onnx_output_shapes(self):
+        feature_hw = self.resolution // 14
+        shapes = []
+        for scale in (4, 2, 1):
+            size = feature_hw * scale
+            shapes.append((1, 256, size, size))
+        shapes.append((1, 256, feature_hw // 2, feature_hw // 2))
+        return shapes
+
+    def _ensure_onnx_output_buffers(self, image: torch.Tensor):
+        if self.device != "cuda":
+            self.image_encoder_output_buffers = None
+            return None
+        if self.image_encoder_output_buffers is not None:
+            return self.image_encoder_output_buffers
+        buffers = []
+        for shape in self.image_encoder_output_shapes:
+            buffers.append(
+                torch.empty(shape, device=image.device, dtype=torch.float32)
+            )
+        self.image_encoder_output_buffers = buffers
+        return buffers
+
+    def _run_image_encoder_onnx(self, image: torch.Tensor):
+        outputs = self.image_encoder_session.run(
+            self.image_encoder_output_names,
+            {self.image_encoder_input_name: image.detach().cpu().numpy()},
+        )
+        return [torch.as_tensor(np.asarray(output), device=self.device) for output in outputs]
+
+    def _forward_image(self, image: torch.Tensor):
+        if self.image_encoder_session is None:
+            with self._autocast_context():
+                return self.model.backbone.forward_image(image)
+
+        features = self._run_image_encoder_onnx(image)
+        sam3_pos = [
+            self.model.backbone.vision_backbone.position_encoding(feature).to(
+                feature.dtype
+            )
+            for feature in features
+        ]
+        return {
+            "vision_features": features[-1],
+            "vision_pos_enc": sam3_pos,
+            "backbone_fpn": features,
+            "sam2_backbone_out": None,
+        }
 
     def _sync_if_needed(self):
         if self.device == "cuda":
@@ -112,11 +227,10 @@ class Sam3Processor:
 
         state["original_height"] = height
         state["original_width"] = width
-        with self._autocast_context():
-            state["backbone_out"] = self._profile_step(
-                "set_image_forward_image",
-                lambda: self.model.backbone.forward_image(image),
-            )
+        state["backbone_out"] = self._profile_step(
+            "set_image_forward_image",
+            lambda: self._forward_image(image),
+        )
         inst_interactivity_en = self.model.inst_interactive_predictor is not None
         if inst_interactivity_en and "sam2_backbone_out" in state["backbone_out"]:
             sam2_backbone_out = state["backbone_out"]["sam2_backbone_out"]

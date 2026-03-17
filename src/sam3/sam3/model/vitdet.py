@@ -57,6 +57,24 @@ def compute_axial_cis(
     return torch.cat([freqs_cis_x, freqs_cis_y], dim=-1)
 
 
+def compute_axial_cis_real_imag(
+    dim: int,
+    end_x: int,
+    end_y: int,
+    theta: float = 10000.0,
+    scale_pos: float = 1.0,
+    offset: int = 0,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    freqs_x = 1.0 / (theta ** (torch.arange(0, dim, 4)[: (dim // 4)].float() / dim))
+    freqs_y = 1.0 / (theta ** (torch.arange(0, dim, 4)[: (dim // 4)].float() / dim))
+    t_x, t_y = init_t_xy(end_x, end_y, scale_pos, offset)
+    phase_x = torch.outer(t_x, freqs_x)
+    phase_y = torch.outer(t_y, freqs_y)
+    freqs_real = torch.cat([torch.cos(phase_x), torch.cos(phase_y)], dim=-1)
+    freqs_imag = torch.cat([torch.sin(phase_x), torch.sin(phase_y)], dim=-1)
+    return freqs_real, freqs_imag
+
+
 def reshape_for_broadcast(freqs_cis: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
     ndim = x.ndim
     assert 0 <= 1 < ndim
@@ -87,6 +105,48 @@ def apply_rotary_enc(
         r = xk_.shape[-2] // xq_.shape[-2]
         freqs_cis = freqs_cis.repeat(*([1] * (freqs_cis.ndim - 2)), r, 1)
     xk_out = torch.view_as_real(xk_ * freqs_cis).flatten(3)
+    return xq_out.type_as(xq).to(xq.device), xk_out.type_as(xk).to(xk.device)
+
+
+def _apply_rotary_enc_onnx(
+    xq: torch.Tensor,
+    xk: torch.Tensor,
+    freqs_real: torch.Tensor,
+    freqs_imag: torch.Tensor,
+    repeat_freqs_k: bool = False,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    xq_pairs = xq.float().reshape(*xq.shape[:-1], -1, 2)
+    xq_real = xq_pairs[..., 0]
+    xq_imag = xq_pairs[..., 1]
+    freqs_real_q = freqs_real.view(
+        *([1] * (xq_real.ndim - 2)), xq_real.shape[-2], xq_real.shape[-1]
+    )
+    freqs_imag_q = freqs_imag.view(
+        *([1] * (xq_real.ndim - 2)), xq_real.shape[-2], xq_real.shape[-1]
+    )
+    xq_rot_real = xq_real * freqs_real_q - xq_imag * freqs_imag_q
+    xq_rot_imag = xq_imag * freqs_real_q + xq_real * freqs_imag_q
+    xq_out = torch.stack((xq_rot_real, xq_rot_imag), dim=-1).flatten(3)
+    if xk.shape[-2] == 0:
+        return xq_out.type_as(xq).to(xq.device), xk
+
+    xk_pairs = xk.float().reshape(*xk.shape[:-1], -1, 2)
+    if repeat_freqs_k:
+        repeat_factor = xk_pairs.shape[-2] // xq_pairs.shape[-2]
+        freqs_real_k = freqs_real_q.repeat(
+            *([1] * (freqs_real_q.ndim - 2)), repeat_factor, 1
+        )
+        freqs_imag_k = freqs_imag_q.repeat(
+            *([1] * (freqs_imag_q.ndim - 2)), repeat_factor, 1
+        )
+    else:
+        freqs_real_k = freqs_real_q
+        freqs_imag_k = freqs_imag_q
+    xk_real = xk_pairs[..., 0]
+    xk_imag = xk_pairs[..., 1]
+    xk_rot_real = xk_real * freqs_real_k - xk_imag * freqs_imag_k
+    xk_rot_imag = xk_imag * freqs_real_k + xk_real * freqs_imag_k
+    xk_out = torch.stack((xk_rot_real, xk_rot_imag), dim=-1).flatten(3)
     return xq_out.type_as(xq).to(xq.device), xk_out.type_as(xk).to(xk.device)
 
 
@@ -422,6 +482,8 @@ class Attention(nn.Module):
     def _setup_rope_freqs(self) -> None:
         if not self.use_rope:
             self.freqs_cis = None
+            self.freqs_cis_real = None
+            self.freqs_cis_imag = None
             return
 
         assert self.input_size is not None
@@ -455,13 +517,43 @@ class Attention(nn.Module):
             cls_freqs_cis = torch.polar(torch.ones_like(t), t)[None, :]
             freqs_cis = torch.cat([cls_freqs_cis, freqs_cis], dim=0)
 
+        freqs_parts = torch.view_as_real(freqs_cis)
         self.register_buffer("freqs_cis", freqs_cis)
+        self.register_buffer("freqs_cis_real", freqs_parts[..., 0])
+        self.register_buffer("freqs_cis_imag", freqs_parts[..., 1])
 
     def _apply_rope(self, q, k) -> Tuple[Tensor, Tensor]:
         if not self.use_rope:
             return q, k
 
         assert self.freqs_cis is not None
+        if torch.onnx.is_in_onnx_export():
+            freqs_real = self.freqs_cis_real
+            freqs_imag = self.freqs_cis_imag
+            if freqs_real.shape[0] != q.shape[-2]:
+                spatial_size = int(math.sqrt(q.shape[-2]))
+                assert spatial_size * spatial_size == q.shape[-2]
+                scale_pos = 1.0
+                if self.rope_interp:
+                    rope_pt_h = (
+                        self.rope_pt_size[0]
+                        if isinstance(self.rope_pt_size, tuple)
+                        else self.rope_pt_size
+                    )
+                    scale_pos = rope_pt_h / spatial_size
+                freqs_real, freqs_imag = compute_axial_cis_real_imag(
+                    dim=self.head_dim,
+                    end_x=spatial_size,
+                    end_y=spatial_size,
+                    theta=self.rope_theta,
+                    scale_pos=scale_pos,
+                )
+            return _apply_rotary_enc_onnx(
+                q,
+                k,
+                freqs_real.to(q.device),
+                freqs_imag.to(q.device),
+            )
         freqs_cis = self.freqs_cis
         if freqs_cis.shape[0] != q.shape[-2]:
             spatial_size = int(math.sqrt(q.shape[-2]))

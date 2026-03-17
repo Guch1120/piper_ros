@@ -108,6 +108,14 @@ def main():
     parser.add_argument("--warmup-images", type=int, default=1)
     parser.add_argument("--sequential-sample", action="store_true")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--image-encoder-onnx", default="")
+    parser.add_argument(
+        "--onnx-provider",
+        default="tensorrt",
+        choices=["tensorrt", "cuda", "cpu"],
+    )
+    parser.add_argument("--onnx-trt-cache-dir", default="/tmp/ort_trt_cache")
+    parser.add_argument("--disable-onnx-trt-fp16", action="store_true")
     args = parser.parse_args()
 
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -140,6 +148,8 @@ def main():
     print(f"Warmup images: {args.warmup_images}")
     print(f"Random sample: {not args.sequential_sample}")
     print(f"Seed: {args.seed}")
+    print(f"Image encoder ONNX: {args.image_encoder_onnx or 'disabled'}")
+    print(f"ONNX provider: {args.onnx_provider}")
     print(f"Save visualizations: {not args.skip_visualizations}")
     print(f"Output dir: {output_root}")
 
@@ -156,6 +166,8 @@ def main():
         f"_warmup_{args.warmup_images}"
         f"_random_{int(not args.sequential_sample)}"
         f"_seed_{args.seed}"
+        f"_onnx_{sanitize_name(os.path.basename(args.image_encoder_onnx)) if args.image_encoder_onnx else 'off'}"
+        f"_provider_{args.onnx_provider}"
     )
     run_dir = os.path.join(output_root, run_name)
     ensure_dir(run_dir)
@@ -182,6 +194,10 @@ def main():
         resolution=args.resolution,
         use_autocast=args.use_autocast,
         cache_text_features=not args.disable_text_cache,
+        image_encoder_onnx_path=args.image_encoder_onnx or None,
+        onnx_provider=args.onnx_provider,
+        onnx_trt_cache_dir=args.onnx_trt_cache_dir,
+        onnx_trt_fp16=not args.disable_onnx_trt_fp16,
     )
     processor.set_profile_enabled(True)
 
@@ -291,6 +307,12 @@ def main():
         "warmup_images": args.warmup_images,
         "random_sample": not args.sequential_sample,
         "seed": args.seed,
+        "image_encoder_onnx": args.image_encoder_onnx or None,
+        "onnx_provider": args.onnx_provider if args.image_encoder_onnx else None,
+        "onnx_trt_fp16": (not args.disable_onnx_trt_fp16)
+        if args.image_encoder_onnx
+        else None,
+        "image_encoder_runtime_providers": processor.image_encoder_session_providers,
         "selected_images": image_paths,
         "build_model": build_time,
         "avg_set_image": avg_set_image,
