@@ -21,7 +21,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 launch realsense2_camera rs_launch.py align_depth.enable:=false enable_sync:=true enable_rgbd:=true pointcloud.enable:=true; bash
+    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true enable_sync:=true enable_rgbd:=true pointcloud.enable:=true; bash
     use_system_font = False
   [[cmd_detic]]
     background_color = "#300a24"
@@ -209,11 +209,11 @@
       parent = ""
       order = 0
       position = 0:27
-      maximised = True
+      maximised = False
       fullscreen = False
-      size = 1920, 1016
+      size = 960, 1016
       title = @robo25-Alienware-m15-R3:/ros2_ws
-      last_active_term = 81ab64ea-4a43-44dc-aa01-d0580c85e002
+      last_active_term = 79e6da3c-5668-4c46-bb35-75634b63a509
       last_active_window = True
     [[[child1]]]
       type = VPaned
@@ -225,8 +225,8 @@
       type = HPaned
       parent = child1
       order = 0
-      position = 960
-      ratio = 0.5013054830287206
+      position = 479
+      ratio = 0.5015706806282723
     [[[child3]]]
       type = VPaned
       parent = child2
@@ -237,8 +237,8 @@
       type = HPaned
       parent = child3
       order = 0
-      position = 478
-      ratio = 0.5005235602094241
+      position = 237
+      ratio = 0.5
     [[[terminal5]]]
       type = Terminal
       parent = child4
@@ -255,8 +255,8 @@
       type = HPaned
       parent = child3
       order = 1
-      position = 478
-      ratio = 0.5005235602094241
+      position = 237
+      ratio = 0.5
     [[[terminal8]]]
       type = Terminal
       parent = child7
@@ -279,8 +279,8 @@
       type = HPaned
       parent = child10
       order = 0
-      position = 478
-      ratio = 0.5031578947368421
+      position = 237
+      ratio = 0.5031847133757962
     [[[terminal12]]]
       type = Terminal
       parent = child11
@@ -297,8 +297,8 @@
       type = HPaned
       parent = child10
       order = 1
-      position = 480
-      ratio = 0.5052631578947369
+      position = 238
+      ratio = 0.505307855626327
     [[[terminal15]]]
       type = Terminal
       parent = child14
@@ -321,8 +321,8 @@
       type = HPaned
       parent = child17
       order = 0
-      position = 957
-      ratio = 0.49973890339425586
+      position = 477
+      ratio = 0.49947643979057593
     [[[terminal19]]]
       type = Terminal
       parent = child18
@@ -339,8 +339,8 @@
       type = HPaned
       parent = child17
       order = 1
-      position = 958
-      ratio = 0.5002610966057441
+      position = 478
+      ratio = 0.5005235602094241
     [[[terminal22]]]
       type = Terminal
       parent = child21
