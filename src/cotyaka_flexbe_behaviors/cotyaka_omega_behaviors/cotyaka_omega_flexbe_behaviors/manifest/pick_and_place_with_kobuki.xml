@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<behavior name="pick_and_place_with_kobuki">
+
+    <executable package_path="cotyaka_omega_flexbe_behaviors.pick_and_place_with_kobuki_sm" class="pick_and_place_with_kobukiSM" />
+    <tagstring>koctyaka</tagstring>
+    <author>Yamaguchi Takuma</author>
+    <date>Tue Mar 17 2026</date>
+    <description>
+        pick and place with kobuki.
+        .....no tumori 
+    </description>
+
+
+    <!-- Contained Behaviors -->
+
+    <!-- Available Parameters -->
+
+</behavior>
