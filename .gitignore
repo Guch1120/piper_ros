@@ -7,7 +7,6 @@ log
 .vscode
 .idea
 src/piper/backup
-.catkin_workspace
 *.log
 *.7z
 *.zip
@@ -18,4 +17,5 @@ oculus_reader/oculus_reader
 **/__pycache__/
 .thumbs
 record3d/output/
-.config/terminator/
+src/sam3_ros/assets/saved_frames
+src/sam3/result/

@@ -57,6 +57,24 @@ def compute_axial_cis(
     return torch.cat([freqs_cis_x, freqs_cis_y], dim=-1)
 
 
+def compute_axial_cis_real_imag(
+    dim: int,
+    end_x: int,
+    end_y: int,
+    theta: float = 10000.0,
+    scale_pos: float = 1.0,
+    offset: int = 0,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    freqs_x = 1.0 / (theta ** (torch.arange(0, dim, 4)[: (dim // 4)].float() / dim))
+    freqs_y = 1.0 / (theta ** (torch.arange(0, dim, 4)[: (dim // 4)].float() / dim))
+    t_x, t_y = init_t_xy(end_x, end_y, scale_pos, offset)
+    phase_x = torch.outer(t_x, freqs_x)
+    phase_y = torch.outer(t_y, freqs_y)
+    freqs_real = torch.cat([torch.cos(phase_x), torch.cos(phase_y)], dim=-1)
+    freqs_imag = torch.cat([torch.sin(phase_x), torch.sin(phase_y)], dim=-1)
+    return freqs_real, freqs_imag
+
+
 def reshape_for_broadcast(freqs_cis: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
     ndim = x.ndim
     assert 0 <= 1 < ndim
@@ -87,6 +105,71 @@ def apply_rotary_enc(
         r = xk_.shape[-2] // xq_.shape[-2]
         freqs_cis = freqs_cis.repeat(*([1] * (freqs_cis.ndim - 2)), r, 1)
     xk_out = torch.view_as_real(xk_ * freqs_cis).flatten(3)
+    return xq_out.type_as(xq).to(xq.device), xk_out.type_as(xk).to(xk.device)
+
+
+def apply_rotary_enc_single(x: torch.Tensor, freqs_cis: torch.Tensor) -> torch.Tensor:
+    x_complex = torch.view_as_complex(x.float().reshape(*x.shape[:-1], -1, 2))
+    freqs_cis = reshape_for_broadcast(freqs_cis, x_complex)
+    x_out = torch.view_as_real(x_complex * freqs_cis).flatten(3)
+    return x_out.type_as(x).to(x.device)
+
+
+def reduce_kv_heads(x: torch.Tensor, head_group_size: int) -> torch.Tensor:
+    """ヘッド方向をまとめて平均し、GQA 用に KV ヘッド数を減らす。"""
+    if head_group_size <= 1:
+        return x
+    batch_size, num_heads, seq_len, head_dim = x.shape
+    if num_heads % head_group_size != 0:
+        return x
+    return x.reshape(
+        batch_size,
+        num_heads // head_group_size,
+        head_group_size,
+        seq_len,
+        head_dim,
+    ).mean(dim=2)
+
+
+def _apply_rotary_enc_onnx(
+    xq: torch.Tensor,
+    xk: torch.Tensor,
+    freqs_real: torch.Tensor,
+    freqs_imag: torch.Tensor,
+    repeat_freqs_k: bool = False,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    xq_pairs = xq.float().reshape(*xq.shape[:-1], -1, 2)
+    xq_real = xq_pairs[..., 0]
+    xq_imag = xq_pairs[..., 1]
+    freqs_real_q = freqs_real.view(
+        *([1] * (xq_real.ndim - 2)), xq_real.shape[-2], xq_real.shape[-1]
+    )
+    freqs_imag_q = freqs_imag.view(
+        *([1] * (xq_real.ndim - 2)), xq_real.shape[-2], xq_real.shape[-1]
+    )
+    xq_rot_real = xq_real * freqs_real_q - xq_imag * freqs_imag_q
+    xq_rot_imag = xq_imag * freqs_real_q + xq_real * freqs_imag_q
+    xq_out = torch.stack((xq_rot_real, xq_rot_imag), dim=-1).flatten(3)
+    if xk.shape[-2] == 0:
+        return xq_out.type_as(xq).to(xq.device), xk
+
+    xk_pairs = xk.float().reshape(*xk.shape[:-1], -1, 2)
+    if repeat_freqs_k:
+        repeat_factor = xk_pairs.shape[-2] // xq_pairs.shape[-2]
+        freqs_real_k = freqs_real_q.repeat(
+            *([1] * (freqs_real_q.ndim - 2)), repeat_factor, 1
+        )
+        freqs_imag_k = freqs_imag_q.repeat(
+            *([1] * (freqs_imag_q.ndim - 2)), repeat_factor, 1
+        )
+    else:
+        freqs_real_k = freqs_real_q
+        freqs_imag_k = freqs_imag_q
+    xk_real = xk_pairs[..., 0]
+    xk_imag = xk_pairs[..., 1]
+    xk_rot_real = xk_real * freqs_real_k - xk_imag * freqs_imag_k
+    xk_rot_imag = xk_imag * freqs_real_k + xk_real * freqs_imag_k
+    xk_out = torch.stack((xk_rot_real, xk_rot_imag), dim=-1).flatten(3)
     return xq_out.type_as(xq).to(xq.device), xk_out.type_as(xk).to(xk.device)
 
 
@@ -386,6 +469,7 @@ class Attention(nn.Module):
         self.rope_theta = rope_theta
         self.rope_pt_size = rope_pt_size
         self.rope_interp = rope_interp
+        self.dynamic_freqs_cis_cache = {}
 
         # init rel_pos embeddings and rope
         self._setup_rel_pos(rel_pos_zero_init)
@@ -421,6 +505,8 @@ class Attention(nn.Module):
     def _setup_rope_freqs(self) -> None:
         if not self.use_rope:
             self.freqs_cis = None
+            self.freqs_cis_real = None
+            self.freqs_cis_imag = None
             return
 
         assert self.input_size is not None
@@ -454,14 +540,68 @@ class Attention(nn.Module):
             cls_freqs_cis = torch.polar(torch.ones_like(t), t)[None, :]
             freqs_cis = torch.cat([cls_freqs_cis, freqs_cis], dim=0)
 
+        freqs_parts = torch.view_as_real(freqs_cis)
         self.register_buffer("freqs_cis", freqs_cis)
+        self.register_buffer("freqs_cis_real", freqs_parts[..., 0])
+        self.register_buffer("freqs_cis_imag", freqs_parts[..., 1])
+
+    def _get_rope_freqs(self, spatial_hw: Tuple[int, int], device: torch.device) -> Tensor:
+        assert self.freqs_cis is not None
+        if self.freqs_cis.shape[0] == spatial_hw[0] * spatial_hw[1]:
+            return self.freqs_cis.to(device)
+        cache_key = (spatial_hw[0], spatial_hw[1], device)
+        if cache_key not in self.dynamic_freqs_cis_cache:
+            scale_pos = 1.0
+            if self.rope_interp:
+                rope_pt_h = (
+                    self.rope_pt_size[0]
+                    if isinstance(self.rope_pt_size, tuple)
+                    else self.rope_pt_size
+                )
+                scale_pos = rope_pt_h / spatial_hw[0]
+            self.dynamic_freqs_cis_cache[cache_key] = self.compute_cis(
+                end_x=spatial_hw[0],
+                end_y=spatial_hw[1],
+                scale_pos=scale_pos,
+            ).to(device)
+        return self.dynamic_freqs_cis_cache[cache_key]
 
     def _apply_rope(self, q, k) -> Tuple[Tensor, Tensor]:
         if not self.use_rope:
             return q, k
 
         assert self.freqs_cis is not None
-        return apply_rotary_enc(q, k, freqs_cis=self.freqs_cis)
+        if torch.onnx.is_in_onnx_export():
+            freqs_real = self.freqs_cis_real
+            freqs_imag = self.freqs_cis_imag
+            if freqs_real.shape[0] != q.shape[-2]:
+                spatial_size = int(math.sqrt(q.shape[-2]))
+                assert spatial_size * spatial_size == q.shape[-2]
+                scale_pos = 1.0
+                if self.rope_interp:
+                    rope_pt_h = (
+                        self.rope_pt_size[0]
+                        if isinstance(self.rope_pt_size, tuple)
+                        else self.rope_pt_size
+                    )
+                    scale_pos = rope_pt_h / spatial_size
+                freqs_real, freqs_imag = compute_axial_cis_real_imag(
+                    dim=self.head_dim,
+                    end_x=spatial_size,
+                    end_y=spatial_size,
+                    theta=self.rope_theta,
+                    scale_pos=scale_pos,
+                )
+            return _apply_rotary_enc_onnx(
+                q,
+                k,
+                freqs_real.to(q.device),
+                freqs_imag.to(q.device),
+            )
+        spatial_size = int(math.sqrt(q.shape[-2]))
+        assert spatial_size * spatial_size == q.shape[-2]
+        freqs_cis = self._get_rope_freqs((spatial_size, spatial_size), q.device)
+        return apply_rotary_enc(q, k, freqs_cis=freqs_cis)
 
     def forward(self, x: Tensor) -> Tensor:
         s = 1 if self.cls_token else 0  # used to exclude cls_token
@@ -476,19 +616,58 @@ class Attention(nn.Module):
             ndim = 3
             H = W = math.sqrt(L - s)
 
-        # qkv with shape (3, B, nHead, L, C)
-        qkv = self.qkv(x).reshape(B, L, 3, self.num_heads, -1)
-        # q, k, v with shape (B, nHead, L, C)
-        q, k, v = qkv.permute(2, 0, 3, 1, 4).unbind(0)
+        kv_pool_stride = max(int(getattr(self, "inference_kv_pool_stride", 1)), 1)
+        use_kv_pool = not self.training and ndim == 4 and kv_pool_stride > 1
+        kv_head_group_size = max(
+            int(getattr(self, "inference_kv_head_group_size", 1)),
+            1,
+        )
+        use_kv_head_group = (
+            not self.training and kv_head_group_size > 1 and self.num_heads % kv_head_group_size == 0
+        )
+        q_hw = (H, W)
+        k_hw = (H, W)
+        if use_kv_pool:
+            pooled_h = max(H // kv_pool_stride, 1)
+            pooled_w = max(W // kv_pool_stride, 1)
+            pooled_x = F.interpolate(
+                x.permute(0, 3, 1, 2),
+                size=(pooled_h, pooled_w),
+                mode="bilinear",
+                align_corners=False,
+            ).permute(0, 2, 3, 1)
+            q_weight = self.qkv.weight[: x.shape[-1]]
+            q_bias = self.qkv.bias[: x.shape[-1]] if self.qkv.bias is not None else None
+            kv_weight = self.qkv.weight[x.shape[-1] :]
+            kv_bias = self.qkv.bias[x.shape[-1] :] if self.qkv.bias is not None else None
+            q = F.linear(x, q_weight, q_bias).reshape(B, L, self.num_heads, -1)
+            kv = F.linear(pooled_x, kv_weight, kv_bias).reshape(
+                B, pooled_h * pooled_w, 2, self.num_heads, -1
+            )
+            q = q.permute(0, 2, 1, 3)
+            k, v = kv.permute(2, 0, 3, 1, 4).unbind(0)
+            k_hw = (pooled_h, pooled_w)
+        else:
+            # qkv with shape (3, B, nHead, L, C)
+            qkv = self.qkv(x).reshape(B, L, 3, self.num_heads, -1)
+            # q, k, v with shape (B, nHead, L, C)
+            q, k, v = qkv.permute(2, 0, 3, 1, 4).unbind(0)
 
         # handle rope and rel pos embeddings
-        q, k = self._apply_rope(q, k)
+        if use_kv_pool and self.use_rope and not torch.onnx.is_in_onnx_export():
+            q = apply_rotary_enc_single(q, self._get_rope_freqs(q_hw, q.device))
+            k = apply_rotary_enc_single(k, self._get_rope_freqs(k_hw, k.device))
+        else:
+            q, k = self._apply_rope(q, k)
+        if use_kv_head_group:
+            k = reduce_kv_heads(k, kv_head_group_size)
+            v = reduce_kv_heads(v, kv_head_group_size)
         if self.use_rel_pos:
             q, k = concat_rel_pos(
                 q.flatten(0, 1),
                 k.flatten(0, 1),
-                (H, W),
-                x.shape[1:3],
+                q_hw,
+                k_hw,
                 self.rel_pos_h,
                 self.rel_pos_w,
                 rescale=True,
@@ -499,7 +678,12 @@ class Attention(nn.Module):
             q = q.reshape(B, self.num_heads, H * W, -1)
             k = k.reshape(B, self.num_heads, H * W, -1)
 
-        x = F.scaled_dot_product_attention(q, k, v)
+        x = F.scaled_dot_product_attention(
+            q,
+            k,
+            v,
+            enable_gqa=use_kv_head_group,
+        )
 
         if ndim == 4:
             x = (
@@ -833,11 +1017,16 @@ class ViT(nn.Module):
         x = self.ln_pre(x)
 
         outputs = []
+        skip_block_ids = set()
+        inference_skip_block_ids = getattr(self, "inference_skip_block_ids", None)
+        if not self.training and inference_skip_block_ids:
+            skip_block_ids = {int(block_id) for block_id in inference_skip_block_ids}
         for i, blk in enumerate(self.blocks):
-            if self.use_act_checkpoint and self.training:
-                x = checkpoint.checkpoint(blk, x, use_reentrant=False)
-            else:
-                x = blk(x)
+            if i not in skip_block_ids:
+                if self.use_act_checkpoint and self.training:
+                    x = checkpoint.checkpoint(blk, x, use_reentrant=False)
+                else:
+                    x = blk(x)
             if (i == self.full_attn_ids[-1]) or (
                 self.return_interm_layers and i in self.full_attn_ids
             ):

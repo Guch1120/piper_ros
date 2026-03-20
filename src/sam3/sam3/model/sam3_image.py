@@ -263,6 +263,17 @@ class Sam3Image(torch.nn.Module):
     ):
         bs = memory.shape[1]
         query_embed = self.transformer.decoder.query_embed.weight
+        reference_boxes = None
+        inference_num_queries = getattr(
+            self.transformer.decoder, "inference_num_queries", None
+        )
+        if not self.training and inference_num_queries is not None:
+            query_embed = query_embed[:inference_num_queries]
+            if self.transformer.decoder.box_refine:
+                reference_boxes = self.transformer.decoder.reference_points.weight[
+                    :inference_num_queries
+                ].unsqueeze(1)
+                reference_boxes = reference_boxes.repeat(1, bs, 1).sigmoid()
         tgt = query_embed.unsqueeze(1).repeat(1, bs, 1)
 
         apply_dac = self.transformer.decoder.dac and self.training
@@ -272,7 +283,7 @@ class Sam3Image(torch.nn.Module):
                 memory=memory,
                 memory_key_padding_mask=src_mask,
                 pos=pos_embed,
-                reference_boxes=None,
+                reference_boxes=reference_boxes,
                 level_start_index=encoder_out["level_start_index"],
                 spatial_shapes=encoder_out["spatial_shapes"],
                 valid_ratios=encoder_out["valid_ratios"],

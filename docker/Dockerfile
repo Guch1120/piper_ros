@@ -81,10 +81,9 @@ RUN pip3 install --pre --ignore-installed torch==2.9.0 torchvision torchaudio --
 
 #Record3d用インストール
 RUN apt-get update && apt-get install -y \
-    libusbmuxd-dev \
-    usbutils 
-RUN pip3 install record3d lzfse
-
+    mpg123 \
+    && rm -rf /var/lib/apt/lists/*
+RUN pip3 install gTTS lzfse opencv-contrib-python
 
 # ワークスペースの作成
 RUN mkdir -p /ros2_ws/src

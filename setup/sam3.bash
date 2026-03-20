@@ -14,6 +14,6 @@ pip install --upgrade pip setuptools wheel
 # sympyとmpmathの競合を解消するために強制再インストール
 pip install --ignore-installed sympy mpmath
 pip install -e .
-pip install -e ".[notebooks,dev,train]"
+pip install -e ".[dev,train]"
 
 echo "SAM3 setup complete!"

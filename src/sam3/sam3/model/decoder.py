@@ -319,7 +319,12 @@ class TransformerDecoder(nn.Module):
         # assign layer index to each layer so that some layers can decide what to do
         # based on which layer index they are (e.g. cross attention to memory bank only
         # in selected layers)
-        for layer_idx, layer in enumerate(self.layers):
+        active_layers = self.layers
+        inference_num_layers = getattr(self, "inference_num_layers", None)
+        if not self.training and inference_num_layers is not None:
+            active_layers = self.layers[:inference_num_layers]
+
+        for layer_idx, layer in enumerate(active_layers):
             layer.layer_idx = layer_idx
 
     @staticmethod
