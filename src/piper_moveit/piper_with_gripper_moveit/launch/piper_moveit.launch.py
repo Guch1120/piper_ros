@@ -98,6 +98,7 @@ def my_generate_moveit_rviz_launch(ld, moveit_config):
     rviz_parameters = [
         moveit_config.planning_pipelines,
         moveit_config.robot_description_kinematics,
+        moveit_config.robot_description,
     ]
     rviz_parameters.append({"use_sim_time": True})
 

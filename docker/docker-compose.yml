@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     image: piper-ros-humble-dev:latest
     container_name: piper-humble-dev
-    
+
     # ワークスペースをマウント (ホストでのコード変更がコンテナに即反映される)
     volumes:
       # GUI (RViz, Gazebo) 用
@@ -15,18 +15,20 @@ services:
       #terminatorの設定ファイルをマウント
       - ../.config/terminator/config:/root/.config/terminator/config:rw
       #gitのssh鍵をマウント
-      - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
-      - ~/.ssh/id_rsa.pub:/root/.ssh/id_rsa.pub:ro
-      # usbを認識をマウント
+      # - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
+      # - ~/.ssh/id_rsa.pub:/root/.ssh/id_rsa.pub:ro
+      - ~/.ssh:/root/.ssh:ro
+
+      # usbを認識をマウント（realsense）
       - /dev:/dev
-      # ホストのios通信用
-      - /var/run/usbmuxd:/var/run/usbmuxd:rw
+      # Hugging Faceのキャッシュディレクトリ
+      - ~/.cache/huggingface:/root/.cache/huggingface
     # 環境変数 (GUI用)
     environment:
       - DISPLAY=${DISPLAY}
       - NVIDIA_DRIVER_CAPABILITIES=all
       - NVIDIA_VISIBLE_DEVICES=all
-      
+
     # GPUの使用 (NVIDIA CUDA)
     deploy:
       resources:
@@ -34,11 +36,12 @@ services:
           devices:
             - driver: nvidia
               count: 1
-              capabilities: [gpu]
-              
+              capabilities: [ gpu ]
+
     # ネットワーク (シミュレータとホストの通信を簡単にする)
     network_mode: host
-    
+    ipc: host
+
     # --- 実機開発 (CAN) 用 ---
     privileged: true
     devices:

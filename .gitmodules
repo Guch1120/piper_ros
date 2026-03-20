@@ -1,23 +1,13 @@
-[submodule "src/piper_sdk"]
-	path = src/piper_sdk
-	url = git@github.com:Guch1120/piper_sdk.git
-[submodule "detic/detectron2"]
-	path = detic/detectron2
-	url = git@github.com:Guch1120/detectron2.git
-[submodule "detic/Detic"]
-	path = detic/Detic
-	url = git@github.com:Guch1120/Detic.git
-[submodule "src/detic_onnx_ros2"]
-	path = src/detic_onnx_ros2
-	url = git@github.com:Guch1120/detic_onnx_ros2.git
 [submodule "src/flexbe_behavior_engine"]
 	path = src/flexbe_behavior_engine
 	url = git@github.com:FlexBE/flexbe_behavior_engine.git
 	branch = humble
+
 [submodule "src/flexbe_app"]
 	path = src/flexbe_app
 	url = https://github.com/HSR-OIT/flexbe_app.git
 	branch = humble
-[submodule "piper_sdk"]
-	path = piper_sdk
+
+[submodule "src/piper_sdk"]
+	path = src/piper_sdk
 	url = git@github.com:Guch1120/piper_sdk.git
