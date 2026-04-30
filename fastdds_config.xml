@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<dds xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+    <profiles>
+        <transport_descriptors>
+            <!-- Custom UDP Transport -->
+            <transport_descriptor>
+                <transport_id>CustomUdpTransport</transport_id>
+                <type>UDPv4</type>
+                <sendBufferSize>10485760</sendBufferSize> <!-- 10MB -->
+                <receiveBufferSize>10485760</receiveBufferSize> <!-- 10MB -->
+                <maxMessageSize>65000</maxMessageSize> <!-- Max UDP payload size, fragmentation handles larger -->
+            </transport_descriptor>
+            
+            <!-- Custom Shared Memory Transport -->
+            <transport_descriptor>
+                <transport_id>CustomShmTransport</transport_id>
+                <type>SHM</type>
+                <segment_size>10485760</segment_size> <!-- 10MB -->
+                <maxMessageSize>10485760</maxMessageSize> <!-- 10MB -->
+            </transport_descriptor>
+        </transport_descriptors>
+
+        <participant profile_name="CustomParticipantProfile" is_default_profile="true">
+            <rtps>
+                <userTransports>
+                    <transport_id>CustomUdpTransport</transport_id>
+                    <transport_id>CustomShmTransport</transport_id>
+                </userTransports>
+                <useBuiltinTransports>false</useBuiltinTransports>
+            </rtps>
+        </participant>
+        
+        <data_writer profile_name="default_publisher_profile" is_default_profile="true">
+            <historyMemoryPolicy>PREALLOCATED_WITH_REALLOC</historyMemoryPolicy>
+        </data_writer>
+
+        <data_reader profile_name="default_subscription_profile" is_default_profile="true">
+            <historyMemoryPolicy>PREALLOCATED_WITH_REALLOC</historyMemoryPolicy>
+        </data_reader>
+    </profiles>
+</dds>

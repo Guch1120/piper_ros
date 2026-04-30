@@ -58,6 +58,7 @@ class Sam3VideoInference(Sam3VideoBase):
         async_loading_frames=False,
         video_loader_type="cv2",
     ):
+        print("Sam3VideoInference.init_state: start", flush=True)
         """Initialize an inference state from `resource_path` (an image or a video)."""
         images, orig_height, orig_width = load_resource_as_video_frames(
             resource_path=resource_path,
@@ -68,6 +69,7 @@ class Sam3VideoInference(Sam3VideoBase):
             async_loading_frames=async_loading_frames,
             video_loader_type=video_loader_type,
         )
+        print("Sam3VideoInference.init_state: loaded frames", flush=True)
         inference_state = {}
         inference_state["image_size"] = self.image_size
         inference_state["num_frames"] = len(images)
@@ -77,7 +79,9 @@ class Sam3VideoInference(Sam3VideoBase):
         # values that don't change across frames (so we only need to hold one copy of them)
         inference_state["constants"] = {}
         # inputs on each frame
+        print("Sam3VideoInference.init_state: constructing batch", flush=True)
         self._construct_initial_input_batch(inference_state, images)
+        print("Sam3VideoInference.init_state: constructed batch", flush=True)
         # initialize extra states
         inference_state["tracker_inference_states"] = []
         inference_state["tracker_metadata"] = {}
@@ -85,6 +89,7 @@ class Sam3VideoInference(Sam3VideoBase):
         inference_state["cached_frame_outputs"] = {}
         inference_state["action_history"] = []  # for logging user actions
         inference_state["is_image_only"] = is_image_type(resource_path)
+        print("Sam3VideoInference.init_state: done", flush=True)
         return inference_state
 
     @torch.inference_mode()

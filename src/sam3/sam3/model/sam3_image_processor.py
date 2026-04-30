@@ -16,6 +16,28 @@ from torchvision.transforms import v2
 class Sam3Processor:
     """ """
 
+    @staticmethod
+    def _default_autocast_dtype(device: str):
+        if device != "cuda" or not torch.cuda.is_available():
+            return torch.bfloat16
+        major, _minor = torch.cuda.get_device_capability()
+        # Ampere (SM80) and newer run bfloat16 well; older GPUs are faster with float16.
+        return torch.bfloat16 if major >= 8 else torch.float16
+
+    @staticmethod
+    def _default_use_channels_last(device: str):
+        return device == "cuda" and torch.cuda.is_available()
+
+    @staticmethod
+    def _configure_cuda_runtime(device: str):
+        if device != "cuda" or not torch.cuda.is_available():
+            return
+        torch.backends.cudnn.benchmark = True
+        major, _minor = torch.cuda.get_device_capability()
+        allow_tf32 = major >= 8
+        torch.backends.cuda.matmul.allow_tf32 = allow_tf32
+        torch.backends.cudnn.allow_tf32 = allow_tf32
+
     def __init__(
         self,
         model,
@@ -23,13 +45,13 @@ class Sam3Processor:
         device="cuda",
         confidence_threshold=0.5,
         use_autocast=None,
-        autocast_dtype=torch.bfloat16,
+        autocast_dtype=None,
+        use_channels_last=None,
         cache_text_features=True,
         image_encoder_onnx_path=None,
         onnx_provider="tensorrt",
         onnx_trt_cache_dir="/tmp/ort_trt_cache",
         onnx_trt_fp16=True,
-        temporal_skip=1,
     ):
         self.model = model
         self.resolution = resolution
@@ -47,7 +69,16 @@ class Sam3Processor:
         self.profile_enabled = False
         self.profile_timings = {}
         self.use_autocast = (device == "cuda") if use_autocast is None else use_autocast
-        self.autocast_dtype = autocast_dtype
+        self.autocast_dtype = (
+            self._default_autocast_dtype(device)
+            if autocast_dtype is None
+            else autocast_dtype
+        )
+        self.use_channels_last = (
+            self._default_use_channels_last(device)
+            if use_channels_last is None
+            else use_channels_last
+        )
         self.cache_text_features = cache_text_features
         self.text_feature_cache = {}
         self.onnx_provider = onnx_provider
@@ -60,10 +91,11 @@ class Sam3Processor:
         self.image_encoder_output_names = []
         self.image_encoder_output_shapes = []
         self.image_encoder_output_buffers = None
-        self.temporal_skip = max(int(temporal_skip), 1)
-        self._temporal_frame_counter = 0
-        self._cached_backbone_out = None
-        self.last_temporal_cache_hit = False
+        self._configure_cuda_runtime(device)
+        if self.use_channels_last:
+            self.model.backbone.vision_backbone = self.model.backbone.vision_backbone.to(
+                memory_format=torch.channels_last
+            )
         self._init_image_encoder_backend()
 
         self.find_stage = FindStage(
@@ -162,9 +194,6 @@ class Sam3Processor:
                 return self.model.backbone.forward_image(image)
 
         features = self._run_image_encoder_onnx(image)
-        scalp = getattr(self.model.backbone, "scalp", 0)
-        if scalp > 0:
-            features = features[: -scalp]
         sam3_pos = [
             self.model.backbone.vision_backbone.position_encoding(feature).to(
                 feature.dtype
@@ -211,30 +240,6 @@ class Sam3Processor:
     def reset_text_cache(self):
         self.text_feature_cache = {}
 
-    def reset_temporal_cache(self):
-        self._temporal_frame_counter = 0
-        self._cached_backbone_out = None
-        self.last_temporal_cache_hit = False
-
-    def _clone_cache_value(self, value):
-        if isinstance(value, dict):
-            return {key: self._clone_cache_value(item) for key, item in value.items()}
-        if isinstance(value, list):
-            return [self._clone_cache_value(item) for item in value]
-        if isinstance(value, tuple):
-            return tuple(self._clone_cache_value(item) for item in value)
-        return value
-
-    def _clone_backbone_out(self, backbone_out):
-        return self._clone_cache_value(backbone_out)
-
-    def _should_refresh_temporal_cache(self):
-        if self.temporal_skip <= 1:
-            return True
-        if self._cached_backbone_out is None:
-            return True
-        return (self._temporal_frame_counter % self.temporal_skip) == 0
-
     @torch.inference_mode()
     def set_image(self, image, state=None):
         """Sets the image on which we want to do predictions."""
@@ -256,26 +261,15 @@ class Sam3Processor:
             "set_image_transform",
             lambda: self.transform(image).unsqueeze(0),
         )
+        if self.use_channels_last:
+            image = image.contiguous(memory_format=torch.channels_last)
 
         state["original_height"] = height
         state["original_width"] = width
-        should_refresh_temporal_cache = self._should_refresh_temporal_cache()
-        if should_refresh_temporal_cache:
-            state["backbone_out"] = self._profile_step(
-                "set_image_forward_image",
-                lambda: self._forward_image(image),
-            )
-            self._cached_backbone_out = self._clone_backbone_out(state["backbone_out"])
-            self.last_temporal_cache_hit = False
-            if self.profile_enabled:
-                self.profile_timings["set_image_temporal_cache_hit"] = 0.0
-        else:
-            state["backbone_out"] = self._clone_backbone_out(self._cached_backbone_out)
-            self.last_temporal_cache_hit = True
-            if self.profile_enabled:
-                self.profile_timings["set_image_forward_image"] = 0.0
-                self.profile_timings["set_image_temporal_cache_hit"] = 1.0
-        self._temporal_frame_counter += 1
+        state["backbone_out"] = self._profile_step(
+            "set_image_forward_image",
+            lambda: self._forward_image(image),
+        )
         inst_interactivity_en = self.model.inst_interactive_predictor is not None
         if inst_interactivity_en and "sam2_backbone_out" in state["backbone_out"]:
             sam2_backbone_out = state["backbone_out"]["sam2_backbone_out"]

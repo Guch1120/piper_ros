@@ -82,8 +82,16 @@ train = [
 "Homepage" = "https://github.com/facebookresearch/sam3"
 "Bug Tracker" = "https://github.com/facebookresearch/sam3/issues"
 
+[project.scripts]
+sam3-ros = "sam3_ros.cli:main"
+sam3-dual-ros = "sam3_dual_ros.cli:main"
+
 [tool.setuptools]
-packages = ["sam3", "sam3.model"]
+packages = ["sam3", "sam3.model", "sam3_ros", "sam3_dual_ros"]
+
+[tool.setuptools.package-data]
+sam3_ros = ["launch/*"]
+sam3_dual_ros = ["launch/*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "sam3.__version__"}
