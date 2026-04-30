@@ -6,7 +6,6 @@ setup(
     name=package_name,
     version="0.0.0",
     packages=[package_name],
-    package_dir={package_name: "sam3_dual_ros"},
     data_files=[
         ("share/ament_index/resource_index/packages", [f"resource/{package_name}"]),
         (f"share/{package_name}", ["package.xml"]),

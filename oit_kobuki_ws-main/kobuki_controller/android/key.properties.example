@@ -1,5 +1,0 @@
-# Copy this file to android/key.properties and fill in your release keystore values.
-storeFile=/absolute/path/to/kobuki-controller.jks
-storePassword=changeit
-keyAlias=kobuki_controller
-keyPassword=changeit
