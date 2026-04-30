@@ -79,3 +79,47 @@
 - ONNX/TensorRT 経路の初回比較は `result/benchmark_val2017/20260317_042957_prompts_person_dog_car_res_854_n_2_compile_0_autocast_1_queries_default_textcache_1_layers_default_warmup_1_random_1_seed_123_onnx_sam3_encoder_res854_onnx_provider_tensorrt` に保存し、`person=8.9549FPS`, `avg_set_image=0.0883s`, `avg_set_image_forward_image=0.0860s` まで改善した。
 - ただし同じ ONNX/TensorRT ランでは `person/dog/car` すべて `avg_object_count=0.00` となり、検出精度が崩壊した。
 - 結論として、**速度面では 9FPS 近辺まで到達可能性が見えたが、現状の export/実行経路は精度維持条件を満たさないため不採用** とした。
+
+## 2026-03-20 ROS1/ROS2 wrapper added
+- Added a new `sam3_ros` package with dual-stack runtime selection (`ros1` / `ros2` / `auto`).
+- Exposed image, prompt, annotated image, masks, boxes, and scores topics as ROS parameters and CLI flags.
+- Added a `sam3-ros` console script entry point in `pyproject.toml`.
+- Syntax-check passed with `python3 -m py_compile` for the new wrapper files.
+
+
+## 2026-03-20 SAM3 ROS wrapper updated
+- Added a separate `sam3_dual_ros` ROS package namespace to avoid collisions with the existing `sam3_ros` package.
+- Added ROS2 and ROS1 launch files under `sam3_dual_ros/launch/`.
+- `--backend auto` follows a best-effort order: `ROS_VERSION`, then ROS2, then ROS1; explicit backend selection is safer when both stacks may be installed.
+
+## 2026-03-20 ROS 実行差分の確認と可視化経路の修正
+- `sam3_dual_ros` / `sam3_ros` の ROS2 ランタイムでローカル checkpoint (`/ros2_ws/src/sam3/sam3.pt`) を使った実行を確認し、ノード起動とテキストプロンプト購読が動作することを確認した。
+- Hugging Face gated repo への依存を避けるため、実運用では `--no-load-from-hf --checkpoint-path /ros2_ws/src/sam3/sam3.pt` を付ける前提になった。
+- `annotated_topic` にセグメントが重ならない原因は、SAM3 が返す `masks` の shape が `(N,1,H,W)` 系でも `sam3_ros/segmenter.py` 側が 2 次元マスクへ正規化せず、そのまま overlay 描画で捨てていたことだった。
+- `sam3_ros/segmenter.py` を修正し、mask を `squeeze()` して 2 次元 bool 配列へ正規化した上で overlay と `/sam3/masks` publish に使うようにした。
+- `sam3_ros/bridge.py` も修正し、`mono8` publish 前に mask を 2 次元 `uint8` に正規化するようにした。
+- `docs/log.md` の 8.95FPS 近辺は ONNX/TensorRT image encoder の参考値だが、`avg_object_count=0.00` で精度崩壊のため採用不可であることを再確認した。
+- `run_sam3_groceries.py` と `val2017` ベンチの 5FPS 台は静止画・ウォームアップ後・`set_image + set_text_prompt` 中心の計測であり、ROS 実行時の `cv_bridge` 変換、PIL 化、overlay 合成、mask/boxes/scores publish、callback 待ち時間は含まれていない。
+- 実運用では体感 1FPS 前後だったため、ベンチ値と ROS 実測値に大きな差があることを正式に記録する。少なくとも現時点では「10FPS 達成」とは言えない。
+- `sam3_ros/ros2_node.py` に 30 フレーム平均の runtime profiler を追加し、`convert`, `segment`, `annotated`, `mask`, `boxes`, `scores`, `total` をログ出力できるようにした。
+- 同時に、subscriber がいない output topic については annotated image 生成と publish を省略するようにし、ROS 実運用時の無駄な callback コストを削減する変更を入れた。
+- 次サイクルでは、この runtime profiler の実測値を基準に ROS 実行で 10FPS を阻害している段を特定し、必要なら publish 経路と image encoder 経路を別々に最適化する。
+
+## 2026-03-20 ROS 解像度 540 の試験
+- RTX 2070 環境では、autocast dtype を GPU 世代で自動選択するように変更し、Turing 世代では `float16` を使うようにした。
+- 起動時に `SAM3 runtime config` を出すようにし、`device`, `resolution`, `autocast`, backend, text cache, query limit, decoder layers を確認できるようにした。
+- `--resolution 540` の ROS 実行では、30 フレーム平均で `total=0.2359s (4.24 FPS)`、90 フレーム平均で `total=0.2288s (4.37 FPS)` だった。
+- 内訳は 90 フレーム平均で `segment=0.2250s`, `set_image=0.1440s`, `set_text=0.0479s`, `fwd_image=0.1409s`, `fwd_grounding=0.0472s`, `overlay=0.0208s` だった。
+- `540` への縮小は `728` より明確に高速だが、ROS 実運用で 10FPS にはまだ届かない。主因は依然として image encoder (`fwd_image`) である。
+- 少なくとも RTX 2070 では、解像度低減だけで 10FPS に到達する見込みは薄く、次段はさらに低解像度を試すか、image encoder の別経路を再評価する必要がある。
+
+
+## 2026-03-20 ROS 解像度 384 の試験と次の仮説
+- ユーザー実測の ROS 実運用では、`--resolution 384` で 90 フレーム平均 `total=0.1621s (6.17 FPS)` を確認した。
+- 内訳は `segment=0.1596s`, `set_image=0.1035s`, `set_text=0.0441s`, `fwd_image=0.1003s`, `fwd_grounding=0.0435s` で、支配項は依然として image encoder、その次が grounding だった。
+- `540` 比では改善しているが、`6 FPS` 前後で頭打ちが見え始めており、解像度を下げるだけで `10 FPS` に到達する見込みは薄い。
+- 直近の確認で、現在の `piper-humble-dev` には `onnxruntime` が入っておらず、過去の `result/onnx/*.onnx` 成果物も `/ros2_ws/src/sam3` には存在しなかった。したがって ONNX/TensorRT 再評価は、まず環境復元が必要である。
+- 次の小変更として、PyTorch 経路に `channels_last` と CUDA runtime 自動設定を追加した。具体的には、CUDA 時に `vision_backbone` と入力テンソルを `channels_last` 化し、`cudnn.benchmark=True`、Ampere 以降では `TF32` を自動で有効にするようにした。
+- ROS CLI には `--channels-last` / `--no-channels-last` を追加し、起動ログにも `channels_last=<bool>` を出すようにした。複数 GPU 世代の PC で切り替えと診断がしやすくなった。
+- 変更後の `sam3_ros` / `sam3_dual_ros` は Docker 内で `python3 -m py_compile` と `colcon build --packages-select sam3_ros sam3_dual_ros` を通した。
+- 次の計測は `resolution=384` を維持したまま `channels_last` の on/off 差分を見る。効かなければ、さらに低解像度化か ONNX 環境の復元に進む。

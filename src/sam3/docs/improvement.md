@@ -219,3 +219,35 @@
 - `person` の検出数が PyTorch 基準から大きく崩れる場合、その構成は不採用。
 - 10FPS に近づいても、精度維持できない高速化は採用しない。
 - まずは「PyTorch と同等挙動で 7-9FPS が出るか」を確認し、そこで初めて 10FPS への次手を考える。
+
+## 最新計画: ROS 実運用での 10FPS 再挑戦（2026-03-20）
+
+### 直近結果
+- 静止画ベンチでは `resolution=854` と autocast により 5FPS 台を確認しているが、ROS 実運用では体感 1FPS 前後であり差が大きい。
+- 差分要因として、`cv_bridge` 変換、PIL 化、overlay 合成、mask/boxes/scores publish、callback スケジューリングがベンチに入っていない。
+- `annotated_topic` にセグメントが出ない不具合は `masks` shape 正規化不足が原因であり、修正済み。
+- `sam3_ros/ros2_node.py` に runtime profiler を追加し、30 フレーム平均で `convert`, `segment`, `annotated`, `mask`, `boxes`, `scores`, `total` を採取できるようにした。
+- subscriber がいない topic の publish と annotated overlay 生成は省略するように変更した。
+
+### 次にやること
+1. ROS 実運用で profiler ログを採取し、`segment` と publish 系のどちらが支配的かを確定する。
+2. `/sam3/debug_image` だけ購読した場合と `/sam3/masks`, `/sam3/boxes`, `/sam3/scores` も購読した場合を比較し、出力経路の固定コストを定量化する。
+3. `segment` が依然として支配的なら、image encoder 側の追加最適化候補を再度試す。候補は PyTorch 内最適化を優先し、精度崩壊した ONNX/TensorRT は保留のままにする。
+4. publish 系が支配的なら、描画・変換・publish の頻度制御や軽量化を入れる。
+
+### 判断基準
+- 10FPS と言うためには、ROS 実行での steady state 平均 `total <= 0.10s/frame` を確認する。
+- `/sam3/debug_image` はセグメントが視認できることを維持する。
+- 高速化しても検出数やセグメント品質が大きく崩れる構成は採用しない。
+
+### 追記: 解像度 384 の結果（2026-03-20）
+- ユーザー実測では、`--resolution 384` で ROS 実運用の steady state が `5.6-6.2 FPS` まで改善した。
+- ただし 90 フレーム平均でも `fwd_image=0.1003s`, `fwd_grounding=0.0435s` が支配的で、解像度低減だけでは `10 FPS` に届かない。
+- 現在のコンテナには `onnxruntime` と既存 ONNX 成果物がないため、ONNX/TensorRT の再挑戦は環境復元を伴う別サイクルとする。
+- 次の小変更は PyTorch 経路の `channels_last` と CUDA runtime 自動設定である。効く場合は `fwd_image` が直接短くなるため、解像度をこれ以上落とさずに上積みできる。
+- したがって次の比較は、`resolution=384` 固定で `channels_last on/off` を見る。ここで改善が小さければ、次候補は `320` もしくは ONNX 環境復元の二択に絞る。
+
+### 追記: 解像度 540 の結果（2026-03-20）
+- ROS 実運用で `--resolution 540` を試した結果、RTX 2070 では `4.24 -> 4.37 FPS` まで改善した。
+- ただし `fwd_image` が依然として約 `0.14s` を占めており、10FPS には遠い。
+- 次の実験候補は `448` / `384` の追加縮小か、image encoder の別実行系の再評価である。

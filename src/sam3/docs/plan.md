@@ -55,6 +55,8 @@
 - 一方で、クエリ数やデコーダ層数を単純に削るだけでは有効な改善にならなかった。
 - したがって主要ボトルネックは、推測どおりではあるが数値上も `image encoder` 経路である。
 - ONNX/TensorRT は image encoder の時間をほぼ半減させる可能性がある一方、現状は export か TensorRT 最適化のどこかで特徴表現が壊れている可能性が高い。
+- ROS 実運用の `resolution=384` では `約6 FPS` まで改善したが、`fwd_image` と `fwd_grounding` がなお支配的で、解像度低減だけでは `10 FPS` に未達である。
+- 現在の Docker 環境には `onnxruntime` と既存 ONNX 成果物がないため、別実行系の再評価には環境復元コストがある。短期の次候補は PyTorch 経路の `channels_last` と CUDA runtime 自動設定である。
 
 ## マイルストーン
 1. ベースライン計測

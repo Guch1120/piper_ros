@@ -1,0 +1,24 @@
+<launch>
+  <arg name="backend" default="ros1"/>
+  <arg name="node_name" default="sam3_ros"/>
+  <arg name="checkpoint_path" default=""/>
+  <arg name="device" default="cuda"/>
+  <arg name="resolution" default="854"/>
+  <arg name="text_prompt" default=""/>
+  <arg name="image_topic" default="/camera/camera/color/image_raw"/>
+  <arg name="prompt_topic" default="/sam3/request"/>
+  <arg name="annotated_topic" default="/sam3/annotated_image"/>
+  <arg name="masks_topic" default="/sam3/masks"/>
+  <arg name="boxes_topic" default="/sam3/boxes"/>
+  <arg name="scores_topic" default="/sam3/scores"/>
+  <arg name="frame_id" default="camera"/>
+  <arg name="input_encoding" default="bgr8"/>
+  <arg name="queue_size" default="1"/>
+
+  <!-- Template launch file. It assumes the sam3-ros executable is available in the ROS1 workspace. -->
+  <node pkg="sam3_ros"
+        type="sam3-ros"
+        name="$(arg node_name)"
+        output="screen"
+        args="--backend $(arg backend) --node-name $(arg node_name) --checkpoint-path $(arg checkpoint_path) --device $(arg device) --resolution $(arg resolution) --text-prompt $(arg text_prompt) --image-topic $(arg image_topic) --prompt-topic $(arg prompt_topic) --annotated-topic $(arg annotated_topic) --masks-topic $(arg masks_topic) --boxes-topic $(arg boxes_topic) --scores-topic $(arg scores_topic) --frame-id $(arg frame_id) --input-encoding $(arg input_encoding) --queue-size $(arg queue_size)"/>
+</launch>

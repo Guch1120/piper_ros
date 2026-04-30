@@ -16,6 +16,28 @@ from torchvision.transforms import v2
 class Sam3Processor:
     """ """
 
+    @staticmethod
+    def _default_autocast_dtype(device: str):
+        if device != "cuda" or not torch.cuda.is_available():
+            return torch.bfloat16
+        major, _minor = torch.cuda.get_device_capability()
+        # Ampere (SM80) and newer run bfloat16 well; older GPUs are faster with float16.
+        return torch.bfloat16 if major >= 8 else torch.float16
+
+    @staticmethod
+    def _default_use_channels_last(device: str):
+        return device == "cuda" and torch.cuda.is_available()
+
+    @staticmethod
+    def _configure_cuda_runtime(device: str):
+        if device != "cuda" or not torch.cuda.is_available():
+            return
+        torch.backends.cudnn.benchmark = True
+        major, _minor = torch.cuda.get_device_capability()
+        allow_tf32 = major >= 8
+        torch.backends.cuda.matmul.allow_tf32 = allow_tf32
+        torch.backends.cudnn.allow_tf32 = allow_tf32
+
     def __init__(
         self,
         model,
@@ -23,7 +45,8 @@ class Sam3Processor:
         device="cuda",
         confidence_threshold=0.5,
         use_autocast=None,
-        autocast_dtype=torch.bfloat16,
+        autocast_dtype=None,
+        use_channels_last=None,
         cache_text_features=True,
         image_encoder_onnx_path=None,
         onnx_provider="tensorrt",
@@ -46,7 +69,16 @@ class Sam3Processor:
         self.profile_enabled = False
         self.profile_timings = {}
         self.use_autocast = (device == "cuda") if use_autocast is None else use_autocast
-        self.autocast_dtype = autocast_dtype
+        self.autocast_dtype = (
+            self._default_autocast_dtype(device)
+            if autocast_dtype is None
+            else autocast_dtype
+        )
+        self.use_channels_last = (
+            self._default_use_channels_last(device)
+            if use_channels_last is None
+            else use_channels_last
+        )
         self.cache_text_features = cache_text_features
         self.text_feature_cache = {}
         self.onnx_provider = onnx_provider
@@ -59,6 +91,11 @@ class Sam3Processor:
         self.image_encoder_output_names = []
         self.image_encoder_output_shapes = []
         self.image_encoder_output_buffers = None
+        self._configure_cuda_runtime(device)
+        if self.use_channels_last:
+            self.model.backbone.vision_backbone = self.model.backbone.vision_backbone.to(
+                memory_format=torch.channels_last
+            )
         self._init_image_encoder_backend()
 
         self.find_stage = FindStage(
@@ -224,6 +261,8 @@ class Sam3Processor:
             "set_image_transform",
             lambda: self.transform(image).unsqueeze(0),
         )
+        if self.use_channels_last:
+            image = image.contiguous(memory_format=torch.channels_last)
 
         state["original_height"] = height
         state["original_width"] = width
