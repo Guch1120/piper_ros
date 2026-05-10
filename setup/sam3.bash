@@ -15,5 +15,6 @@ pip install --upgrade pip setuptools wheel
 pip install --ignore-installed sympy mpmath
 pip install -e .
 pip install -e ".[dev,train]"
+pip install grpcio grpcio-tools
 
 echo "SAM3 setup complete!"
