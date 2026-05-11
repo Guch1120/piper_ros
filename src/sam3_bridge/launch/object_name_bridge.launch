@@ -1,0 +1,28 @@
+<launch>
+  <node
+    pkg="sam3_bridge"
+    exec="object_name_bridge.py"
+    name="object_name_bridge"
+    output="screen">
+
+    <param name="grpc_host" value="localhost" />
+    <param name="grpc_port" value="50051" />
+    <param name="grpc_timeout" value="2.0" />
+    <param name="jpeg_quality" value="75" />
+    <param name="max_width" value="640" />
+    <param name="max_height" value="480" />
+
+    <!-- RealSense RGB image topic -->
+    <param name="topic_name"
+           value="/camera/camera/color/image_raw" />
+
+    <!-- SAM output topics -->
+    <param name="mask_topic"
+           value="/sam/mask" />
+    <param name="overlay_topic"
+           value="/sam/overlay" />
+
+    <param name="prompt"
+           value="object" />
+  </node>
+</launch>

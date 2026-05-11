@@ -36,7 +36,7 @@ from flexbe_core import ConcurrencyContainer
 from flexbe_core import Logger
 from flexbe_core import OperatableStateMachine
 from flexbe_core import PriorityContainer
-from cotyaka_omega_flexbe_states.broadcast_tf_param import BroadcastStaticTFParamState
+from cotyaka_omega_flexbe_states.moveit_param_client_joint import MoveItJointClientParamState
 
 # Additional imports can be added inside the following tags
 # [MANUAL_IMPORT]
@@ -49,6 +49,7 @@ class woooooSM(Behavior):
     Define wooooo.
 
     fuck you
+
     """
 
     def __init__(self, node):
@@ -62,7 +63,7 @@ class woooooSM(Behavior):
         ConcurrencyContainer.initialize_ros(node)
         PriorityContainer.initialize_ros(node)
         Logger.initialize(node)
-        BroadcastStaticTFParamState.initialize_ros(node)
+        MoveItJointClientParamState.initialize_ros(node)
 
         # Additional initialization code can be added inside the following tags
         # [MANUAL_INIT]
@@ -72,7 +73,7 @@ class woooooSM(Behavior):
         # Behavior comments:
 
     def create(self):
-        # x:30 y:365, x:130 y:365
+        # x:608 y:75, x:263 y:292
         _state_machine = OperatableStateMachine(outcomes=['finished', 'failed'])
 
         # Additional creation code can be added inside the following tags
@@ -80,11 +81,17 @@ class woooooSM(Behavior):
 
         # [/MANUAL_CREATE]
         with _state_machine:
-            # x:30 y:40
-            OperatableStateMachine.add('test',
-                                       BroadcastStaticTFParamState(parent_frame='base_link', child_frame='interactive_set', xyz_val=[0.0,0.0,0.0], rpy_val=[0.0,0.0,0.0], wait_time=0.5),
-                                       transitions={'done': 'finished'},
-                                       autonomy={'done': Autonomy.Off})
+            # x:65 y:67
+            OperatableStateMachine.add('1',
+                                       MoveItJointClientParamState(group_name='arm', joint_names=['joint1','joint2','joint3','joint4','joint5','joint6'], target_joints=[0.0,0.0,0.0,0.0,0.0,0.0], tolerance=0.01, action_topic='move_action'),
+                                       transitions={'reached': '2', 'failed': 'failed'},
+                                       autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
+
+            # x:318 y:67
+            OperatableStateMachine.add('2',
+                                       MoveItJointClientParamState(group_name='arm', joint_names=['joint1','joint2','joint3','joint4','joint5','joint6'], target_joints=[0.0,0.44,-1.0,0.0,0.58,0.0], tolerance=0.01, action_topic='move_action'),
+                                       transitions={'reached': '1', 'failed': 'failed'},
+                                       autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
 
         return _state_machine
 

@@ -1,0 +1,21 @@
+<!-- launch/bridge.launch -->
+<launch>
+
+  <!-- ノード1：ROS→gRPC ブリッジ -->
+  <node
+    pkg="sam3_bridge"
+    type="grpc_bridge.py"
+    name="grpc_bridge"
+    output="screen">
+
+    <!-- パラメータで設定値を外出し -->
+    <param name="grpc_host"    value="localhost" />
+    <param name="grpc_port"    value="50051" />
+    <param name="grpc_timeout" value="2.0" />
+    <param name="jpeg_quality" value="75" />
+    <param name="max_width"    value="640" />
+    <param name="max_height"   value="480" />
+    <param name="topic_name"   value="/hsrb/head_rgbd_sensor/rgb/image_rect_color" />
+    <param name="prompt"       value="A male wearing gray hoodie" />
+  </node>
+</launch>

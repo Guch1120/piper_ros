@@ -1,0 +1,23 @@
+syntax = "proto3";
+package click_seg;
+
+service ClickSegmentService {
+  rpc SegmentImage (ImageRequest) returns (MaskResponse);
+}
+
+message ImageRequest {
+  bytes  image            = 1;  // JPEG圧縮済み画像
+  int32  width            = 2;
+  int32  height           = 3;
+  float  point_x          = 4;  // point prompt: リサイズ後ピクセルx
+  float  point_y          = 5;  // point prompt: リサイズ後ピクセルy
+}
+
+message MaskResponse {
+  bytes  mask          = 1;  // uint8マスク（0 or 1）
+  int32  width         = 2;
+  int32  height        = 3;
+  int32  num_objects   = 4;  // 検出オブジェクト数
+  float  inference_ms  = 5;  // 推論時間（ms）
+  bytes  overlay_image = 6;  // JPEG圧縮済みオーバーレイ画像
+}

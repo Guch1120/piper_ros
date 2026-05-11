@@ -14,7 +14,7 @@ pip install --upgrade pip setuptools wheel
 # sympyとmpmathの競合を解消するために強制再インストール
 pip install --ignore-installed sympy mpmath
 pip install -e .
-pip install -e ".[dev,train]"
+pip install -e ".[dev]"
 pip install grpcio grpcio-tools
 
 echo "SAM3 setup complete!"

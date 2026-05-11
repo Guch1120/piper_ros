@@ -1,0 +1,25 @@
+syntax = "proto3";
+package drag_seg;
+
+service DragSegmentService {
+  rpc SegmentImage (ImageRequest) returns (MaskResponse);
+}
+
+message ImageRequest {
+  bytes image  = 1;  // JPEG圧縮済み画像
+  int32 width  = 2;
+  int32 height = 3;
+  float box_x  = 4;  // 左上x（ピクセル）
+  float box_y  = 5;  // 左上y（ピクセル）
+  float box_w  = 6;  // 幅（ピクセル）
+  float box_h  = 7;  // 高さ（ピクセル）
+}
+
+message MaskResponse {
+  bytes  mask          = 1;  // uint8マスク（0 or 1）
+  int32  width         = 2;
+  int32  height        = 3;
+  int32  num_objects   = 4;  // 検出オブジェクト数
+  float  inference_ms  = 5;  // 推論時間（ms）
+  bytes  overlay_image = 6;  // JPEG圧縮済みオーバーレイ
+}
