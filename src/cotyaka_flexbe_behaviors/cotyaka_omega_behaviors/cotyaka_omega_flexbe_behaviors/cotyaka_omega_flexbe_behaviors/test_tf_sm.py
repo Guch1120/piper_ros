@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright 2015 Philipp Schillinger
+# Copyright 2025 Yamaguchi Takuma
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,10 +23,10 @@
 ###########################################################
 
 """
-Define Example Behavior.
+Define test_tf.
 
-Created on Fri Aug 21 2015
-@author: Philipp Schillinger
+Created on Wed Dec 24 2025
+@author: Yamaguchi Takuma
 """
 
 
@@ -36,8 +36,7 @@ from flexbe_core import ConcurrencyContainer
 from flexbe_core import Logger
 from flexbe_core import OperatableStateMachine
 from flexbe_core import PriorityContainer
-from flexbe_states.log_state import LogState
-from flexbe_states.wait_state import WaitState
+from cotyaka_omega_flexbe_states.broadcast_tf_param import BroadcastStaticTFParamState
 
 # Additional imports can be added inside the following tags
 # [MANUAL_IMPORT]
@@ -45,27 +44,25 @@ from flexbe_states.wait_state import WaitState
 # [/MANUAL_IMPORT]
 
 
-class ExampleBehaviorSM(Behavior):
+class test_tfSM(Behavior):
     """
-    Define Example Behavior.
+    Define test_tf.
 
-    This is a simple example for a behavior.
+    test tf playground
     """
 
     def __init__(self, node):
         super().__init__()
-        self.name = 'Example Behavior'
+        self.name = 'test_tf'
 
         # parameters of this behavior
-        self.add_parameter('waiting_time', 3)
 
         # references to used behaviors
         OperatableStateMachine.initialize_ros(node)
         ConcurrencyContainer.initialize_ros(node)
         PriorityContainer.initialize_ros(node)
         Logger.initialize(node)
-        LogState.initialize_ros(node)
-        WaitState.initialize_ros(node)
+        BroadcastStaticTFParamState.initialize_ros(node)
 
         # Additional initialization code can be added inside the following tags
         # [MANUAL_INIT]
@@ -75,24 +72,17 @@ class ExampleBehaviorSM(Behavior):
         # Behavior comments:
 
     def create(self):
-        log_msg = "Hello World!"
-        # x:83 y:390
-        _state_machine = OperatableStateMachine(outcomes=['finished'])
+        # x:30 y:365, x:130 y:365
+        _state_machine = OperatableStateMachine(outcomes=['finished', 'failed'])
 
         # Additional creation code can be added inside the following tags
         # [MANUAL_CREATE]
 
         # [/MANUAL_CREATE]
         with _state_machine:
-            # x:52 y:78
-            OperatableStateMachine.add('Print_Message',
-                                       LogState(text=log_msg, severity=Logger.REPORT_HINT),
-                                       transitions={'done': 'Wait_After_Logging'},
-                                       autonomy={'done': Autonomy.Low})
-
-            # x:40 y:228
-            OperatableStateMachine.add('Wait_After_Logging',
-                                       WaitState(wait_time=self.waiting_time),
+            # x:30 y:40
+            OperatableStateMachine.add('aaa',
+                                       BroadcastStaticTFParamState(parent_frame='base_link', child_frame='interactive_set', xyz_val=[0.0,0.0,0.0], rpy_val=[0.0,0.0,0.0], wait_time=0.5),
                                        transitions={'done': 'finished'},
                                        autonomy={'done': Autonomy.Off})
 

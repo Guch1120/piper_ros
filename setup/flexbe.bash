@@ -25,17 +25,44 @@ fi
 # ワークスペースルートに戻る
 cd "$WS_DIR"
 
+echo "--- 2. pytest installation ---"
+apt update
+apt install -y \
+  python3-pytest \
+  python3-pytest-cov \
+  python3-pytest-repeat \
+  python3-pytest-rerunfailures
+
+# ---------------------------------------------------------
+# pytest plugin の自動ロードを無効化
+# ---------------------------------------------------------
+# /usr/local 側に pip で入った pytest plugin が、
+# Ubuntu/ROS Humble の apt 版 pytest と衝突するのを防ぐ。
+PYTEST_EXPORT_LINE='export PYTEST_DISABLE_PLUGIN_AUTOLOAD=1'
+
+# ~/.bashrc に未登録なら追記する
+if ! grep -qxF "$PYTEST_EXPORT_LINE" ~/.bashrc; then
+    echo "" >> ~/.bashrc
+    echo "$PYTEST_EXPORT_LINE" >> ~/.bashrc
+    echo "Added PYTEST_DISABLE_PLUGIN_AUTOLOAD to ~/.bashrc"
+else
+    echo "PYTEST_DISABLE_PLUGIN_AUTOLOAD is already configured in ~/.bashrc"
+fi
+
+# この setup スクリプト実行中の colcon build にも効かせる
+export PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+
 # ---------------------------------------------------------
 # 2. ビルド処理 (Symlink Install)
 # nwjs_installを実行するために、先にパッケージとして認識させる必要がある
 # ---------------------------------------------------------
-echo "--- 2. Building flexbe_app ---"
-colcon build --symlink-install
+echo "--- 3. Building flexbe_app ---"
+colcon build
 
 # ---------------------------------------------------------
 # 3. nwjs 自動インストール処理
 # ---------------------------------------------------------
-echo "--- 3. Installing nwjs ---"
+echo "--- 4. Installing nwjs ---"
 
 # ビルドした環境を読み込まないと ros2 run が使えないので source する
 source install/setup.bash

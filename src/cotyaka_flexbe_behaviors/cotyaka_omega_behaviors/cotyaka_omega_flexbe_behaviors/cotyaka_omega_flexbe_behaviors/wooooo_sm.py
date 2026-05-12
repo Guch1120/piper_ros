@@ -51,6 +51,7 @@ class woooooSM(Behavior):
     Define wooooo.
 
     playground and test
+
     """
 
     def __init__(self, node):
@@ -76,7 +77,7 @@ class woooooSM(Behavior):
         # Behavior comments:
 
     def create(self):
-        # x:586 y:269, x:263 y:292
+        # x:1046 y:313, x:241 y:276
         _state_machine = OperatableStateMachine(outcomes=['finished', 'failed'])
 
         # Additional creation code can be added inside the following tags
@@ -84,28 +85,28 @@ class woooooSM(Behavior):
 
         # [/MANUAL_CREATE]
         with _state_machine:
-            # x:65 y:67
-            OperatableStateMachine.add('1',
-                                       MoveItJointClientParamState(group_name='arm', joint_names=['joint1','joint2','joint3','joint4','joint5','joint6'], target_joints=[0.0,0.0,0.0,0.0,0.0,0.0], tolerance=0.01, action_topic='move_action'),
-                                       transitions={'reached': '2', 'failed': 'failed'},
+            # x:63 y:161
+            OperatableStateMachine.add('open',
+                                       PiperMoveItOpenState(target_value=0.098, joint_name='joint7', group_name='gripper', tolerance=0.01, action_topic='move_action'),
+                                       transitions={'reached': 'close', 'failed': 'failed'},
                                        autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
 
-            # x:318 y:67
+            # x:298 y:381
             OperatableStateMachine.add('2',
                                        MoveItJointClientParamState(group_name='arm', joint_names=['joint1','joint2','joint3','joint4','joint5','joint6'], target_joints=[0.0,0.44,-1.0,0.0,0.58,0.0], tolerance=0.01, action_topic='move_action'),
                                        transitions={'reached': '1', 'failed': 'failed'},
                                        autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
 
-            # x:332 y:416
+            # x:307 y:163
             OperatableStateMachine.add('close',
                                        PiperMoveItCloseState(target_value=0.0, joint_name='joint7', group_name='gripper', tolerance=0.01, action_topic='move_action'),
-                                       transitions={'reached': 'close', 'failed': 'failed'},
+                                       transitions={'reached': 'finished', 'failed': 'failed'},
                                        autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
 
-            # x:56 y:413
-            OperatableStateMachine.add('open',
-                                       PiperMoveItOpenState(target_value=0.098, joint_name='joint7', group_name='gripper', tolerance=0.01, action_topic='move_action'),
-                                       transitions={'reached': 'open', 'failed': 'failed'},
+            # x:54 y:385
+            OperatableStateMachine.add('1',
+                                       MoveItJointClientParamState(group_name='arm', joint_names=['joint1','joint2','joint3','joint4','joint5','joint6'], target_joints=[0.0,0.0,0.0,0.0,0.0,0.0], tolerance=0.01, action_topic='move_action'),
+                                       transitions={'reached': '2', 'failed': 'failed'},
                                        autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
 
         return _state_machine
