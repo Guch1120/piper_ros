@@ -36,7 +36,7 @@ from flexbe_core import ConcurrencyContainer
 from flexbe_core import Logger
 from flexbe_core import OperatableStateMachine
 from flexbe_core import PriorityContainer
-from cotyaka_omega_flexbe_states.broadcast_tf_param import BroadcastStaticTFParamState
+from cotyaka_omega_flexbe_states.broadcast_static_tf_param import BroadcastStaticTFParamState
 
 # Additional imports can be added inside the following tags
 # [MANUAL_IMPORT]
@@ -49,6 +49,7 @@ class test_tfSM(Behavior):
     Define test_tf.
 
     test tf playground
+
     """
 
     def __init__(self, node):
@@ -80,9 +81,9 @@ class test_tfSM(Behavior):
 
         # [/MANUAL_CREATE]
         with _state_machine:
-            # x:30 y:40
-            OperatableStateMachine.add('aaa',
-                                       BroadcastStaticTFParamState(parent_frame='base_link', child_frame='interactive_set', xyz_val=[0.0,0.0,0.0], rpy_val=[0.0,0.0,0.0], wait_time=0.5),
+            # x:105 y:29
+            OperatableStateMachine.add('broadcast TF',
+                                       BroadcastStaticTFParamState(parent_frame='base_link', child_frame='target_position', xyz_val=[1.0,0.0,0.0], rpy_val=[0.0,0.0,0.0], wait_time=0.5),
                                        transitions={'done': 'finished'},
                                        autonomy={'done': Autonomy.Off})
 

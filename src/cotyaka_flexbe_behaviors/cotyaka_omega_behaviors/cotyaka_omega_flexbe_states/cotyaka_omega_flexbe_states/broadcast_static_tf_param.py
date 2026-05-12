@@ -10,7 +10,8 @@ from scipy.spatial.transform import Rotation as R
 
 class BroadcastStaticTFParamState(EventState):
     '''
-    パラメータで指定された座標にStatic TFを発行し、反映を待機するState。
+    パラメータで指定された座標にStatic TFを発行し、反映を待機するState
+    ラジアンで与えて内部でTFに合わせてクォータニオンに変換する
 
     -- parent_frame string 親フレーム (例: 'base_link')
     -- child_frame  string 発行するフレーム名 (例: 'grasp_target')
@@ -22,7 +23,7 @@ class BroadcastStaticTFParamState(EventState):
     <= done         発行完了し、待機時間が経過した
     '''
 
-    def __init__(self, parent_frame='base_link', child_frame='interactive_set', xyz_val=[0.0, 0.0, 0.0], rpy_val=[0.0, 0.0, 0.0], wait_time=0.5):
+    def __init__(self, parent_frame='base_link', child_frame='target_position', xyz_val=[0.0, 0.0, 0.0], rpy_val=[0.0, 0.0, 0.0], wait_time=0.5):
         super(BroadcastStaticTFParamState, self).__init__(outcomes=['done'])
 
         self._parent_frame = parent_frame
