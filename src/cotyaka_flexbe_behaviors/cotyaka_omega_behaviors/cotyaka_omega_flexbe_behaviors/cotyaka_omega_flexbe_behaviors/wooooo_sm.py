@@ -36,6 +36,8 @@ from flexbe_core import ConcurrencyContainer
 from flexbe_core import Logger
 from flexbe_core import OperatableStateMachine
 from flexbe_core import PriorityContainer
+from cotyaka_omega_flexbe_states.moveit_griper_close import PiperMoveItCloseState
+from cotyaka_omega_flexbe_states.moveit_griper_open import PiperMoveItOpenState
 from cotyaka_omega_flexbe_states.moveit_param_client_joint import MoveItJointClientParamState
 
 # Additional imports can be added inside the following tags
@@ -48,8 +50,7 @@ class woooooSM(Behavior):
     """
     Define wooooo.
 
-    fuck you
-
+    playground and test
     """
 
     def __init__(self, node):
@@ -64,6 +65,8 @@ class woooooSM(Behavior):
         PriorityContainer.initialize_ros(node)
         Logger.initialize(node)
         MoveItJointClientParamState.initialize_ros(node)
+        PiperMoveItCloseState.initialize_ros(node)
+        PiperMoveItOpenState.initialize_ros(node)
 
         # Additional initialization code can be added inside the following tags
         # [MANUAL_INIT]
@@ -73,7 +76,7 @@ class woooooSM(Behavior):
         # Behavior comments:
 
     def create(self):
-        # x:608 y:75, x:263 y:292
+        # x:586 y:269, x:263 y:292
         _state_machine = OperatableStateMachine(outcomes=['finished', 'failed'])
 
         # Additional creation code can be added inside the following tags
@@ -91,6 +94,18 @@ class woooooSM(Behavior):
             OperatableStateMachine.add('2',
                                        MoveItJointClientParamState(group_name='arm', joint_names=['joint1','joint2','joint3','joint4','joint5','joint6'], target_joints=[0.0,0.44,-1.0,0.0,0.58,0.0], tolerance=0.01, action_topic='move_action'),
                                        transitions={'reached': '1', 'failed': 'failed'},
+                                       autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
+
+            # x:332 y:416
+            OperatableStateMachine.add('close',
+                                       PiperMoveItCloseState(target_value=0.0, joint_name='joint7', group_name='gripper', tolerance=0.01, action_topic='move_action'),
+                                       transitions={'reached': 'close', 'failed': 'failed'},
+                                       autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
+
+            # x:56 y:413
+            OperatableStateMachine.add('open',
+                                       PiperMoveItOpenState(target_value=0.098, joint_name='joint7', group_name='gripper', tolerance=0.01, action_topic='move_action'),
+                                       transitions={'reached': 'open', 'failed': 'failed'},
                                        autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
 
         return _state_machine

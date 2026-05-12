@@ -14,6 +14,7 @@ trap on_signal_interrupt EXIT
 
 # HOME を使わず絶対パスにする（重要）
 TERMINATOR_LAYOUT_FILE="/ros2_ws/.config/terminator/terminator_layout"
+TERMINATOR_CONFIG_DIR="/ros2_ws/.config/terminator/config"
 
 if [ ! -f "$TERMINATOR_LAYOUT_FILE" ]; then
     echo "Error: Terminator レイアウト設定ファイル $TERMINATOR_LAYOUT_FILE が存在しません。" 1>&2
@@ -36,4 +37,4 @@ fi
 
 echo "Using Terminator layout: $layout"
 
-terminator -m -l "$layout"
+terminator -g "$TERMINATOR_CONFIG_DIR" -m -l "$layout" #-g オプションで設定ディレクトリを指定、-m でマルチウィンドウモード、-l でレイアウト指定
