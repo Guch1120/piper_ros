@@ -48,3 +48,36 @@ services:
       - /dev:/dev
     # コンテナを起動し続ける
     command: sleep infinity
+
+
+  sam3_noros:
+    build:
+      context: ..
+      dockerfile: docker/dockerfile.noROS
+    container_name: sam3-noros-dev
+    working_dir: /workspace/sam3
+    stdin_open: true
+    tty: true
+    ipc: host
+    network_mode: host
+    shm_size: "16gb"
+    gpus: all
+    privileged: true
+    devices:
+      - /dev:/dev
+    environment:
+      DISPLAY: ${DISPLAY}
+      QT_X11_NO_MITSHM: "1"
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: all
+      HF_HOME: /root/.cache/huggingface
+      PYTHONPATH: /sam3:/sam3/sam3_repo_linux
+    volumes: 
+    # コンテナとホストの変更が共有される．
+    # ファイルパスはdocker-compose.ymlからの相対パス．
+      - ..:/workspace
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${HOME}/.cache/huggingface:/root/.cache/huggingface
+      - ../terminator/config:/root/.config/terminator:rw
+      - /dev:/dev
+    command: sleep infinity

@@ -8,6 +8,8 @@ HSRのterminatorと同じようにする必要がある。
 [ ] 静的TF動作
 [ ] SAM3を用いて静的TF動作
 [ ] SAM3を用いて動的TF動作
+[ ] ダイレクトティーチングもどきの実装。動作させるのはMoveItClientParamStateステートを改良させる。パラメータではなくuserdataを使うようにする。
+
 [ ] Unityシミュレータ化
 [ ] Kobukiとの連携
 [ ] Readmeの中身とファイル名整理と保管場所の統一

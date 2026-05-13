@@ -3,3 +3,4 @@ HSR-OITのオーガナイザであること・git ssh鍵登録は住んでいる
 '''
 git clone git@github.com:HSR-OIT/sam3.git
 '''
+
