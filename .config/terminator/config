@@ -12,6 +12,19 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_system_font = False
+
+  [[cmd_shell_piper]]
+    background_color = "#300a24"
+    background_darkness = 0.9
+    background_type = transparent
+    cursor_color = "#aaaaaa"
+    font = Monospace 10
+    foreground_color = "#ffffff"
+    show_titlebar = False
+    use_custom_command = True
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev
+    use_system_font = False
+
   [[cmd_realsense]]
     background_color = "#300a24"
     background_darkness = 0.9
@@ -21,8 +34,9 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true enable_sync:=true enable_rgbd:=true pointcloud.enable:=true; bash
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true enable_sync:=true enable_rgbd:=true pointcloud.enable:=true
     use_system_font = False
+
   [[cmd_detic]]
     background_color = "#300a24"
     background_darkness = 0.9
@@ -32,8 +46,9 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 run detic_onnx_ros2 detic_onnx_ros2_node; bash
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run detic_onnx_ros2 detic_onnx_ros2_node
     use_system_font = False
+
   [[cmd_piper_start]]
     background_color = "#300a24"
     background_darkness = 0.9
@@ -43,8 +58,9 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 launch piper start_single_moveit_piper.launch.py; bash
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch piper start_single_moveit_piper.launch.py
     use_system_font = False
+
   [[cmd_piper_bridge]]
     background_color = "#300a24"
     background_darkness = 0.9
@@ -54,8 +70,9 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 run piper piper_moveit_bridge_smooth; bash
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run piper piper_moveit_bridge_smooth
     use_system_font = False
+
   [[cmd_real_moveit]]
     background_color = "#300a24"
     background_darkness = 0.9
@@ -65,8 +82,9 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 launch piper_with_gripper_moveit piper_real_moveit.launch.py; bash
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch piper_with_gripper_moveit piper_real_moveit.launch.py
     use_system_font = False
+
   [[cmd_moveit_client]]
     background_color = "#300a24"
     background_darkness = 0.9
@@ -76,8 +94,9 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client; bash
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client
     use_system_font = False
+
   [[cmd_sim_moveit]]
     background_darkness = 0.9
     background_type = transparent
@@ -85,8 +104,9 @@
     font = Monospace 10
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 launch piper_with_gripper_moveit piper_moveit.launch.py; bash
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch piper_with_gripper_moveit piper_moveit.launch.py
     use_system_font = False
+
   [[cmd_sim_gazebo]]
     background_darkness = 0.9
     background_type = transparent
@@ -94,8 +114,9 @@
     font = Monospace 10
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 launch piper_gazebo piper_gazebo.launch.py; bash
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch piper_gazebo piper_gazebo.launch.py
     use_system_font = False
+
   [[cmd_moveit_tf_interact]]
     background_color = "#300a24"
     background_darkness = 0.9
@@ -105,8 +126,9 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client_tf_interactive; bash
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client_tf_interactive
     use_system_font = False
+
   [[cmd_moveit_tf]]
     background_color = "#300a24"
     background_darkness = 0.9
@@ -116,8 +138,9 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client_tf; bash
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client_tf
     use_system_font = False
+
   [[cmd_flexbe]]
     background_color = "#300a24"
     background_darkness = 0.9
@@ -127,8 +150,9 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 launch flexbe_app flexbe_full.launch.py; bash
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch flexbe_app flexbe_full.launch.py
     use_system_font = False
+
   [[cmd_arm_powerdown]]
     background_color = "#300a24"
     background_darkness = 0.9
@@ -138,8 +162,9 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 topic pub /enable_flag std_msgs/msg/Bool "data: false --once"; bash
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 topic pub --once /enable_flag std_msgs/msg/Bool "{data: false}"
     use_system_font = False
+
   [[cmd_sam3_node]]
     background_color = "#300a24"
     background_darkness = 0.9
@@ -149,8 +174,9 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 run sam3_ros sam3_node; bash
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run sam3_ros sam3_node
     use_system_font = False
+
   [[cmd_sam3_node_tracker]]
     background_color = "#300a24"
     background_darkness = 0.9
@@ -160,8 +186,9 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 run sam3_ros sam3_hybrid_tracker ; bash
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run sam3_ros sam3_hybrid_tracker
     use_system_font = False
+
   [[cmd_piper_start_action]]
     background_color = "#300a24"
     background_darkness = 0.9
@@ -171,8 +198,9 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 launch piper start_single_moveit_piper_action.launch.py ; bash
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch piper start_single_moveit_piper_action.launch.py
     use_system_font = False
+
   [[cmd_activate_can]]
     background_color = "#300a24"
     background_darkness = 0.9
@@ -182,8 +210,9 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash  /ros2_ws/run_ros_cmd.sh bash can_activate.sh can0 1000000;
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh bash can_activate.sh can0 1000000
     use_system_font = False
+
   [[cmd_yolov8-seg]]
     background_color = "#300a24"
     background_darkness = 0.9
@@ -193,8 +222,9 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash /ros2_ws/run_ros_cmd.sh ros2 launch yolov8_ros yolov8_seg.launch.py; bash
+    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch yolov8_ros yolov8_seg.launch.py
     use_system_font = False
+
 [layouts]
   [[default]]
     [[[window0]]]
@@ -203,6 +233,7 @@
     [[[child1]]]
       type = Terminal
       parent = window0
+
   [[piper-arm]]
     [[[child0]]]
       type = Window
@@ -212,145 +243,169 @@
       maximised = False
       fullscreen = False
       size = 960, 1016
-      title = @robo25-Alienware-m15-R3:/ros2_ws
+      title = piper-arm
       last_active_term = 79e6da3c-5668-4c46-bb35-75634b63a509
       last_active_window = True
+
     [[[child1]]]
       type = VPaned
       parent = child0
       order = 0
       position = 508
       ratio = 0.5024727992087042
+
     [[[child2]]]
       type = HPaned
       parent = child1
       order = 0
       position = 479
       ratio = 0.5015706806282723
+
     [[[child3]]]
       type = VPaned
       parent = child2
       order = 0
       position = 248
       ratio = 0.49304174950298213
+
     [[[child4]]]
       type = HPaned
       parent = child3
       order = 0
       position = 237
       ratio = 0.5
+
     [[[terminal5]]]
       type = Terminal
       parent = child4
       order = 0
       profile = cmd_realsense
       uuid = 348d2f22-da8b-44eb-9b0b-a7ccebc4af00
+
     [[[terminal6]]]
       type = Terminal
       parent = child4
       order = 1
       profile = cmd_activate_can
       uuid = 10e3a3f2-ce23-4e3b-965b-1430016c2c1d
+
     [[[child7]]]
       type = HPaned
       parent = child3
       order = 1
       position = 237
       ratio = 0.5
+
     [[[terminal8]]]
       type = Terminal
       parent = child7
       order = 0
       profile = cmd_arm_powerdown
       uuid = 2fa10286-fcbd-40ae-bd00-291a7d1057cb
+
     [[[terminal9]]]
       type = Terminal
       parent = child7
       order = 1
       profile = cmd_flexbe
       uuid = beb724a4-a6de-4245-a310-daff63918b4d
+
     [[[child10]]]
       type = VPaned
       parent = child2
       order = 1
       position = 255
       ratio = 0.5069582504970179
+
     [[[child11]]]
       type = HPaned
       parent = child10
       order = 0
       position = 237
       ratio = 0.5031847133757962
+
     [[[terminal12]]]
       type = Terminal
       parent = child11
       order = 0
-      profile = default
+      profile = cmd_shell_piper
       uuid = 6854fada-49cc-4de9-9ade-25f6d9a9b88c
+
     [[[terminal13]]]
       type = Terminal
       parent = child11
       order = 1
       profile = cmd_yolov8-seg
       uuid = 81ab64ea-4a43-44dc-aa01-d0580c85e002
+
     [[[child14]]]
       type = HPaned
       parent = child10
       order = 1
       position = 238
       ratio = 0.505307855626327
+
     [[[terminal15]]]
       type = Terminal
       parent = child14
       order = 0
-      profile = default
+      profile = cmd_shell_piper
       uuid = 79e6da3c-5668-4c46-bb35-75634b63a509
+
     [[[terminal16]]]
       type = Terminal
       parent = child14
       order = 1
-      profile = default
+      profile = cmd_shell_piper
       uuid = 02b9354c-a24d-4fc9-9fd6-20dab91b6e97
+
     [[[child17]]]
       type = VPaned
       parent = child1
       order = 1
       position = 250
       ratio = 0.5020080321285141
+
     [[[child18]]]
       type = HPaned
       parent = child17
       order = 0
       position = 477
       ratio = 0.49947643979057593
+
     [[[terminal19]]]
       type = Terminal
       parent = child18
       order = 0
       profile = cmd_real_moveit
       uuid = bf24ef60-f3d3-46be-bf47-8203353d647f
+
     [[[terminal20]]]
       type = Terminal
       parent = child18
       order = 1
       profile = cmd_sim_moveit
       uuid = 39522684-192a-457c-87c8-5fe1840fec9b
+
     [[[child21]]]
       type = HPaned
       parent = child17
       order = 1
       position = 478
       ratio = 0.5005235602094241
+
     [[[terminal22]]]
       type = Terminal
       parent = child21
       order = 0
       profile = cmd_piper_start_action
       uuid = 53a0e0dc-8601-4b28-8dcf-00e3f3f11356
+
     [[[terminal23]]]
       type = Terminal
       parent = child21
       order = 1
       profile = cmd_sim_gazebo
       uuid = d54a7512-d7e2-4682-ba00-65cecc56dd94
+
 [plugins]
