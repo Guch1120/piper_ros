@@ -22,7 +22,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev
+    custom_command = bash -lc 'echo "PWD=$PWD"; echo "PIPER_PROJECT_DIR=$PIPER_PROJECT_DIR";  bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev; echo "command finished"; read -p "Press Enter to close..."'
     use_system_font = False
 
   [[cmd_realsense]]
@@ -34,7 +34,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true enable_sync:=true enable_rgbd:=true pointcloud.enable:=true
+    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true enable_sync:=true enable_rgbd:=true pointcloud.enable:=true
     use_system_font = False
 
   [[cmd_detic]]
@@ -46,7 +46,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run detic_onnx_ros2 detic_onnx_ros2_node
+    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run detic_onnx_ros2 detic_onnx_ros2_node
     use_system_font = False
 
   [[cmd_piper_start]]
@@ -58,7 +58,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch piper start_single_moveit_piper.launch.py
+    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch piper start_single_moveit_piper.launch.py
     use_system_font = False
 
   [[cmd_piper_bridge]]
@@ -70,7 +70,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run piper piper_moveit_bridge_smooth
+    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run piper piper_moveit_bridge_smooth
     use_system_font = False
 
   [[cmd_real_moveit]]
@@ -82,7 +82,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch piper_with_gripper_moveit piper_real_moveit.launch.py
+    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch piper_with_gripper_moveit piper_real_moveit.launch.py
     use_system_font = False
 
   [[cmd_moveit_client]]
@@ -94,7 +94,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client
+    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client
     use_system_font = False
 
   [[cmd_sim_moveit]]
@@ -104,7 +104,7 @@
     font = Monospace 10
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch piper_with_gripper_moveit piper_moveit.launch.py
+    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch piper_with_gripper_moveit piper_moveit.launch.py
     use_system_font = False
 
   [[cmd_sim_gazebo]]
@@ -114,7 +114,7 @@
     font = Monospace 10
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch piper_gazebo piper_gazebo.launch.py
+    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch piper_gazebo piper_gazebo.launch.py
     use_system_font = False
 
   [[cmd_moveit_tf_interact]]
@@ -126,7 +126,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client_tf_interactive
+    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client_tf_interactive
     use_system_font = False
 
   [[cmd_moveit_tf]]
@@ -138,7 +138,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client_tf
+    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client_tf
     use_system_font = False
 
   [[cmd_flexbe]]
@@ -150,7 +150,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch flexbe_app flexbe_full.launch.py
+    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch flexbe_app flexbe_full.launch.py
     use_system_font = False
 
   [[cmd_arm_powerdown]]
@@ -162,7 +162,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 topic pub --once /enable_flag std_msgs/msg/Bool "{data: false}"
+    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 topic pub --once /enable_flag std_msgs/msg/Bool "{data: false}"
     use_system_font = False
 
   [[cmd_sam3_node]]
@@ -174,7 +174,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run sam3_ros sam3_node
+    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run sam3_ros sam3_node
     use_system_font = False
 
   [[cmd_sam3_node_tracker]]
@@ -186,7 +186,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run sam3_ros sam3_hybrid_tracker
+    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run sam3_ros sam3_hybrid_tracker
     use_system_font = False
 
   [[cmd_piper_start_action]]
@@ -198,7 +198,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch piper start_single_moveit_piper_action.launch.py
+    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch piper start_single_moveit_piper_action.launch.py
     use_system_font = False
 
   [[cmd_activate_can]]
@@ -210,7 +210,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh bash can_activate.sh can0 1000000
+    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh bash can_activate.sh can0 1000000
     use_system_font = False
 
   [[cmd_yolov8-seg]]
@@ -222,7 +222,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch yolov8_ros yolov8_seg.launch.py
+    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch yolov8_ros yolov8_seg.launch.py
     use_system_font = False
 
 [layouts]
