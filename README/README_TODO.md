@@ -1,3 +1,4 @@
+## コチャカ
 [x] piper_ctrlのつトピック通信 ->アクション通信化
 [x] /setup/realsense.bash でクローンするパスが$HOME/ros2_wsだけどdockerfileで作業ディレクトリを/ros2_wsにしていてビルドもここでするので作業ディレクトリにrealsense_rosが入っていない． == ビルド時にrealsense2が無いと怒られている． dockerfileを変更する？
 
@@ -12,4 +13,13 @@ HSRのterminatorと同じようにする必要がある。
 
 [ ] Unityシミュレータ化
 [ ] Kobukiとの連携
+[ ] スピーカー実装
+[ ] 操作コントローラUIとデバイス開発
+
+
+## VLM,VLA
+[ ] pi0やACTを試してみる
+[ ] 実際VLAは使えるのか．VLMとステートを用いたスキル化とスキル獲得は必要なのか．
+
+## リポジトリ管理
 [ ] Readmeの中身とファイル名整理と保管場所の統一

@@ -14,15 +14,12 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$SCRIPT_DIR"
-
 cd "$PROJECT_DIR"
 
 DOCKER_COMPOSE_PATH="$PROJECT_DIR/docker/docker-compose.yml"
 DOCKER_CONTAINER_NAME="piper-humble-dev"
-
 TERMINATOR_CONFIG="$PROJECT_DIR/.config/terminator/config"
 TERMINATOR_LAYOUT="piper-arm"
-
 export PIPER_PROJECT_DIR="$PROJECT_DIR"
 
 echo "[INFO] project dir: $PROJECT_DIR"
@@ -52,4 +49,4 @@ fi
 echo "[INFO] ホスト側で Terminator を起動します..."
 echo "[INFO] layout: $TERMINATOR_LAYOUT"
 
-exec terminator -g "$TERMINATOR_CONFIG" -l "$TERMINATOR_LAYOUT"
+exec terminator -m -g "$TERMINATOR_CONFIG" -l "$TERMINATOR_LAYOUT"

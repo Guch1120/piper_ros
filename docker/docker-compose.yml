@@ -54,8 +54,8 @@ services:
     build:
       context: ..
       dockerfile: docker/dockerfile.noROS
-    container_name: sam3-noros-dev
-    working_dir: /workspace/sam3
+    container_name: sam3_noros
+    working_dir: /workspace/sam3/grpc_sam3
     stdin_open: true
     tty: true
     ipc: host

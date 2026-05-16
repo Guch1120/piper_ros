@@ -14,11 +14,13 @@ install(
   OPTIONAL
 )
 
-install(
-  DIRECTORY scripts
-  DESTINATION share/${PROJECT_NAME}
-  USE_SOURCE_PERMISSIONS
-  OPTIONAL
+install(PROGRAMS
+  scripts/object_name_bridge.py
+  scripts/click_segment_bridge.py
+  scripts/drag_segment_bridge.py
+  scripts/grpc_bridge.py
+  scripts/ros_publisher.py
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 ament_package()
