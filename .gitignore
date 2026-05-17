@@ -20,3 +20,4 @@ record3d/output/
 src/sam3_ros/assets/saved_frames
 debug_data/
 *.db3
+*.gz

@@ -20,6 +20,18 @@ install(PROGRAMS
   scripts/drag_segment_bridge.py
   scripts/grpc_bridge.py
   scripts/ros_publisher.py
+  scripts/ros2_realsense_object_name_bridge_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+
+install(FILES
+  scripts/segment_overlay_pb2.py
+  scripts/segment_overlay_pb2_grpc.py
+  scripts/segment_pb2.py
+  scripts/segment_pb2_grpc.py
+  scripts/ping_pb2.py
+  scripts/ping_pb2_grpc.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

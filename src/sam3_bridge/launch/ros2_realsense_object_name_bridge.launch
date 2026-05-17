@@ -1,0 +1,35 @@
+<launch>
+  <node
+    pkg="sam3_bridge"
+    exec="ros2_realsense_object_name_bridge_node.py"
+    name="ros2_realsense_object_name_bridge"
+    output="screen">
+
+    <param name="grpc_host" value="localhost" />
+    <param name="grpc_port" value="50051" />
+    <param name="grpc_timeout" value="2.0" />
+    <param name="jpeg_quality" value="75" />
+    <param name="max_width" value="640" />
+    <param name="max_height" value="480" />
+
+    <!-- RealSense RGB image topic -->
+    <param name="topic_name"
+           value="/camera/image_raw" />
+
+    <!-- SAM output topics -->
+    <param name="mask_topic"
+           value="/sam/mask" />
+    <param name="overlay_topic"
+           value="/sam/overlay" />
+    <param name="centroid_topic"
+           value="/sam3/mask/centroid" />
+
+    <!-- Initial prompt. Runtime prompt can be updated by /object_name -->
+    <param name="prompt"
+           value="object" />
+
+    <!-- Resize SAM output back to original RealSense image size -->
+    <param name="publish_original_size"
+           value="true" />
+  </node>
+</launch>
