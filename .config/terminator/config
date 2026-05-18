@@ -243,12 +243,12 @@
       type = Window
       parent = ""
       order = 0
-      position = 995:27
-      maximised = False
+      position = 70:27
+      maximised = True
       fullscreen = False
-      size = 925, 1016
+      size = 1850, 1016
       title = piper-arm
-      last_active_term = 81ab64ea-4a43-44dc-aa01-d0580c85e002
+      last_active_term = 9b3428e7-7a19-4056-bb0f-41166984f31e
       last_active_window = True
     [[[child1]]]
       type = VPaned
@@ -260,8 +260,8 @@
       type = HPaned
       parent = child1
       order = 0
-      position = 461
-      ratio = 0.5010869565217392
+      position = 925
+      ratio = 0.5013550135501355
     [[[child3]]]
       type = VPaned
       parent = child2
@@ -272,7 +272,7 @@
       type = HPaned
       parent = child3
       order = 0
-      position = 228
+      position = 460
       ratio = 0.5
     [[[terminal5]]]
       type = Terminal
@@ -290,7 +290,7 @@
       type = HPaned
       parent = child3
       order = 1
-      position = 228
+      position = 460
       ratio = 0.5
     [[[terminal8]]]
       type = Terminal
@@ -314,8 +314,8 @@
       type = HPaned
       parent = child10
       order = 0
-      position = 228
-      ratio = 0.5022026431718062
+      position = 460
+      ratio = 0.5027322404371585
     [[[terminal12]]]
       type = Terminal
       parent = child11
@@ -332,8 +332,8 @@
       type = HPaned
       parent = child10
       order = 1
-      position = 230
-      ratio = 0.5066079295154186
+      position = 464
+      ratio = 0.507103825136612
     [[[terminal15]]]
       type = Terminal
       parent = child14
@@ -356,35 +356,59 @@
       type = HPaned
       parent = child17
       order = 0
-      position = 459
-      ratio = 0.4989130434782609
-    [[[terminal19]]]
-      type = Terminal
+      position = 920
+      ratio = 0.4986449864498645
+    [[[child19]]]
+      type = HPaned
       parent = child18
+      order = 0
+      position = 458
+      ratio = 0.5005464480874317
+    [[[terminal20]]]
+      type = Terminal
+      parent = child19
       order = 0
       profile = cmd_real_moveit
       uuid = bf24ef60-f3d3-46be-bf47-8203353d647f
-    [[[terminal20]]]
+    [[[terminal21]]]
       type = Terminal
+      parent = child19
+      order = 1
+      profile = cmd_shell_piper
+      uuid = 0ee77ee9-0cea-45e3-b0cc-6fd3aa4b415a
+    [[[child22]]]
+      type = HPaned
       parent = child18
       order = 1
-      profile = cmd_sim_moveit
+      position = 460
+      ratio = 0.5
+    [[[terminal23]]]
+      type = Terminal
+      parent = child22
+      order = 0
+      profile = cmd_shell_piper
       uuid = 39522684-192a-457c-87c8-5fe1840fec9b
-    [[[child21]]]
+    [[[terminal24]]]
+      type = Terminal
+      parent = child22
+      order = 1
+      profile = cmd_sim_moveit
+      uuid = 9b3428e7-7a19-4056-bb0f-41166984f31e
+    [[[child25]]]
       type = HPaned
       parent = child17
       order = 1
-      position = 461
-      ratio = 0.5010869565217392
-    [[[terminal22]]]
+      position = 925
+      ratio = 0.5013550135501355
+    [[[terminal26]]]
       type = Terminal
-      parent = child21
+      parent = child25
       order = 0
       profile = cmd_piper_start_action
       uuid = 53a0e0dc-8601-4b28-8dcf-00e3f3f11356
-    [[[terminal23]]]
+    [[[terminal27]]]
       type = Terminal
-      parent = child21
+      parent = child25
       order = 1
       profile = cmd_sim_gazebo
       uuid = d54a7512-d7e2-4682-ba00-65cecc56dd94

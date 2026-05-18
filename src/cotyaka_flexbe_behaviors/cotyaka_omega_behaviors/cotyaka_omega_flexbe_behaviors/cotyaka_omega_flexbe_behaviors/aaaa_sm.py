@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright 2025 Yamaguchi  Takuma
+# Copyright 2025 Yamaguchi Takuma
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,10 +23,10 @@
 ###########################################################
 
 """
-Define aaa.
+Define aaaa.
 
 Created on Wed Dec 24 2025
-@author: Yamaguchi  Takuma
+@author: Yamaguchi Takuma
 """
 
 
@@ -36,7 +36,7 @@ from flexbe_core import ConcurrencyContainer
 from flexbe_core import Logger
 from flexbe_core import OperatableStateMachine
 from flexbe_core import PriorityContainer
-from cotyaka_omega_flexbe_states.broadcast_tf_param import BroadcastStaticTFParamState
+from cotyaka_omega_flexbe_states.arm_power_switch import ArmPowerSwitch
 
 # Additional imports can be added inside the following tags
 # [MANUAL_IMPORT]
@@ -44,16 +44,17 @@ from cotyaka_omega_flexbe_states.broadcast_tf_param import BroadcastStaticTFPara
 # [/MANUAL_IMPORT]
 
 
-class aaaSM(Behavior):
+class aaaaSM(Behavior):
     """
-    Define aaa.
+    Define aaaa.
 
-    fuck you 
+    aaaaaaa
+
     """
 
     def __init__(self, node):
         super().__init__()
-        self.name = 'aaa'
+        self.name = 'aaaa'
 
         # parameters of this behavior
 
@@ -62,7 +63,7 @@ class aaaSM(Behavior):
         ConcurrencyContainer.initialize_ros(node)
         PriorityContainer.initialize_ros(node)
         Logger.initialize(node)
-        BroadcastStaticTFParamState.initialize_ros(node)
+        ArmPowerSwitch.initialize_ros(node)
 
         # Additional initialization code can be added inside the following tags
         # [MANUAL_INIT]
@@ -80,9 +81,9 @@ class aaaSM(Behavior):
 
         # [/MANUAL_CREATE]
         with _state_machine:
-            # x:30 y:40
-            OperatableStateMachine.add('aaa',
-                                       BroadcastStaticTFParamState(parent_frame='base_link', child_frame='interactive_set', xyz_val=[0.0,0.0,0.0], rpy_val=[0.0,0.0,0.0], wait_time=0.5),
+            # x:91 y:114
+            OperatableStateMachine.add('power swithing',
+                                       ArmPowerSwitch(enable_flag=False, topic='/enable_flag', verify=True, timeout=2.0, publish_period=0.2),
                                        transitions={'done': 'finished'},
                                        autonomy={'done': Autonomy.Off})
 
