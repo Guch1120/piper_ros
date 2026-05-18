@@ -20,7 +20,7 @@ class MoveItClientJoint(EventState):
     <= failed        移動失敗
     '''
 
-    def __init__(self, group_name='arm', joint_names=[], tolerance=0.01, action_topic='move_action'):
+    def __init__(self, group_name='arm', joint_names=['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'joint7'], tolerance=0.01, action_topic='move_action'):
         super(MoveItClientJoint, self).__init__(outcomes=['reached', 'failed'],
                                                      input_keys=['target_joints'])
         self._group_name = group_name

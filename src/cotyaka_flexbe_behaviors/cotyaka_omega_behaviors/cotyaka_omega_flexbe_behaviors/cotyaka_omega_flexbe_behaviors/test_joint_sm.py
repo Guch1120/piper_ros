@@ -51,6 +51,7 @@ class test_jointSM(Behavior):
     Define test_joint.
 
     test joint playground
+
     """
 
     def __init__(self, node):
@@ -76,8 +77,9 @@ class test_jointSM(Behavior):
         # Behavior comments:
 
     def create(self):
-        # x:472 y:258, x:475 y:429
+        # x:319 y:500, x:460 y:520
         _state_machine = OperatableStateMachine(outcomes=['finished', 'failed'])
+        _state_machine.userdata.index = 0
 
         # Additional creation code can be added inside the following tags
         # [MANUAL_CREATE]

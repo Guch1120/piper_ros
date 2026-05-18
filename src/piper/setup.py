@@ -44,6 +44,7 @@ setup(
             'keyboard_publisher = piper.keyboard_publisher:main',
             'camera_calibration = piper.camera_calibration:main',
             'rpy_calibration = piper.rpy_calibration:main',
+            'wait_enter_and_pub_msg = piper.wait_enter_and_pub_msg_node:main'
         ],
     },
 )

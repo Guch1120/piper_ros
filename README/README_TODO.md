@@ -3,13 +3,17 @@
 [x] /setup/realsense.bash でクローンするパスが$HOME/ros2_wsだけどdockerfileで作業ディレクトリを/ros2_wsにしていてビルドもここでするので作業ディレクトリにrealsense_rosが入っていない． == ビルド時にrealsense2が無いと怒られている． dockerfileを変更する？
 
 [ ]　src/sam3_bridge下のマークダウンをros2 humble仕様に書き直す
+[ ] nvidiaドライバを535 --> 580にしてcudaとtorchの動作保証をする
 [x] sam3コンテナとpiperコンテナを共存させたterminatorレイアウトの構築。
 HSRのterminatorと同じようにする必要がある。
 
-[ ] 静的TF動作
+[ ] sam3_gRPCのオブジェクト名変更をFlexbeのステートでやる
+[x] 静的TF動作
 [ ] SAM3を用いて静的TF動作
 [ ] SAM3を用いて動的TF動作
-[ ] ダイレクトティーチングもどきの実装。動作させるのはMoveItClientParamStateステートを改良させる。パラメータではなくuserdataを使うようにする。
+[ ] ダイレクトティーチングの実装。動作させるのはMoveItClientParamStateステートを改良させる。パラメータではなくuserdataを使うようにする。
+
+[ ] ダイレクトティーチング結果をuserdataではない形で保存する。永続化。
 
 [ ] Unityシミュレータ化
 [ ] Kobukiとの連携

@@ -1,0 +1,15 @@
+# Linux/CUDA SAM3 runtime only
+fastapi
+uvicorn[standard]
+websockets
+numpy<2
+opencv-python
+Pillow
+huggingface_hub
+safetensors
+requests
+pyyaml
+typer
+einops
+pycocotools
+huggingface_hub
