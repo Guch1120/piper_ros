@@ -14,7 +14,7 @@
 
     <!-- RealSense RGB image topic -->
     <param name="topic_name"
-           value="/camera/image_raw" />
+           value="/camera/camera/color/image_raw" />
 
     <!-- SAM output topics -->
     <param name="mask_topic"

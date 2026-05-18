@@ -80,4 +80,11 @@ services:
       - ${HOME}/.cache/huggingface:/root/.cache/huggingface
       - ../terminator/config:/root/.config/terminator:rw
       - /dev:/dev
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
     command: sleep infinity

@@ -1,7 +1,5 @@
-# FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
+FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
 # CUDAバージョンはRTX5000シリーズに対応するため12.8にした．
-FROM nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04
-# HSR用白デスクトップPCはnvidiaドライバのバージョンが535なので，CUDA 12.8は非対応．12.2まで対応．
 
 # いつもの詠唱
 ENV DEBIAN_FRONTEND=noninteractive \

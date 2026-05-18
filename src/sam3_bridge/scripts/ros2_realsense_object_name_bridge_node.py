@@ -276,12 +276,12 @@ class Ros2RealSenseObjectNameBridge(Node):
         send_h, send_w = send_image.shape[:2]
 
         # デバッグ用。動作確認後はコメントアウト推奨。
-        self.get_logger().info(
-            f"type(send_image)={type(send_image)} "
-            f"dtype={send_image.dtype} "
-            f"shape={send_image.shape} "
-            f"contiguous={send_image.flags['C_CONTIGUOUS']}"
-        )
+        # self.get_logger().info(
+        #     f"type(send_image)={type(send_image)} "
+        #     f"dtype={send_image.dtype} "
+        #     f"shape={send_image.shape} "
+        #     f"contiguous={send_image.flags['C_CONTIGUOUS']}"
+        # )
 
         # まずは切り分け優先で2引数版
         ok, jpeg = cv2.imencode(".jpg", send_image)
@@ -365,7 +365,7 @@ class Ros2RealSenseObjectNameBridge(Node):
             f"publish prompt='{current_prompt}' "
             f"objects={response.num_objects} "
             f"inference={response.inference_ms:.1f}ms "
-            f"image={orig_w}x{orig_h} send={send_w}x{send_h}"
+            # f"image={orig_w}x{orig_h} send={send_w}x{send_h}"
         )
     def resize_for_inference(self, cv_image):
         h, w = cv_image.shape[:2]
