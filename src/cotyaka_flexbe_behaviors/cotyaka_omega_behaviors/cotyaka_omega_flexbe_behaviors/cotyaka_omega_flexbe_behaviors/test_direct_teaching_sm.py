@@ -83,7 +83,7 @@ class test_direct_teachingSM(Behavior):
         # Behavior comments:
 
     def create(self):
-        # x:811 y:188, x:189 y:458
+        # x:1024 y:319, x:189 y:458
         _state_machine = OperatableStateMachine(outcomes=['finished', 'failed'])
         _state_machine.userdata.index = 0
         _state_machine.userdata.joint_list = []
@@ -115,8 +115,8 @@ class test_direct_teachingSM(Behavior):
             # x:519 y:183
             OperatableStateMachine.add('publish joint',
                                        PublishJoint(),
-                                       transitions={'repeat': 'move', 'complete': 'finished'},
-                                       autonomy={'repeat': Autonomy.Off, 'complete': Autonomy.Off},
+                                       transitions={'repeat': 'move'},
+                                       autonomy={'repeat': Autonomy.Off},
                                        remapping={'joint_list': 'joint_list', 'index': 'index', 'joint_values': 'joint_values'})
 
             # x:120 y:224
@@ -132,12 +132,12 @@ class test_direct_teachingSM(Behavior):
                                        transitions={'record': 'record joint', 'done': 'power ON'},
                                        autonomy={'record': Autonomy.Off, 'done': Autonomy.Off})
 
-            # x:700 y:304
+            # x:730 y:304
             OperatableStateMachine.add('increment index',
                                        IncrementIndex(),
-                                       transitions={'done': 'publish joint'},
-                                       autonomy={'done': Autonomy.Off},
-                                       remapping={'index': 'index'})
+                                       transitions={'done': 'publish joint', 'complete': 'finished'},
+                                       autonomy={'done': Autonomy.Off, 'complete': Autonomy.Off},
+                                       remapping={'index': 'index', 'target_list': 'joint_list'})
 
         return _state_machine
 
