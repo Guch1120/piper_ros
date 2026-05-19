@@ -248,7 +248,7 @@
       fullscreen = False
       size = 1850, 1016
       title = piper-arm
-      last_active_term = 9b3428e7-7a19-4056-bb0f-41166984f31e
+      last_active_term = 0ee77ee9-0cea-45e3-b0cc-6fd3aa4b415a
       last_active_window = True
     [[[child1]]]
       type = VPaned
@@ -356,14 +356,14 @@
       type = HPaned
       parent = child17
       order = 0
-      position = 920
-      ratio = 0.4986449864498645
+      position = 922
+      ratio = 0.4997289972899729
     [[[child19]]]
       type = HPaned
       parent = child18
       order = 0
-      position = 458
-      ratio = 0.5005464480874317
+      position = 460
+      ratio = 0.5016357688113413
     [[[terminal20]]]
       type = Terminal
       parent = child19
@@ -380,8 +380,8 @@
       type = HPaned
       parent = child18
       order = 1
-      position = 460
-      ratio = 0.5
+      position = 467
+      ratio = 0.5087145969498911
     [[[terminal23]]]
       type = Terminal
       parent = child22

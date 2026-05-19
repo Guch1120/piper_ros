@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<behavior name="direct_teaching">
+
+    <executable package_path="cotyaka_omega_flexbe_behaviors.direct_teaching_sm" class="direct_teachingSM" />
+    <tagstring>kotyaka</tagstring>
+    <author>Yamaguchi Takuma</author>
+    <date>Mon May 18 2026</date>
+    <description>
+        You can  direct teach by guiding your own hands
+    </description>
+
+
+    <!-- Contained Behaviors -->
+
+    <!-- Available Parameters -->
+
+</behavior>

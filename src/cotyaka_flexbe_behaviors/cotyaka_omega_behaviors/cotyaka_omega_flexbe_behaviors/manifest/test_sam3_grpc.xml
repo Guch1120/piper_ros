@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<behavior name="test">
+<behavior name="test sam3 gRPC">
 
-    <executable package_path="cotyaka_omega_flexbe_behaviors.test_sm" class="testSM" />
+    <executable package_path="cotyaka_omega_flexbe_behaviors.test_sam3_grpc_sm" class="testsam3gRPCSM" />
     <tagstring>test</tagstring>
     <author>Yamaguchi Takuma</author>
-    <date>Mon Dec 15 2025</date>
+    <date>Tue May 19 2026</date>
     <description>
-        test 'grasp and slide
+        test sam3 gRPC playground
 
     </description>
 

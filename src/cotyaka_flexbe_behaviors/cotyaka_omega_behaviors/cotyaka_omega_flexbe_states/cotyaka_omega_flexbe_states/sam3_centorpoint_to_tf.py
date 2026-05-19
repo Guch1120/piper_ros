@@ -13,9 +13,9 @@ from std_msgs.msg import Float32MultiArray, Float64MultiArray, Int32MultiArray, 
 from tf.transformations import quaternion_from_euler
 
 
-class Sam3CentroidToTFState(EventState):
+class Sam3CentorPointToTF(EventState):
     """
-    /sam3/mask/centoroid から静的TFを配信する状態クラス。
+    /sam3/mask/centroid から静的TFを配信する状態クラス。
 
     この状態では、深度取得、カメラ投影、点群生成は行わない。
     入力される重心座標は、すでに親フレーム上の3次元位置である必要がある。
@@ -27,44 +27,72 @@ class Sam3CentroidToTFState(EventState):
     <= timeout        タイムアウトまでに有効な重心が届かなかった。
     """
 
-    def __init__(self,centroid_topic="/sam3/mask/centoroid",parent_frame_id="base_link",child_frame_prefix="sam3_",child_frame_suffix="_tf",timeout=5.0):
-        # 状態クラスを初期化し、FlexBEの結果と入力キーを定義する。
-        super(Sam3CentroidToTFState, self).__init__(
-            outcomes=["done", "failed", "timeout"],
-            input_keys=["object_name"],
-        )
+    def __init__(self,centroid_topic="/sam3/mask/centroid",parent_frame_id="base_link",child_frame_prefix="sam3_",child_frame_suffix="_tf",timeout=5.0):
+        """
+        初期化時に使用する変数一覧
 
-        # トピック名、親フレーム名、子フレーム名の接頭辞・接尾辞、タイムアウト時間を保存する。
+        引数:
+            centroid_topic:
+                重心座標を受け取るROSトピック名。
+                rospy.AnyMsgで購読するため、複数のメッセージ型に対応できる。
+            parent_frame_id:
+                重心メッセージ側にframe_idが無い場合に使用する親TFフレーム名。
+                例: base_link, map, odom など。
+            child_frame_prefix:
+                生成する子TFフレーム名の先頭に付ける文字列。
+                例: "sam3_"
+            child_frame_suffix:
+                生成する子TFフレーム名の末尾に付ける文字列。
+                例: "_tf"
+            timeout:
+                有効な重心メッセージを待つ最大時間 [秒]。
+                0以下の場合はタイムアウト判定を無効化する。
+
+        メンバ変数:
+            self._centroid_topic:
+                実際に購読する重心トピック名。
+            self._parent_frame_id:
+                デフォルトの親TFフレーム名。
+            self._child_frame_prefix:
+                子TFフレーム名の接頭辞。
+            self._child_frame_suffix:
+                子TFフレーム名の接尾辞。
+            self._timeout:
+                重心メッセージ待ちのタイムアウト時間 [秒]。
+            self._centroid_sub:
+                重心トピックのSubscriber。
+            self._tf_broadcaster:
+                静的TFを配信するStaticTransformBroadcaster。
+            self._lock:
+                コールバック処理とexecute処理が同時に変数へアクセスするのを防ぐロック。
+            self._latest_any_centroid:
+                最後に受信した重心メッセージ。
+                rospy.AnyMsgとして保存される。
+            self._active:
+                このStateが現在実行中かどうかを表すフラグ。
+            self._enter_time:
+                Stateに入った時刻。
+                timeout判定に使用する。
+            self._published:
+                すでにTFを配信したかどうかを表すフラグ。
+            self._object_name:
+                userdataから受け取ったオブジェクト名。
+                子TFフレーム名の生成に使用する。
+        """
+
+        super(Sam3CentorPointToTF, self).__init__(outcomes=["done", "failed", "timeout"],input_keys=["object_name"])
         self._centroid_topic = centroid_topic
         self._parent_frame_id = parent_frame_id
         self._child_frame_prefix = child_frame_prefix
         self._child_frame_suffix = child_frame_suffix
         self._timeout = float(timeout)
-
-        # 任意のROSメッセージ型として重心トピックを購読する。
-        self._centroid_sub = rospy.Subscriber(
-            self._centroid_topic, rospy.AnyMsg, self._centroid_callback, queue_size=1
-        )
-
-        # 静的TFを配信するためのブロードキャスタを生成する。
+        self._centroid_sub = rospy.Subscriber(self._centroid_topic,rospy.AnyMsg,self._centroid_callback,queue_size=1)
         self._tf_broadcaster = tf2_ros.StaticTransformBroadcaster()
-
-        # コールバックと実行処理が同時に変数へアクセスするため、排他制御用ロックを用意する。
         self._lock = threading.Lock()
-
-        # 最新の重心メッセージを保持する。
         self._latest_any_centroid = None
-
-        # 状態が実行中かどうかを表すフラグ。
         self._active = False
-
-        # 状態に入った時刻。
         self._enter_time = None
-
-        # TFをすでに配信したかどうかを表すフラグ。
         self._published = False
-
-        # 子TFフレーム名の生成に使用するオブジェクト名。
         self._object_name = ""
 
     def on_enter(self, userdata):
@@ -74,13 +102,7 @@ class Sam3CentroidToTFState(EventState):
         self._enter_time = rospy.Time.now()
         self._published = False
         self._object_name = str(getattr(userdata, "object_name", "")).strip()
-
-        Logger.loginfo(
-            "Sam3CentroidToTFState waiting on centroid={} object_name={}".format(
-                self._centroid_topic, self._object_name
-            )
-        )
-
+        Logger.loginfo("Sam3CentorPointToTF waiting on centroid={} object_name={}".format(self._centroid_topic, self._object_name))
         # すでに受信済みの重心メッセージがあれば、すぐにTF配信を試みる。
         self._try_publish_latest()
 
@@ -95,9 +117,7 @@ class Sam3CentroidToTFState(EventState):
         if self._timeout > 0.0 and self._enter_time is not None:
             elapsed = (rospy.Time.now() - self._enter_time).to_sec()
             if elapsed > self._timeout:
-                Logger.logwarn(
-                    "Sam3CentroidToTFState timed out after {:.3f}s".format(elapsed)
-                )
+            Logger.logwarn("Sam3CentorPointToTF timed out after {:.3f}s".format(elapsed))
                 return "timeout"
 
         return None
@@ -145,14 +165,8 @@ class Sam3CentroidToTFState(EventState):
         # TransformStampedを作成して静的TFとして配信する。
         transform = self._build_transform(xyz, parent_frame_id, child_frame_id, stamp)
         self._tf_broadcaster.sendTransform(transform)
-
         self._published = True
-
-        Logger.loginfo(
-            "Sam3CentroidToTFState published static TF {} -> {} at [{:.3f}, {:.3f}, {:.3f}]".format(
-                parent_frame_id, child_frame_id, xyz[0], xyz[1], xyz[2]
-            )
-        )
+        Logger.loginfo("Sam3CentorPointToTF published static TF {} -> {} at [{:.3f}, {:.3f}, {:.3f}]".format(parent_frame_id, child_frame_id, xyz[0], xyz[1], xyz[2]))
 
     def _any_centroid_to_xyz(self, any_msg):
         # rospy.AnyMsgとして受信した重心メッセージを実際の型に復元し、
@@ -283,16 +297,13 @@ class Sam3CentroidToTFState(EventState):
         # xyz座標、親フレームID、子フレームID、時刻からTransformStampedを作成する。
         # 回転はゼロ回転、つまり単位クォータニオンに設定する。
         q = quaternion_from_euler(0.0, 0.0, 0.0, "rxyz")
-
         transform = TransformStamped()
         transform.header.stamp = stamp
         transform.header.frame_id = parent_frame_id
         transform.child_frame_id = child_frame_id
-
         transform.transform.translation.x = float(xyz[0])
         transform.transform.translation.y = float(xyz[1])
         transform.transform.translation.z = float(xyz[2])
-
         transform.transform.rotation.x = q[0]
         transform.transform.rotation.y = q[1]
         transform.transform.rotation.z = q[2]

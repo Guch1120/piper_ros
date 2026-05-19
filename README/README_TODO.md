@@ -7,8 +7,8 @@
 [x] sam3コンテナとpiperコンテナを共存させたterminatorレイアウトの構築。
 HSRのterminatorと同じようにする必要がある。
 
-[ ] sam3_gRPCのオブジェクト名変更をFlexbeのステートでやる
 [x] 静的TF動作
+[ ] sam3_gRPCのオブジェクト名変更をFlexbeのステートでやる
 [ ] SAM3を用いて静的TF動作
 [ ] SAM3を用いて動的TF動作
 [x] ダイレクトティーチングの実装。動作させるのはMoveItClientParamStateステートを改良させる。パラメータではなくuserdataを使うようにする。
@@ -16,6 +16,7 @@ HSRのterminatorと同じようにする必要がある。
 [ ] ダイレクトティーチング結果をuserdataではない形で保存する。永続化。
 
 [ ] Unityシミュレータ化
+[ ] Mujoco実装
 [ ] Kobukiとの連携
 [ ] スピーカー実装
 [ ] 操作コントローラUIとデバイス開発
