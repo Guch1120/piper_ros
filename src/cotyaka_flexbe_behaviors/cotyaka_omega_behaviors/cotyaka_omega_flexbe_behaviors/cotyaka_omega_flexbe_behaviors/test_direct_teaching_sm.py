@@ -99,7 +99,7 @@ class test_direct_teachingSM(Behavior):
                                        transitions={'done': 'wait enter key'},
                                        autonomy={'done': Autonomy.Off})
 
-            # x:400 y:304
+            # x:403 y:295
             OperatableStateMachine.add('move',
                                        MoveJointListInputKey(group_name='arm', joint_names=None, tolerance=0.01, action_topic='move_action', allowed_planning_time=5.0),
                                        transitions={'done': 'increment index'},
@@ -132,7 +132,7 @@ class test_direct_teachingSM(Behavior):
                                        transitions={'record': 'record joint', 'done': 'power ON'},
                                        autonomy={'record': Autonomy.Off, 'done': Autonomy.Off})
 
-            # x:730 y:304
+            # x:720 y:296
             OperatableStateMachine.add('increment index',
                                        IncrementIndex(),
                                        transitions={'done': 'publish joint', 'complete': 'finished'},

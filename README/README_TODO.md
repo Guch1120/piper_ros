@@ -11,7 +11,7 @@ HSRのterminatorと同じようにする必要がある。
 [x] 静的TF動作
 [ ] SAM3を用いて静的TF動作
 [ ] SAM3を用いて動的TF動作
-[ ] ダイレクトティーチングの実装。動作させるのはMoveItClientParamStateステートを改良させる。パラメータではなくuserdataを使うようにする。
+[x] ダイレクトティーチングの実装。動作させるのはMoveItClientParamStateステートを改良させる。パラメータではなくuserdataを使うようにする。
 
 [ ] ダイレクトティーチング結果をuserdataではない形で保存する。永続化。
 
