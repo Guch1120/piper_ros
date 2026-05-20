@@ -99,7 +99,7 @@ class woooooSM(Behavior):
 
             # x:307 y:163
             OperatableStateMachine.add('close',
-                                       PiperMoveItCloseState(target_value=0.0, joint_name='joint7', group_name='gripper', tolerance=0.01, action_topic='move_action'),
+                                       PiperMoveItCloseState(target_value=0.05, joint_name='joint7', group_name='gripper', tolerance=0.01, action_topic='move_action'),
                                        transitions={'reached': 'finished', 'failed': 'failed'},
                                        autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
 

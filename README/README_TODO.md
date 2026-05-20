@@ -6,6 +6,8 @@
 [ ] nvidiaドライバを535 --> 580にしてcudaとtorchの動作保証をする
 [x] sam3コンテナとpiperコンテナを共存させたterminatorレイアウトの構築。
 HSRのterminatorと同じようにする必要がある。
+[ ] flexbeのGUIで変更が実行時反映されない問題。
+怪しいのはinstallやbuildの中身をみて実行していて、変更毎にビルドしないといけない説。俺そこ直したよなぁぁ？？？？？？？srcの中身ろってさぁ
 
 [x] 静的TF動作
 [ ] sam3_gRPCのオブジェクト名変更をFlexbeのステートでやる
@@ -17,6 +19,7 @@ HSRのterminatorと同じようにする必要がある。
 
 [ ] Unityシミュレータ化
 [ ] Mujoco実装
+[ ] unity mujoco plugin
 [ ] Kobukiとの連携
 [ ] スピーカー実装
 [ ] 操作コントローラUIとデバイス開発

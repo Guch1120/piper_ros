@@ -1,37 +1,42 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import rospy
 from flexbe_core import EventState, Logger
+from flexbe_core.proxy import ProxyPublisher
 from std_msgs.msg import String
 
 
 class PublishObjectName(EventState):
     """
-    object_list[index]を/object_nameにpublishする State
-    このStateではindexの更新・範囲管理は行わない
-    index の管理は別Stateで行う
+    object_list[index]を/object_nameにpublishする
 
-    ># object_list   list    対象とするリスト
-    ># index         int     現在のindex
+    このステートはindexの更新・範囲管理は行わない
+    indexの管理は別Stateで行う。
 
-    #> object_name   string  Pubするobject name
+    ># object_list   list    Object name list
+    ># index         int     Current index
 
-    <= done                  Pub成功
+    #> object_name   string  Published object name
+
+    <= done                  Published successfully
     """
 
     def __init__(self):
         super(PublishObjectName, self).__init__(outcomes=['done'],input_keys=['object_list', 'index'],output_keys=['object_name'])
-        self._pub = rospy.Publisher('/object_name',String,queue_size=10)
+        self._topic = '/object_name'
+        self._pub = ProxyPublisher({self._topic: String})
 
     @staticmethod
     def _extract_object_name(entry):
         """
-        object_list の要素から object_name を取り出す
-        想定される entry:
-          - "apple" のような文字列
+        object_list の要素から object_name を取り出す。
+
+        想定:
+          - "apple"
           - {"object_name": "apple"}
           - {"name": "apple"}
+          - {"label": "apple"}
+          - {"color_type": "apple"}
         """
         if isinstance(entry, dict):
             for key in ['object_name', 'name', 'label', 'color_type']:
@@ -50,17 +55,17 @@ class PublishObjectName(EventState):
         Logger.loginfo('  index       = {}'.format(userdata.index))
         Logger.loginfo('  object_list = {}'.format(userdata.object_list))
 
-        # 念のため output_key は必ず代入しておく
         userdata.object_name = ''
 
-        # index を int に変換
         try:
             current_index = int(userdata.index)
+        
+    #---------------------------------------------------------------------------------------------------
+    #-----------------------ここからエラーハンドリング-----------------------------------------------------
+    #----------------------------------------------------------------------------------------------------
         except Exception as e:
             Logger.logerr('PublishObjectName: userdata.index cannot be converted to int. ''index={}, error={}'.format(userdata.index, e))
             return 'done'
-
-        # object_list の型チェック
         if userdata.object_list is None:
             Logger.logerr('PublishObjectName: object_list is None.')
             return 'done'
@@ -69,7 +74,12 @@ class PublishObjectName(EventState):
             Logger.logerr('PublishObjectName: object_list is not list. type={}'.format(type(userdata.object_list)))
             return 'done'
 
-        # object name を取得
+        if current_index < 0 or current_index >= len(userdata.object_list):
+            Logger.logerr('PublishObjectName: index out of range. index={}, len={}'.format(current_index,len(userdata.object_list)))
+            return 'done'
+    #---------------------------------------------------------------------------------------------------
+    #-----------------------ここまでエラーハンドリング-----------------------------------------------------
+    #----------------------------------------------------------------------------------------------------
         object_entry = userdata.object_list[current_index]
         object_name = self._extract_object_name(object_entry)
 
@@ -80,6 +90,7 @@ class PublishObjectName(EventState):
         userdata.object_name = object_name
         msg = String()
         msg.data = object_name
-        self._pub.publish(msg)
-        Logger.loginfo('PublishObjectName: published /object_name = {}'.format(object_name))
+        self._pub.publish(self._topic, msg)
+        Logger.loginfo('PublishObjectName: published {} = {}'.format(self._topic,object_name))
+
         return 'done'

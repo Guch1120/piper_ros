@@ -36,7 +36,7 @@ from flexbe_core import ConcurrencyContainer
 from flexbe_core import Logger
 from flexbe_core import OperatableStateMachine
 from flexbe_core import PriorityContainer
-from cotyaka_omega_flexbe_states.arm_power_switch import ArmPowerSwitch
+from cotyaka_omega_flexbe_states.publish_object_name import PublishObjectName
 
 # Additional imports can be added inside the following tags
 # [MANUAL_IMPORT]
@@ -63,7 +63,7 @@ class aaaaSM(Behavior):
         ConcurrencyContainer.initialize_ros(node)
         PriorityContainer.initialize_ros(node)
         Logger.initialize(node)
-        ArmPowerSwitch.initialize_ros(node)
+        PublishObjectName.initialize_ros(node)
 
         # Additional initialization code can be added inside the following tags
         # [MANUAL_INIT]
@@ -75,17 +75,20 @@ class aaaaSM(Behavior):
     def create(self):
         # x:30 y:365, x:130 y:365
         _state_machine = OperatableStateMachine(outcomes=['finished', 'failed'])
+        _state_machine.userdata.index = 0
+        _state_machine.userdata.object_list = ["floor"]
 
         # Additional creation code can be added inside the following tags
         # [MANUAL_CREATE]
 
         # [/MANUAL_CREATE]
         with _state_machine:
-            # x:91 y:114
-            OperatableStateMachine.add('power swithing',
-                                       ArmPowerSwitch(enable_flag=False, topic='/enable_flag', verify=True, timeout=2.0, publish_period=0.2),
+            # x:75 y:142
+            OperatableStateMachine.add('pub object name',
+                                       PublishObjectName(),
                                        transitions={'done': 'finished'},
-                                       autonomy={'done': Autonomy.Off})
+                                       autonomy={'done': Autonomy.Off},
+                                       remapping={'object_list': 'object_list', 'index': 'index', 'object_name': 'object_name'})
 
         return _state_machine
 

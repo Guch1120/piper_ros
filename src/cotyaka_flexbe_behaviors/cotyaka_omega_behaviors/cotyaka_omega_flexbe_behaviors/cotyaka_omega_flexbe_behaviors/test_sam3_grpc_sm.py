@@ -81,7 +81,7 @@ class testsam3gRPCSM(Behavior):
     def create(self):
         # x:791 y:274, x:669 y:182
         _state_machine = OperatableStateMachine(outcomes=['finished', 'failed'])
-        _state_machine.userdata.object_list = []
+        _state_machine.userdata.object_list = ["floor"]
         _state_machine.userdata.index = 0
 
         # Additional creation code can be added inside the following tags
@@ -92,7 +92,7 @@ class testsam3gRPCSM(Behavior):
             # x:100 y:34
             OperatableStateMachine.add('Publish object name',
                                        PublishObjectName(),
-                                       transitions={'done': 'index'},
+                                       transitions={'done': 'finished'},
                                        autonomy={'done': Autonomy.Off},
                                        remapping={'object_list': 'object_list', 'index': 'index', 'object_name': 'object_name'})
 
