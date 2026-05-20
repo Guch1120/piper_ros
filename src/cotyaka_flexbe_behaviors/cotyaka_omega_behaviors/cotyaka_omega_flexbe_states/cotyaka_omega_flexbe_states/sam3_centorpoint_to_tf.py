@@ -1,312 +1,219 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import json
+import math
 import re
-import threading
 
-import rospy
-import tf2_ros
+import numpy as np
 from flexbe_core import EventState, Logger
-from geometry_msgs.msg import Point, PointStamped, PoseStamped, TransformStamped, Vector3Stamped
-from std_msgs.msg import Float32MultiArray, Float64MultiArray, Int32MultiArray, String
-from tf.transformations import quaternion_from_euler
+from flexbe_core.proxy import ProxySubscriberCached
+from geometry_msgs.msg import PointStamped, TransformStamped
+from sensor_msgs.msg import CameraInfo, Image
+from tf2_ros import StaticTransformBroadcaster
 
 
 class Sam3CentorPointToTF(EventState):
     """
-    /sam3/mask/centroid から静的TFを配信する状態クラス。
+    /sam3/mask/centroid から画像座標の PointStamped を受け取り、depth画像とCameraInfoからカメラ座標へ変換して静的TFを配信する State。
 
-    この状態では、深度取得、カメラ投影、点群生成は行わない。
-    入力される重心座標は、すでに親フレーム上の3次元位置である必要がある。
+    ># object_name    string  子TFフレーム名に使用するオブジェクト名
 
-    ># object_name    string  子TFフレーム名に使用するオブジェクト名。
-
-    <= done           静的TFの配信に成功した。
-    <= failed         重心メッセージが不正だった。
-    <= timeout        タイムアウトまでに有効な重心が届かなかった。
+    <= done           静的TFの配信に成功
+    <= failed         重心メッセージ、depth、CameraInfo が不正
+    <= timeout        タイムアウトまでに有効な重心が届かなかった
     """
 
-    def __init__(self,centroid_topic="/sam3/mask/centroid",parent_frame_id="base_link",child_frame_prefix="sam3_",child_frame_suffix="_tf",timeout=5.0):
-        """
-        初期化時に使用する変数一覧
-
-        引数:
-            centroid_topic:
-                重心座標を受け取るROSトピック名。
-                rospy.AnyMsgで購読するため、複数のメッセージ型に対応できる。
-            parent_frame_id:
-                重心メッセージ側にframe_idが無い場合に使用する親TFフレーム名。
-                例: base_link, map, odom など。
-            child_frame_prefix:
-                生成する子TFフレーム名の先頭に付ける文字列。
-                例: "sam3_"
-            child_frame_suffix:
-                生成する子TFフレーム名の末尾に付ける文字列。
-                例: "_tf"
-            timeout:
-                有効な重心メッセージを待つ最大時間 [秒]。
-                0以下の場合はタイムアウト判定を無効化する。
-
-        メンバ変数:
-            self._centroid_topic:
-                実際に購読する重心トピック名。
-            self._parent_frame_id:
-                デフォルトの親TFフレーム名。
-            self._child_frame_prefix:
-                子TFフレーム名の接頭辞。
-            self._child_frame_suffix:
-                子TFフレーム名の接尾辞。
-            self._timeout:
-                重心メッセージ待ちのタイムアウト時間 [秒]。
-            self._centroid_sub:
-                重心トピックのSubscriber。
-            self._tf_broadcaster:
-                静的TFを配信するStaticTransformBroadcaster。
-            self._lock:
-                コールバック処理とexecute処理が同時に変数へアクセスするのを防ぐロック。
-            self._latest_any_centroid:
-                最後に受信した重心メッセージ。
-                rospy.AnyMsgとして保存される。
-            self._active:
-                このStateが現在実行中かどうかを表すフラグ。
-            self._enter_time:
-                Stateに入った時刻。
-                timeout判定に使用する。
-            self._published:
-                すでにTFを配信したかどうかを表すフラグ。
-            self._object_name:
-                userdataから受け取ったオブジェクト名。
-                子TFフレーム名の生成に使用する。
-        """
-
+    def __init__(self,centroid_topic="/sam3/mask/centroid",depth_topic="/camera/camera/aligned_depth_to_color/image_raw",camera_info_topic="/camera/camera/color/camera_info",parent_frame_id="camera_color_optical_frame",child_frame_prefix="sam3_",child_frame_suffix="_tf",timeout=5.0,depth_search_radius=3):
         super(Sam3CentorPointToTF, self).__init__(outcomes=["done", "failed", "timeout"],input_keys=["object_name"])
         self._centroid_topic = centroid_topic
+        self._depth_topic = depth_topic
+        self._camera_info_topic = camera_info_topic
         self._parent_frame_id = parent_frame_id
         self._child_frame_prefix = child_frame_prefix
         self._child_frame_suffix = child_frame_suffix
-        self._timeout = float(timeout)
-        self._centroid_sub = rospy.Subscriber(self._centroid_topic,rospy.AnyMsg,self._centroid_callback,queue_size=1)
-        self._tf_broadcaster = tf2_ros.StaticTransformBroadcaster()
-        self._lock = threading.Lock()
-        self._latest_any_centroid = None
-        self._active = False
+        self._timeout_sec = float(timeout)
+        self._timeout_ns = int(self._timeout_sec * 1e9)
+        self._depth_search_radius = int(depth_search_radius)
         self._enter_time = None
         self._published = False
         self._object_name = ""
+        self._sub = ProxySubscriberCached({self._centroid_topic: PointStamped,self._depth_topic: Image,self._camera_info_topic: CameraInfo})
+
+        # ROS2のStaticTransformBroadcasterはnodeを渡す
+        self._tf_broadcaster = StaticTransformBroadcaster(self._node)
 
     def on_enter(self, userdata):
-        # 状態に入ったときに呼ばれる処理。
-        # 実行フラグや時刻、エラー状態を初期化し、userdataからオブジェクト名を取得する。
-        self._active = True
-        self._enter_time = rospy.Time.now()
+        self._enter_time = self._node.get_clock().now()
         self._published = False
         self._object_name = str(getattr(userdata, "object_name", "")).strip()
-        Logger.loginfo("Sam3CentorPointToTF waiting on centroid={} object_name={}".format(self._centroid_topic, self._object_name))
-        # すでに受信済みの重心メッセージがあれば、すぐにTF配信を試みる。
-        self._try_publish_latest()
+
+        # 前回の古い重心メッセージを使いたくないので消す
+        if self._sub.has_msg(self._centroid_topic):
+            self._sub.remove_last_msg(self._centroid_topic)
+        Logger.loginfo("Sam3CentorPointToTF waiting on centroid={} depth={} camera_info={} object_name={}".format(self._centroid_topic,self._depth_topic,self._camera_info_topic,self._object_name))
 
     def execute(self, userdata):
-        # 状態の実行中に周期的に呼ばれる処理。
-
         if self._published:
             return "done"
 
-        self._try_publish_latest()
+        if self._sub.has_msg(self._centroid_topic):
+            if not self._sub.has_msg(self._depth_topic):
+                Logger.logwarn("Sam3CentorPointToTF waiting depth image: {}".format(self._depth_topic))
+                return None
 
-        if self._timeout > 0.0 and self._enter_time is not None:
-            elapsed = (rospy.Time.now() - self._enter_time).to_sec()
-            if elapsed > self._timeout:
-            Logger.logwarn("Sam3CentorPointToTF timed out after {:.3f}s".format(elapsed))
+            if not self._sub.has_msg(self._camera_info_topic):
+                Logger.logwarn("Sam3CentorPointToTF waiting camera info: {}".format(self._camera_info_topic))
+                return None
+
+            centroid_msg = self._sub.get_last_msg(self._centroid_topic)
+            depth_msg = self._sub.get_last_msg(self._depth_topic)
+            camera_info_msg = self._sub.get_last_msg(self._camera_info_topic)
+            self._sub.remove_last_msg(self._centroid_topic)
+
+            try:
+                self._publish_tf_from_image_point(centroid_msg,depth_msg,camera_info_msg)
+                self._published = True
+                return "done"
+
+            except Exception as e:
+                Logger.logerr("Sam3CentorPointToTF failed to publish TF: {}".format(e))
+                return "failed"
+
+        if self._timeout_sec > 0.0 and self._enter_time is not None:
+            now = self._node.get_clock().now()
+            elapsed_ns = now.nanoseconds - self._enter_time.nanoseconds
+
+            if elapsed_ns > self._timeout_ns:
+                Logger.logwarn("Sam3CentorPointToTF timed out after {:.3f}s".format(elapsed_ns * 1e-9))
                 return "timeout"
 
         return None
 
-    def on_exit(self, userdata):
-        # 状態から抜けるときに呼ばれる処理。
-        # アクティブ状態を解除する。
-        self._active = False
+    def _publish_tf_from_image_point(self, centroid_msg, depth_msg, camera_info_msg):
+        u = int(round(float(centroid_msg.point.x)))
+        v = int(round(float(centroid_msg.point.y)))
 
-    def on_stop(self):
-        # 状態が停止されたときに呼ばれる処理。
-        # アクティブ状態を解除する。
-        self._active = False
+        if u < 0 or v < 0 or u >= int(depth_msg.width) or v >= int(depth_msg.height):
+            raise ValueError("centroid pixel is out of depth image range. u={} v={} width={} height={}".format(u,v,depth_msg.width,depth_msg.height))
 
-    def on_pause(self):
-        # 状態が一時停止されたときに呼ばれる処理。
-        # アクティブ状態を解除する。
-        self._active = False
+        fx = float(camera_info_msg.k[0])
+        fy = float(camera_info_msg.k[4])
+        cx = float(camera_info_msg.k[2])
+        cy = float(camera_info_msg.k[5])
 
-    def _centroid_callback(self, msg):
-        # 重心トピックを受信したときのコールバック。
-        # 最新メッセージを保存し、状態が実行中ならTF配信を試みる。
-        with self._lock:
-            self._latest_any_centroid = msg
-        self._try_publish_latest()
+        if fx == 0.0 or fy == 0.0:
+            raise ValueError("invalid CameraInfo. fx={} fy={}".format(fx,fy))
 
-    def _try_publish_latest(self):
-        # 最新の重心メッセージから座標を取り出し、静的TFとして配信する。
-        # 状態が非アクティブ、ROS終了中、またはすでに配信済みの場合は何もしない。
-        if not self._active or rospy.is_shutdown() or self._published:
-            return
+        depth_m = self._read_valid_depth_m(depth_msg,u,v)
 
-        with self._lock:
-            any_msg = self._latest_any_centroid
+        if depth_m is None:
+            raise ValueError("valid depth was not found around centroid. u={} v={} radius={}".format(u,v,self._depth_search_radius))
 
-        if any_msg is None:
-            return
+        x = (float(u) - cx) * depth_m / fx
+        y = (float(v) - cy) * depth_m / fy
+        z = depth_m
 
-        # AnyMsgを実際のメッセージ型に復元し、xyz座標・親フレーム・時刻を取得する。
-        xyz, parent_frame_id, stamp = self._any_centroid_to_xyz(any_msg)
+        parent_frame_id = str(camera_info_msg.header.frame_id).strip()
+        if not parent_frame_id:
+            parent_frame_id = str(depth_msg.header.frame_id).strip()
+        if not parent_frame_id:
+            parent_frame_id = str(centroid_msg.header.frame_id).strip()
+        if not parent_frame_id:
+            parent_frame_id = self._parent_frame_id
 
-        # object_nameから子フレーム名を生成する。
         child_frame_id = self._build_child_frame_id(self._object_name)
-
-        # TransformStampedを作成して静的TFとして配信する。
-        transform = self._build_transform(xyz, parent_frame_id, child_frame_id, stamp)
-        self._tf_broadcaster.sendTransform(transform)
-        self._published = True
-        Logger.loginfo("Sam3CentorPointToTF published static TF {} -> {} at [{:.3f}, {:.3f}, {:.3f}]".format(parent_frame_id, child_frame_id, xyz[0], xyz[1], xyz[2]))
-
-    def _any_centroid_to_xyz(self, any_msg):
-        # rospy.AnyMsgとして受信した重心メッセージを実際の型に復元し、
-        # xyz座標、親フレームID、タイムスタンプを返す。
-        type_name = any_msg._connection_header.get("type", "")
-        msg = self._deserialize_any(any_msg, type_name)
-
-        if isinstance(msg, PointStamped):
-            return (
-                [float(msg.point.x), float(msg.point.y), float(msg.point.z)],
-                self._parent_frame(msg.header.frame_id),
-                self._stamp_or_now(msg.header.stamp),
-            )
-
-        if isinstance(msg, Vector3Stamped):
-            return (
-                [float(msg.vector.x), float(msg.vector.y), float(msg.vector.z)],
-                self._parent_frame(msg.header.frame_id),
-                self._stamp_or_now(msg.header.stamp),
-            )
-
-        if isinstance(msg, PoseStamped):
-            return (
-                [
-                    float(msg.pose.position.x),
-                    float(msg.pose.position.y),
-                    float(msg.pose.position.z),
-                ],
-                self._parent_frame(msg.header.frame_id),
-                self._stamp_or_now(msg.header.stamp),
-            )
-
-        if isinstance(msg, Point):
-            return (
-                [float(msg.x), float(msg.y), float(msg.z)],
-                self._parent_frame(""),
-                rospy.Time.now(),
-            )
-
-        # MultiArrayやString形式の場合はリスト形式のxyzに変換する。
-        values = self._message_to_xyz_list(msg)
-        if values is None:
-            raise ValueError("Unsupported centroid message type: {}".format(type_name))
-
-        return values, self._parent_frame(""), rospy.Time.now()
-
-    @staticmethod
-    def _deserialize_any(any_msg, type_name):
-        # rospy.AnyMsgを、接続ヘッダに記録されているROSメッセージ型に応じてデシリアライズする。
-        msg_class_by_type = {
-            "geometry_msgs/PointStamped": PointStamped,
-            "geometry_msgs/Point": Point,
-            "geometry_msgs/Vector3Stamped": Vector3Stamped,
-            "geometry_msgs/PoseStamped": PoseStamped,
-            "std_msgs/Float32MultiArray": Float32MultiArray,
-            "std_msgs/Float64MultiArray": Float64MultiArray,
-            "std_msgs/Int32MultiArray": Int32MultiArray,
-            "std_msgs/String": String,
-        }
-
-        msg_class = msg_class_by_type.get(type_name)
-        if msg_class is None:
-            raise ValueError("Unsupported centroid message type: {}".format(type_name))
-
-        msg = msg_class()
-        msg.deserialize(any_msg._buff)
-        return msg
-
-    @staticmethod
-    def _message_to_xyz_list(msg):
-        # Float32MultiArray、Float64MultiArray、Int32MultiArray、String形式のメッセージから
-        # xyz座標のリストを取り出す。
-        if isinstance(msg, (Float32MultiArray, Float64MultiArray, Int32MultiArray)):
-            values = [float(v) for v in msg.data]
-
-        elif isinstance(msg, String):
-            # Stringの場合はJSON文字列として解釈する。
-            # {"x": ..., "y": ..., "z": ...}
-            # {"centroid": [x, y, z]}
-            # [x, y, z]
-            # の形式に対応する。
-            payload = json.loads(msg.data)
-
-            if isinstance(payload, dict):
-                if all(key in payload for key in ("x", "y", "z")):
-                    values = [float(payload[key]) for key in ("x", "y", "z")]
-                elif "centroid" in payload:
-                    values = [float(v) for v in payload["centroid"]]
-                else:
-                    return None
-
-            elif isinstance(payload, list):
-                values = [float(v) for v in payload]
-
-            else:
-                return None
-
-        else:
-            return None
-
-        if len(values) < 3:
-            raise ValueError("Centroid must contain x, y, z. 2D centroid is not supported.")
-
-        # 4要素以上ある場合でも、先頭3要素のみをxyzとして使用する。
-        return values[:3]
-
-    def _parent_frame(self, frame_id):
-        # メッセージ内のframe_idが空の場合は、デフォルトの親フレームIDを使用する。
-        return str(frame_id or self._parent_frame_id).strip()
-
-    @staticmethod
-    def _stamp_or_now(stamp):
-        # タイムスタンプが未設定または0の場合は現在時刻を返す。
-        # 有効なタイムスタンプがある場合はそのまま返す。
-        if stamp is None or stamp == rospy.Time(0):
-            return rospy.Time.now()
-        return stamp
-
-    def _build_child_frame_id(self, object_name):
-        # object_nameからTFの子フレームIDを生成する。
-        # 英数字とアンダースコア以外はアンダースコアに置換し、小文字化する。
-        name = object_name.strip() or "object"
-        name = re.sub(r"[^A-Za-z0-9_]+", "_", name).strip("_").lower() or "object"
-        return "{}{}{}".format(self._child_frame_prefix, name, self._child_frame_suffix)
-
-    @staticmethod
-    def _build_transform(xyz, parent_frame_id, child_frame_id, stamp):
-        # xyz座標、親フレームID、子フレームID、時刻からTransformStampedを作成する。
-        # 回転はゼロ回転、つまり単位クォータニオンに設定する。
-        q = quaternion_from_euler(0.0, 0.0, 0.0, "rxyz")
         transform = TransformStamped()
-        transform.header.stamp = stamp
+
+        # stampが未設定なら現在時刻を使う
+        if depth_msg.header.stamp.sec == 0 and depth_msg.header.stamp.nanosec == 0:
+            transform.header.stamp = self._node.get_clock().now().to_msg()
+        else:
+            transform.header.stamp = depth_msg.header.stamp
+
         transform.header.frame_id = parent_frame_id
         transform.child_frame_id = child_frame_id
-        transform.transform.translation.x = float(xyz[0])
-        transform.transform.translation.y = float(xyz[1])
-        transform.transform.translation.z = float(xyz[2])
-        transform.transform.rotation.x = q[0]
-        transform.transform.rotation.y = q[1]
-        transform.transform.rotation.z = q[2]
-        transform.transform.rotation.w = q[3]
+        transform.transform.translation.x = float(x)
+        transform.transform.translation.y = float(y)
+        transform.transform.translation.z = float(z)
+        # 回転なし。単位クォータニオン。
+        transform.transform.rotation.x = 0.0
+        transform.transform.rotation.y = 0.0
+        transform.transform.rotation.z = 0.0
+        transform.transform.rotation.w = 1.0
+        self._tf_broadcaster.sendTransform(transform)
+        Logger.loginfo("Sam3CentorPointToTF published static TF {} -> {} from pixel [{}, {}] depth={:.3f}m camera_xyz=[{:.3f}, {:.3f}, {:.3f}]".format(parent_frame_id,child_frame_id,u,v,depth_m,x,y,z))
 
-        return transform
+    def _read_valid_depth_m(self, depth_msg, u, v):
+        depth_m = self._read_depth_m(depth_msg,u,v)
+
+        if self._is_valid_depth(depth_m):
+            return depth_m
+
+        for radius in range(1,self._depth_search_radius + 1):
+            best_depth = None
+            best_dist2 = None
+
+            for yy in range(max(0,v - radius),min(int(depth_msg.height),v + radius + 1)):
+                for xx in range(max(0,u - radius),min(int(depth_msg.width),u + radius + 1)):
+                    depth_m = self._read_depth_m(depth_msg,xx,yy)
+                    if not self._is_valid_depth(depth_m):
+                        continue
+                    dist2 = (xx - u) * (xx - u) + (yy - v) * (yy - v)
+
+                    if best_dist2 is None or dist2 < best_dist2:
+                        best_dist2 = dist2
+                        best_depth = depth_m
+
+            if best_depth is not None:
+                Logger.logwarn("Sam3CentorPointToTF used nearby depth. center=[{}, {}] radius={} depth={:.3f}m".format(u,v,radius,best_depth))
+                return best_depth
+
+        return None
+
+    def _read_depth_m(self, depth_msg, u, v):
+        encoding = str(depth_msg.encoding)
+
+        if encoding in ["16UC1", "mono16"]:
+            dtype = np.dtype(np.uint16)
+            scale = 0.001
+        elif encoding == "32FC1":
+            dtype = np.dtype(np.float32)
+            scale = 1.0
+        elif encoding == "64FC1":
+            dtype = np.dtype(np.float64)
+            scale = 1.0
+        else:
+            raise ValueError("unsupported depth image encoding: {}".format(encoding))
+
+        if int(depth_msg.is_bigendian) != 0:
+            dtype = dtype.newbyteorder(">")
+        else:
+            dtype = dtype.newbyteorder("<")
+
+        item_size = dtype.itemsize
+        values_per_row = int(depth_msg.step) // item_size
+
+        if u >= values_per_row:
+            raise ValueError("u is out of row step range. u={} values_per_row={} step={} encoding={}".format(u,values_per_row,depth_msg.step,encoding))
+        depth_array = np.frombuffer(depth_msg.data,dtype=dtype)
+
+        if depth_array.size < int(depth_msg.height) * values_per_row:
+            raise ValueError("depth data size is too small. size={} required={}".format(depth_array.size,int(depth_msg.height) * values_per_row))
+        raw_depth = depth_array[v * values_per_row + u]
+
+        return float(raw_depth) * scale
+
+    @staticmethod
+    def _is_valid_depth(depth_m):
+        if depth_m is None:
+            return False
+        if not math.isfinite(float(depth_m)):
+            return False
+        if float(depth_m) <= 0.0:
+            return False
+        return True
+
+    def _build_child_frame_id(self, object_name):
+        name = object_name.strip() or "object"
+        name = re.sub(r"[^A-Za-z0-9_]+", "_", name).strip("_").lower() or "object"
+        return "{}{}{}".format(self._child_frame_prefix,name,self._child_frame_suffix)

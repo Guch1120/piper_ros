@@ -79,9 +79,9 @@ class testsam3gRPCSM(Behavior):
         # Behavior comments:
 
     def create(self):
-        # x:791 y:274, x:669 y:182
+        # x:790 y:269, x:1087 y:72
         _state_machine = OperatableStateMachine(outcomes=['finished', 'failed'])
-        _state_machine.userdata.object_list = ["floor"]
+        _state_machine.userdata.object_list = ["bottle"]
         _state_machine.userdata.index = 0
 
         # Additional creation code can be added inside the following tags
@@ -89,30 +89,30 @@ class testsam3gRPCSM(Behavior):
 
         # [/MANUAL_CREATE]
         with _state_machine:
-            # x:100 y:34
+            # x:113 y:55
             OperatableStateMachine.add('Publish object name',
                                        PublishObjectName(),
-                                       transitions={'done': 'finished'},
+                                       transitions={'done': 'wait 1sec'},
                                        autonomy={'done': Autonomy.Off},
                                        remapping={'object_list': 'object_list', 'index': 'index', 'object_name': 'object_name'})
 
-            # x:114 y:256
+            # x:353 y:240
             OperatableStateMachine.add('index',
                                        IncrementIndex(),
-                                       transitions={'done': 'wait 1sec', 'complete': 'finished'},
+                                       transitions={'done': 'Publish object name', 'complete': 'finished'},
                                        autonomy={'done': Autonomy.Off, 'complete': Autonomy.Off},
                                        remapping={'index': 'index', 'target_list': 'object_list'})
 
-            # x:350 y:137
+            # x:347 y:58
             OperatableStateMachine.add('wait 1sec',
                                        waittime(wait_time=1.0),
                                        transitions={'done': 'Publish TF'},
                                        autonomy={'done': Autonomy.Off})
 
-            # x:580 y:34
+            # x:758 y:53
             OperatableStateMachine.add('Publish TF',
-                                       Sam3CentorPointToTF(centroid_topic="/sam3/mask/centroid", parent_frame_id="base_link", child_frame_prefix="sam3_", child_frame_suffix="_tf", timeout=5.0),
-                                       transitions={'done': 'Publish object name', 'failed': 'failed', 'timeout': 'Publish TF'},
+                                       Sam3CentorPointToTF(centroid_topic="/sam3/mask/centroid", depth_topic="/camera/camera/aligned_depth_to_color/image_raw", camera_info_topic="/camera/camera/color/camera_info", parent_frame_id="base_link", child_frame_prefix="sam3_", child_frame_suffix="_tf", timeout=5.0, depth_search_radius=3),
+                                       transitions={'done': 'index', 'failed': 'failed', 'timeout': 'Publish TF'},
                                        autonomy={'done': Autonomy.Off, 'failed': Autonomy.Off, 'timeout': Autonomy.Off},
                                        remapping={'object_name': 'object_name'})
 
