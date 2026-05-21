@@ -616,3 +616,7 @@ ros2 launch piper calibration_tf.launch.py
 2. この計算値と、`piper_macro.xacro` に書かれている `xyz="-0.04 0.0 0.055"` の数値を見比べます。
    （例：計算上Xが `-0.045` なのに URDFが `-0.040` だった場合、URDFの設定が実機に対して5mm間違っています）
 3. 計算値がより実機（実測値）に近いと判断した場合は、`piper_macro.xacro` の `xyz="..."` をターミナルに表示された計算値（m単位）に書き換えて微調整します。
+
+
+
+実機のlaunchを起動しない限りlinkのTFは出てこないのでbase linkとlink6はつながらない
