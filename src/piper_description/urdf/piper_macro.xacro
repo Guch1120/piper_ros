@@ -345,7 +345,8 @@
     <xacro:include filename="$(find realsense2_description)/urdf/_d435i.urdf.xacro" />
     
 <xacro:sensor_d435i parent="gripper_base" name="camera" use_nominal_extrinsics="true">
-  <origin xyz="-0.04 0.0 0.055" rpy="2.9630 -1.5062 3.1396"/>
+  <origin xyz="-0.04 0.0 0.055" rpy="3.1360 -1.5707 3.1421"/> 
+  <!-- yaw 3.2586で -173.29 deg-->
 </xacro:sensor_d435i>
 </xacro:macro>
 </robot>
