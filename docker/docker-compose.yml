@@ -28,6 +28,9 @@ services:
       - DISPLAY=${DISPLAY}
       - NVIDIA_DRIVER_CAPABILITIES=all
       - NVIDIA_VISIBLE_DEVICES=all
+      - ROS_DOMAIN_ID=12
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+
 
     # GPUの使用 (NVIDIA CUDA)
     deploy:
@@ -88,3 +91,33 @@ services:
               count: 1
               capabilities: [ gpu ]
     command: sleep infinity
+
+  oit-kobuki-ws-ros2:
+    build:
+      context: ../../
+      dockerfile: ./piper_ros/docker/dockerfile.kobuki
+    image: oit-kobuki-ws:humble
+    container_name: oit-kobuki-ws-ros2
+    privileged: true
+    network_mode: host
+    ipc: host
+    devices:
+      - /dev:/dev
+    environment:
+      DISPLAY: ${DISPLAY:-:0}
+      QT_X11_NO_MITSHM: "1"
+      XAUTHORITY: ${XAUTHORITY:-}
+      ROS_DOMAIN_ID: "12"
+      DBUS_SYSTEM_BUS_ADDRESS: "unix:path=/run/dbus/system_bus_socket"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+    volumes:
+      - ../../oit_kobuki_ws-main:/home/kobuki/kobuki_ws
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /dev:/dev
+      - /dev/bus/usb:/dev/bus/usb
+      - /run/dbus:/run/dbus:rw
+      - ${XAUTHORITY:-/dev/null}:${XAUTHORITY:-/dev/null}:ro
+    working_dir: /home/kobuki/kobuki_ws
+    stdin_open: true
+    tty: true
+    command: tail -f /dev/null
