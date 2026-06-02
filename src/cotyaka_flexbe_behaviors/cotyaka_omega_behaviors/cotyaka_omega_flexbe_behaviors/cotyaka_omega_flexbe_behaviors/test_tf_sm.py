@@ -36,7 +36,8 @@ from flexbe_core import ConcurrencyContainer
 from flexbe_core import Logger
 from flexbe_core import OperatableStateMachine
 from flexbe_core import PriorityContainer
-from cotyaka_omega_flexbe_states.broadcast_static_tf_param import BroadcastStaticTFParamState
+from cotyaka_omega_flexbe_states.broadcast_static_tf_inout import BroadcastStaticTfInout
+from cotyaka_omega_flexbe_states.moveit_client_tf import MoveItClientTF
 
 # Additional imports can be added inside the following tags
 # [MANUAL_IMPORT]
@@ -63,7 +64,8 @@ class test_tfSM(Behavior):
         ConcurrencyContainer.initialize_ros(node)
         PriorityContainer.initialize_ros(node)
         Logger.initialize(node)
-        BroadcastStaticTFParamState.initialize_ros(node)
+        BroadcastStaticTfInout.initialize_ros(node)
+        MoveItClientTF.initialize_ros(node)
 
         # Additional initialization code can be added inside the following tags
         # [MANUAL_INIT]
@@ -73,19 +75,29 @@ class test_tfSM(Behavior):
         # Behavior comments:
 
     def create(self):
-        # x:30 y:365, x:130 y:365
+        # x:30 y:365, x:410 y:88
         _state_machine = OperatableStateMachine(outcomes=['finished', 'failed'])
+        _state_machine.userdata.xyz_val = [0.4,0.0,0.15]
+        _state_machine.userdata.rpy_val = [0.0,1.57,0.0]
 
         # Additional creation code can be added inside the following tags
         # [MANUAL_CREATE]
 
         # [/MANUAL_CREATE]
         with _state_machine:
-            # x:105 y:29
+            # x:97 y:34
             OperatableStateMachine.add('broadcast TF',
-                                       BroadcastStaticTFParamState(parent_frame='base_link', child_frame='target_position', xyz_val=[1.0,0.0,0.0], rpy_val=[0.0,0.0,0.0], wait_time=0.5),
-                                       transitions={'done': 'finished'},
-                                       autonomy={'done': Autonomy.Off})
+                                       BroadcastStaticTfInout(),
+                                       transitions={'done': 'move to TF', 'failed': 'failed'},
+                                       autonomy={'done': Autonomy.Off, 'failed': Autonomy.Off},
+                                       remapping={'xyz_val': 'xyz_val', 'rpy_val': 'rpy_val', 'answerTF': 'answerTF'})
+
+            # x:110 y:132
+            OperatableStateMachine.add('move to TF',
+                                       MoveItClientTF(group_name='arm', end_effector_link='link6', reference_frame='base_link', pos_tolerance=0.01, orient_tolerance=0.01, action_topic='move_action'),
+                                       transitions={'reached': 'finished', 'failed': 'failed'},
+                                       autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off},
+                                       remapping={'target_frame': 'answerTF'})
 
         return _state_machine
 

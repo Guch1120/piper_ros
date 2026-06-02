@@ -620,3 +620,17 @@ ros2 launch piper calibration_tf.launch.py
 
 
 実機のlaunchを起動しない限りlinkのTFは出てこないのでbase linkとlink6はつながらない
+
+
+
+# URDFファイル構成
+
+```bash
+ros2 run xacro xacro xacroファイルパス -o 作成後のファイルパス
+```
+src/piper_description/urdf/piper_macro.xacroはマクロ定義を行っている<br>
+実態を生成するにはマクロを呼び出しているファイルをパス指定しないとダメ<br>
+
+URDF: <br>
+ロボットの物理構造を書くXMLです。link、joint、mesh、慣性、可動範囲などを定義する<br>
+xacro:<br>
