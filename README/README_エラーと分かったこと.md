@@ -623,7 +623,17 @@ ros2 launch piper calibration_tf.launch.py
 
 
 
-# URDFファイル構成
+# そもそもURDFってなんだっけ
+
+URDF: <br>
+ロボットの物理構造を書くXMLです。link、joint、mesh、慣性、可動範囲などを定義する<br>
+xacro:<br>
+URDFを生成するためのテンプレート言語です。include、macro、property、引数などが使える。これを参照してURDFに展開する<br>
+SRDF:<br>
+MoveIt用の意味情報。URDFの代替ではない。<br>
+URDFに定義済みのlink/jointを前提にMoveItのplanning group、end effector、初期姿勢、衝突無視ペアなどを定義する
+
+## PiperにおけるURDF構成
 
 ```bash
 ros2 run xacro xacro xacroファイルパス -o 作成後のファイルパス
@@ -631,6 +641,16 @@ ros2 run xacro xacro xacroファイルパス -o 作成後のファイルパス
 src/piper_description/urdf/piper_macro.xacroはマクロ定義を行っている<br>
 実態を生成するにはマクロを呼び出しているファイルをパス指定しないとダメ<br>
 
-URDF: <br>
-ロボットの物理構造を書くXMLです。link、joint、mesh、慣性、可動範囲などを定義する<br>
-xacro:<br>
+根本のURDF<br>
+piper_description.xacro <br>
+ --> include piper_macro.xacroでxacro:piper_robotを用いてURDFを呼び出す<br>
+
+
+Gazebo用<br>
+piper_description_gazebo.xacro<br>
+ --> include piper_macro.xacroでxacro:piper_robotを用いてURDFを呼び出す<br>
+ --> 加えてGazebo用 ros2_controlとpluginを追加
+
+MoveIt用<br>
+piper_moveit/中略/config/piper.urdf.xacro
+ --> piper_description/urdf/piper_description.xacroとpiper.ros2_control.xacroをインクルードしている
