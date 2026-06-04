@@ -13,12 +13,7 @@ class BroadcastStaticTfInout(EventState):
     input, outputでTFを発行
     '''
 
-    def __init__(
-        self,
-        parent_frame='base_link',
-        child_frame='target_position',
-        wait_time=0.5
-    ):
+    def __init__(self,parent_frame='base_link',child_frame='target_position',wait_time=0.5):
         super(BroadcastStaticTfInout, self).__init__(
             outcomes=['done', 'failed'],
             input_keys=['xyz_val', 'rpy_val'],
