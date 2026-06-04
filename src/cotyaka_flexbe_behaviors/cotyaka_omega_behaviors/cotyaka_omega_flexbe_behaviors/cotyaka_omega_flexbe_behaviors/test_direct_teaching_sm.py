@@ -40,6 +40,7 @@ from cotyaka_omega_flexbe_states.arm_power_switch import ArmPowerSwitch
 from cotyaka_omega_flexbe_states.increment_index import IncrementIndex
 from cotyaka_omega_flexbe_states.move_joint_by_input_key_list import MoveJointListInputKey
 from cotyaka_omega_flexbe_states.publish_joint import PublishJoint
+from cotyaka_omega_flexbe_states.publish_joint_bak import PublishJointListFromFile
 from cotyaka_omega_flexbe_states.record_joint import RecordJoint
 from cotyaka_omega_flexbe_states.wait_enter_check import WaitEnterCheck
 
@@ -72,6 +73,7 @@ class test_direct_teachingSM(Behavior):
         IncrementIndex.initialize_ros(node)
         MoveJointListInputKey.initialize_ros(node)
         PublishJoint.initialize_ros(node)
+        PublishJointListFromFile.initialize_ros(node)
         RecordJoint.initialize_ros(node)
         WaitEnterCheck.initialize_ros(node)
 
@@ -83,7 +85,7 @@ class test_direct_teachingSM(Behavior):
         # Behavior comments:
 
     def create(self):
-        # x:1024 y:319, x:189 y:458
+        # x:1289 y:354, x:1058 y:84
         _state_machine = OperatableStateMachine(outcomes=['finished', 'failed'])
         _state_machine.userdata.index = 0
         _state_machine.userdata.joint_list = []
@@ -99,7 +101,14 @@ class test_direct_teachingSM(Behavior):
                                        transitions={'done': 'wait enter key'},
                                        autonomy={'done': Autonomy.Off})
 
-            # x:403 y:295
+            # x:971 y:341
+            OperatableStateMachine.add('increment index',
+                                       IncrementIndex(),
+                                       transitions={'done': 'publish joint', 'complete': 'finished'},
+                                       autonomy={'done': Autonomy.Off, 'complete': Autonomy.Off},
+                                       remapping={'index': 'index', 'target_list': 'joint_list'})
+
+            # x:608 y:341
             OperatableStateMachine.add('move',
                                        MoveJointListInputKey(group_name='arm', joint_names=None, tolerance=0.01, action_topic='move_action', allowed_planning_time=5.0),
                                        transitions={'done': 'increment index'},
@@ -109,10 +118,10 @@ class test_direct_teachingSM(Behavior):
             # x:520 y:74
             OperatableStateMachine.add('power ON',
                                        ArmPowerSwitch(enable_flag=True, topic='/enable_flag', verify=True, timeout=2.0, publish_period=0.2),
-                                       transitions={'done': 'publish joint'},
+                                       transitions={'done': 'Publsh Joint From File'},
                                        autonomy={'done': Autonomy.Off})
 
-            # x:519 y:183
+            # x:764 y:214
             OperatableStateMachine.add('publish joint',
                                        PublishJoint(),
                                        transitions={'repeat': 'move'},
@@ -132,12 +141,12 @@ class test_direct_teachingSM(Behavior):
                                        transitions={'record': 'record joint', 'done': 'power ON'},
                                        autonomy={'record': Autonomy.Off, 'done': Autonomy.Off})
 
-            # x:720 y:296
-            OperatableStateMachine.add('increment index',
-                                       IncrementIndex(),
-                                       transitions={'done': 'publish joint', 'complete': 'finished'},
-                                       autonomy={'done': Autonomy.Off, 'complete': Autonomy.Off},
-                                       remapping={'index': 'index', 'target_list': 'joint_list'})
+            # x:770 y:74
+            OperatableStateMachine.add('Publsh Joint From File',
+                                       PublishJointListFromFile(load_file_path='/ros2_ws/src/cotyaka_flexbe_behaviors/cotyaka_omega_behaviors/cotyaka_omega_flexbe_states/cotyaka_omega_flexbe_states/direct_teaching_list.txt', expected_joint_count=6),
+                                       transitions={'done': 'publish joint', 'failed': 'failed'},
+                                       autonomy={'done': Autonomy.Off, 'failed': Autonomy.Off},
+                                       remapping={'joint_list': 'joint_list'})
 
         return _state_machine
 

@@ -20,7 +20,7 @@ HSRのterminatorと同じようにする必要がある。
 - [x] 静的TF動作
 - [x] sam3_gRPCのオブジェクト名変更をFlexbeのステートでやる
 - [x] sam3でTF発行
-- [ ] TF変換ステート作成
+- [x] TF変換ステート作成
 - [ ] SAM3を用いて静的TF動作
 - [ ] SAM3を用いて動的TF動作
 

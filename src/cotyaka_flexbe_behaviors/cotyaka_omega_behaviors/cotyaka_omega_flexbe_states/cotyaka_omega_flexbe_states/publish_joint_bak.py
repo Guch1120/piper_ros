@@ -4,179 +4,88 @@
 import os
 
 from flexbe_core import EventState, Logger
-from flexbe_core.proxy import ProxySubscriberCached
-
-from sensor_msgs.msg import JointState
 
 
-class RecordJointAndCreateFile(EventState):
+class PublishJointListFromFile(EventState):
     """
-    JointState から現在の関節角度を記録し、ファイルへ保存する。
+    ファイルに保存された教示関節角度リストを読み込み、joint_list として出力する。
 
-    -- joint_state_topic       string    JointState トピック名
-    -- joint_names             list      対象とする関節名のリスト
-    -- save_file_path          string    教示姿勢を保存するファイルパス
+    -- load_file_path          string    教示姿勢を読み込むファイルパス
+    -- expected_joint_count    int       1行あたりの関節数
 
-    #> joint_list              list      記録した関節角度のリスト
+    #> joint_list              list      読み込んだ関節角度リスト
 
-    <= done                              関節角度の記録完了
+    <= done                              読み込み成功
+    <= failed                            読み込み失敗
     """
 
-    def __init__(self,
-                 joint_state_topic='/joint_states',
-                 joint_names=['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6'],
-                 save_file_path='/ros2_ws/src/cotyaka_omega_behaviors/cotyaka_omega_flexbe_states/cotyaka_omega_flexbe_states/direct_teaching_list.txt'):
-
-        super().__init__(outcomes=['done'],output_keys=['joint_list'])
-        self._joint_state_topic = joint_state_topic
-        self._save_file_path = os.path.abspath(os.path.expanduser(save_file_path))
-        self._sub = ProxySubscriberCached({self._joint_state_topic: JointState})
-        self._recorded_joint_list = []
-        self._index = 0
-        self._joint_names = joint_names
+    def __init__(self,load_file_path='/ros2_ws/src/cotyaka_flexbe_behaviors/cotyaka_omega_behaviors/cotyaka_omega_flexbe_states/cotyaka_omega_flexbe_states/direct_teaching_list.txt',expected_joint_count=6):
+        super().__init__(outcomes=['done', 'failed'],output_keys=['joint_list'])
+        self._load_file_path = os.path.abspath(os.path.expanduser(load_file_path))
+        self._expected_joint_count = expected_joint_count
+        self._joint_list = []
 
     def on_enter(self, userdata):
         """
-        ステート進入時に現在の関節角度を1回記録する。
+        ステート進入時にファイルを読み込む。
         """
 
-        # index == 0 の場合は、新規動作教示の開始として初期化する
-        if self._index == 0:
-            self._recorded_joint_list = []
-
-            if not self._initialize_save_file():
-                userdata.joint_list = self._recorded_joint_list
-                return
-
-        self._index += 1
-        joint_values = self._get_current_joint_values()
-
-        if joint_values is None:
-            Logger.logwarn(
-                'RecordJoint: JointState has not been received yet, '
-                'or required joints are missing.'
-            )
-            userdata.joint_list = self._recorded_joint_list
+        self._joint_list = []
+        if not os.path.isfile(self._load_file_path):
+            Logger.logerr('PublishJointListFromFile: File does not exist: {}'.format(self._load_file_path))
+            userdata.joint_list = []
             return
 
-        self._recorded_joint_list.append(joint_values)
-        userdata.joint_list = self._recorded_joint_list
+        try:
+            with open(self._load_file_path, 'r') as file:
+                lines = file.readlines()
 
-        if not self._append_joint_values_to_file(joint_values):
-            Logger.logwarn(
-                'RecordJoint: Joint values were added to userdata, '
-                'but could not be saved to file.'
-            )
+            for line_number, line in enumerate(lines, start=1):
+                line = line.strip()
 
-        Logger.loginfo(
-            'RecordJoint: Recorded index {}: {}'.format(self._index, joint_values)
-        )
+                # 空行は無視
+                if not line:
+                    continue
+
+                # コメント行を使いたくなった場合のため
+                if line.startswith('#'):
+                    continue
+
+                values_text = line.split(',')
+
+                if len(values_text) != self._expected_joint_count:
+                    Logger.logerr('PublishJointListFromFile: Invalid joint count at line {}. ''Expected {}, but got {}: {}'.format(line_number,self._expected_joint_count,len(values_text),line))
+                    userdata.joint_list = []
+                    return
+
+                try:
+                    joint_values = [float(value) for value in values_text]
+                except ValueError:
+                    Logger.logerr('PublishJointListFromFile: Failed to parse float at line {}: {}'.format(line_number,line))
+                    userdata.joint_list = []
+                    return
+
+                self._joint_list.append(joint_values)
+
+            if len(self._joint_list) == 0:
+                Logger.logerr('PublishJointListFromFile: No valid joint values were loaded from file: {}'.format(self._load_file_path))
+                userdata.joint_list = []
+                return
+
+            userdata.joint_list = self._joint_list
+            Logger.loginfo('PublishJointListFromFile: Loaded {} joint poses from {}'.format(len(self._joint_list),self._load_file_path))
+
+        except OSError as error:
+            Logger.logerr('PublishJointListFromFile: Failed to read file "{}": {}'.format(self._load_file_path,error))
+            userdata.joint_list = []
 
     def execute(self, userdata):
         """
-        on_enter() で記録済みなので、即座に done を返す。
+        on_enter() で読み込み済みなので、成功していれば done を返す。
         """
-        userdata.joint_list = self._recorded_joint_list
+
+        userdata.joint_list = self._joint_list
+        if len(self._joint_list) == 0:
+            return 'failed'
+
         return 'done'
-
-    def _get_current_joint_values(self):
-        """
-        最新の JointState から、指定した関節名の位置情報のみを取得する。
-
-        Returns:
-            list: 関節角度のリスト
-            None: JointState 未受信、または必要な関節名が存在しない場合
-        """
-
-        if not self._sub.has_msg(self._joint_state_topic):
-            return None
-
-        msg = self._sub.get_last_msg(self._joint_state_topic)
-        name_to_position = dict(zip(msg.name, msg.position))
-
-        joint_values = []
-
-        for joint_name in self._joint_names:
-            if joint_name not in name_to_position:
-                Logger.logwarn(
-                    'RecordJoint: Required joint "{}" is not in JointState.'
-                    .format(joint_name)
-                )
-                return None
-
-            joint_values.append(name_to_position[joint_name])
-
-        return joint_values
-
-    def _initialize_save_file(self):
-        """
-        保存ファイルの中身を空にする。
-        index == 0、すなわち新規動作教示開始時に呼び出す。
-
-        Returns:
-            bool: 初期化に成功した場合 True
-        """
-
-        try:
-            save_directory = os.path.dirname(self._save_file_path)
-
-            if save_directory:
-                os.makedirs(save_directory, exist_ok=True)
-
-            with open(self._save_file_path, 'w') as file:
-                file.write('')
-
-            Logger.loginfo(
-                'RecordJoint: Initialized save file: {}'.format(
-                    self._save_file_path
-                )
-            )
-            return True
-
-        except OSError as error:
-            Logger.logerr(
-                'RecordJoint: Failed to initialize save file "{}": {}'
-                .format(self._save_file_path, error)
-            )
-            return False
-
-    def _append_joint_values_to_file(self, joint_values):
-        """
-        記録した関節角度を保存ファイルへ1行追記する。
-
-        保存形式:
-            joint1,joint2,joint3,joint4,joint5,joint6
-
-        例:
-            0.1000000000,-0.2500000000,1.3000000000,0.0000000000,0.5000000000,-1.0000000000
-
-        Returns:
-            bool: 保存に成功した場合 True
-        """
-
-        try:
-            save_directory = os.path.dirname(self._save_file_path)
-
-            if save_directory:
-                os.makedirs(save_directory, exist_ok=True)
-
-            line = ','.join(
-                '{:.10f}'.format(value) for value in joint_values
-            )
-
-            with open(self._save_file_path, 'a') as file:
-                file.write(line + '\n')
-
-            Logger.loginfo(
-                'RecordJoint: Saved joint values to file: {}'.format(
-                    self._save_file_path
-                )
-            )
-            return True
-
-        except OSError as error:
-            Logger.logerr(
-                'RecordJoint: Failed to append joint values to file "{}": {}'
-                .format(self._save_file_path, error)
-            )
-            return False
