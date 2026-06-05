@@ -40,7 +40,7 @@ from cotyaka_omega_flexbe_states.arm_power_switch import ArmPowerSwitch
 from cotyaka_omega_flexbe_states.increment_index import IncrementIndex
 from cotyaka_omega_flexbe_states.move_joint_by_input_key_list import MoveJointListInputKey
 from cotyaka_omega_flexbe_states.publish_joint import PublishJoint
-from cotyaka_omega_flexbe_states.record_joint import RecordJoint
+from cotyaka_omega_flexbe_states.record_joint_bak import RecordJointToFile
 from cotyaka_omega_flexbe_states.wait_enter_check import WaitEnterCheck
 
 # Additional imports can be added inside the following tags
@@ -54,6 +54,7 @@ class direct_teachingSM(Behavior):
     Define direct_teaching.
 
     You can  direct teach by guiding your own hands
+
     """
 
     def __init__(self, node):
@@ -71,7 +72,7 @@ class direct_teachingSM(Behavior):
         IncrementIndex.initialize_ros(node)
         MoveJointListInputKey.initialize_ros(node)
         PublishJoint.initialize_ros(node)
-        RecordJoint.initialize_ros(node)
+        RecordJointToFile.initialize_ros(node)
         WaitEnterCheck.initialize_ros(node)
 
         # Additional initialization code can be added inside the following tags
@@ -118,9 +119,9 @@ class direct_teachingSM(Behavior):
                                        autonomy={'repeat': Autonomy.Off},
                                        remapping={'joint_list': 'joint_list', 'index': 'index', 'joint_values': 'joint_values'})
 
-            # x:120 y:224
-            OperatableStateMachine.add('record joint',
-                                       RecordJoint(joint_state_topic='/joint_states', joint_names=['joint1','joint2','joint3','joint4','joint5','joint6']),
+            # x:144 y:202
+            OperatableStateMachine.add('record joint into file',
+                                       RecordJointToFile(joint_state_topic='/joint_states', joint_names=['joint1','joint2','joint3','joint4','joint5','joint6'], save_file_path='/ros2_ws/src/cotyaka_flexbe_behaviors/cotyaka_omega_behaviors/cotyaka_omega_flexbe_states/cotyaka_omega_flexbe_states/direct_teaching_list.txt'),
                                        transitions={'done': 'wait enter key'},
                                        autonomy={'done': Autonomy.Off},
                                        remapping={'joint_list': 'joint_list'})
@@ -128,7 +129,7 @@ class direct_teachingSM(Behavior):
             # x:270 y:74
             OperatableStateMachine.add('wait enter key',
                                        WaitEnterCheck(command_topic='/record_joint_command', record_command='record', done_command='done'),
-                                       transitions={'record': 'record joint', 'done': 'power ON'},
+                                       transitions={'record': 'record joint into file', 'done': 'power ON'},
                                        autonomy={'record': Autonomy.Off, 'done': Autonomy.Off})
 
             # x:720 y:296
