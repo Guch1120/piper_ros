@@ -145,8 +145,9 @@ class TransformTF(EventState):
         after_transform.transform.rotation.z = q[2]
         after_transform.transform.rotation.w = q[3]
 
-        userdata.after_transform = after_transform
+        userdata.after_transform = output_frame
 
+        Logger.loginfo(f"[TransformTF] output={userdata.after_transform}")
         try:
             self.broadcaster.sendTransform(after_transform)
 
