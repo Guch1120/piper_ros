@@ -9,7 +9,7 @@ from flexbe_core.proxy import ProxySubscriberCached
 from sensor_msgs.msg import JointState
 
 
-class RecordJointBak(EventState):
+class RecordJointToFile(EventState):
     """
     JointState から現在の関節角度を記録し、ファイルへ保存する。
 
@@ -33,7 +33,6 @@ class RecordJointBak(EventState):
 
         super().__init__(
             outcomes=['done'],
-            input_keys=['index'],
             output_keys=['joint_list']
         )
 
@@ -42,14 +41,15 @@ class RecordJointBak(EventState):
         self._sub = ProxySubscriberCached({self._joint_state_topic: JointState})
         self._recorded_joint_list = []
         self._joint_names = joint_names
+        self._index = 0
 
     def on_enter(self, userdata):
         """
         ステート進入時に現在の関節角度を1回記録する。
         """
 
-        index = userdata.index
-        if index == 0: # index == 0 の場合は、新規動作教示の開始として初期化する
+
+        if self._index == 0: # index == 0 の場合は、新規動作教示の開始として初期化する
             self._recorded_joint_list = []
             if not self._initialize_save_file():
                 userdata.joint_list = self._recorded_joint_list
@@ -58,7 +58,7 @@ class RecordJointBak(EventState):
         joint_values = self._get_current_joint_values()
 
         if joint_values is None:
-            Logger.logwarn('RecordJointBak: JointState has not been received yet, ''or required joints are missing.')
+            Logger.logwarn('RecordJointToFile: JointState has not been received yet, ''or required joints are missing.')
             userdata.joint_list = self._recorded_joint_list
             return
 
@@ -66,15 +66,15 @@ class RecordJointBak(EventState):
         userdata.joint_list = self._recorded_joint_list
 
         if not self._append_joint_values_to_file(joint_values):
-            Logger.logwarn('RecordJointBak: Joint values were added to userdata, ''but could not be saved to file.')
-        Logger.loginfo('RecordJointBak: Recorded index {}: {}'.format(index, joint_values))
+            Logger.logwarn('RecordJointToFile: Joint values were added to userdata, ''but could not be saved to file.')
+        Logger.loginfo('RecordJointToFile: Recorded index {}: {}'.format(self._index, joint_values))
 
     def execute(self, userdata):
         """
         on_enter() で記録済みなので、即座に done を返す。
         """
         userdata.joint_list = self._recorded_joint_list
-        userdata.index = index + 1
+        self._index = self._index + 1
         return 'done'
 
     def _get_current_joint_values(self):
@@ -97,7 +97,7 @@ class RecordJointBak(EventState):
         for joint_name in self._joint_names:
             if joint_name not in name_to_position:
                 Logger.logwarn(
-                    'RecordJointBak: Required joint "{}" is not in JointState.'
+                    'RecordJointToFile: Required joint "{}" is not in JointState.'
                     .format(joint_name)
                 )
                 return None
@@ -122,11 +122,11 @@ class RecordJointBak(EventState):
                 os.makedirs(save_directory, exist_ok=True)
             with open(self._save_file_path, 'w') as file:
                 file.write('')
-            Logger.loginfo('RecordJointBak: Initialized save file: {}'.format(self._save_file_path))
+            Logger.loginfo('RecordJointToFile: Initialized save file: {}'.format(self._save_file_path))
             return True
 
         except OSError as error:
-            Logger.logerr('RecordJointBak: Failed to initialize save file "{}": {}'.format(self._save_file_path, error))
+            Logger.logerr('RecordJointToFile: Failed to initialize save file "{}": {}'.format(self._save_file_path, error))
             return False
 
     def _append_joint_values_to_file(self, joint_values):
@@ -152,9 +152,9 @@ class RecordJointBak(EventState):
             with open(self._save_file_path, 'a') as file:
                 file.write(line + '\n')
 
-            Logger.loginfo('RecordJoint: Saved joint values to file: {}'.format(self._save_file_path))
+            Logger.loginfo('RecordJointToFile: Saved joint values to file: {}'.format(self._save_file_path))
             return True
 
         except OSError as error:
-            Logger.logerr('RecordJoint: Failed to append joint values to file "{}": {}'.format(self._save_file_path, error))
+            Logger.logerr('RecordJointToFile: Failed to append joint values to file "{}": {}'.format(self._save_file_path, error))
             return False

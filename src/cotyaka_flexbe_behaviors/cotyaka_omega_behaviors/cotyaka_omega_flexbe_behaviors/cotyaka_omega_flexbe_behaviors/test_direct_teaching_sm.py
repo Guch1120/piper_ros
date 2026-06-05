@@ -42,6 +42,7 @@ from cotyaka_omega_flexbe_states.move_joint_by_input_key_list import MoveJointLi
 from cotyaka_omega_flexbe_states.publish_joint import PublishJoint
 from cotyaka_omega_flexbe_states.publish_joint_bak import PublishJointListFromFile
 from cotyaka_omega_flexbe_states.record_joint import RecordJoint
+from cotyaka_omega_flexbe_states.record_joint_bak import RecordJointToFile
 from cotyaka_omega_flexbe_states.wait_enter_check import WaitEnterCheck
 
 # Additional imports can be added inside the following tags
@@ -75,6 +76,7 @@ class test_direct_teachingSM(Behavior):
         PublishJoint.initialize_ros(node)
         PublishJointListFromFile.initialize_ros(node)
         RecordJoint.initialize_ros(node)
+        RecordJointToFile.initialize_ros(node)
         WaitEnterCheck.initialize_ros(node)
 
         # Additional initialization code can be added inside the following tags
@@ -128,9 +130,16 @@ class test_direct_teachingSM(Behavior):
                                        autonomy={'repeat': Autonomy.Off},
                                        remapping={'joint_list': 'joint_list', 'index': 'index', 'joint_values': 'joint_values'})
 
-            # x:120 y:224
+            # x:55 y:240
             OperatableStateMachine.add('record joint',
                                        RecordJoint(joint_state_topic='/joint_states', joint_names=['joint1','joint2','joint3','joint4','joint5','joint6']),
+                                       transitions={'done': 'record joint'},
+                                       autonomy={'done': Autonomy.Off},
+                                       remapping={'joint_list': 'joint_list'})
+
+            # x:307 y:196
+            OperatableStateMachine.add('record joint into file',
+                                       RecordJointToFile(joint_state_topic='/joint_states', joint_names=['joint1','joint2','joint3','joint4','joint5','joint6'], save_file_path='/ros2_ws/src/cotyaka_flexbe_behaviors/cotyaka_omega_behaviors/cotyaka_omega_flexbe_states/cotyaka_omega_flexbe_states/direct_teaching_list.txt'),
                                        transitions={'done': 'wait enter key'},
                                        autonomy={'done': Autonomy.Off},
                                        remapping={'joint_list': 'joint_list'})
@@ -138,7 +147,7 @@ class test_direct_teachingSM(Behavior):
             # x:270 y:74
             OperatableStateMachine.add('wait enter key',
                                        WaitEnterCheck(command_topic='/record_joint_command', record_command='record', done_command='done'),
-                                       transitions={'record': 'record joint', 'done': 'power ON'},
+                                       transitions={'record': 'record joint into file', 'done': 'power ON'},
                                        autonomy={'record': Autonomy.Off, 'done': Autonomy.Off})
 
             # x:770 y:74
