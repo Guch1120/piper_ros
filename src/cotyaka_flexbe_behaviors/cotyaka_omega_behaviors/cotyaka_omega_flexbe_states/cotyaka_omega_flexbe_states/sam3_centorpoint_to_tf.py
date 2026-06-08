@@ -3,13 +3,13 @@
 
 import math
 import re
-
 import numpy as np
 from flexbe_core import EventState, Logger
 from flexbe_core.proxy import ProxySubscriberCached
 from geometry_msgs.msg import PointStamped, TransformStamped
 from sensor_msgs.msg import CameraInfo, Image
 from tf2_ros import StaticTransformBroadcaster
+from tf_transformations import quaternion_from_euler
 
 
 class Sam3CentorPointToTF(EventState):
@@ -110,8 +110,8 @@ class Sam3CentorPointToTF(EventState):
             raise ValueError("valid depth was not found around centroid. u={} v={} radius={}".format(u,v,self._depth_search_radius))
 
         x = (float(u) - cx) * depth_m / fx
-        y = (float(v) - cy) * depth_m / fy
-        z = depth_m
+        y = ((float(v) - cy) * depth_m / fy)+(depth_m*math.sin(math.radians(10)))
+        z = depth_m - 0.045
 
         parent_frame_id = str(camera_info_msg.header.frame_id).strip()
         if not parent_frame_id:
@@ -135,11 +135,16 @@ class Sam3CentorPointToTF(EventState):
         transform.transform.translation.x = float(x)
         transform.transform.translation.y = float(y)
         transform.transform.translation.z = float(z)
-        # 回転なし。単位クォータニオン。
-        transform.transform.rotation.x = 0.0
-        transform.transform.rotation.y = 0.0
-        transform.transform.rotation.z = 0.0
-        transform.transform.rotation.w = 1.0
+        roll = math.radians(0)
+        pitch = math.radians(0)
+        yaw = math.radians(90)
+
+        q = quaternion_from_euler(roll,pitch,yaw)
+
+        transform.transform.rotation.x = q[0]
+        transform.transform.rotation.y = q[1]
+        transform.transform.rotation.z = q[2]
+        transform.transform.rotation.w = q[3]
         self._tf_broadcaster.sendTransform(transform)
         Logger.loginfo("Sam3CentorPointToTF published static TF {} -> {} from pixel [{}, {}] depth={:.3f}m camera_xyz=[{:.3f}, {:.3f}, {:.3f}]".format(parent_frame_id,child_frame_id,u,v,depth_m,x,y,z))
 

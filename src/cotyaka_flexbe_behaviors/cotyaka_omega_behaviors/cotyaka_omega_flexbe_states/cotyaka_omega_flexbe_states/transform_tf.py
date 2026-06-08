@@ -146,6 +146,11 @@ class TransformTF(EventState):
         after_transform.transform.rotation.w = q[3]
 
         userdata.after_transform = output_frame
+        Logger.loginfo(
+            f"[TransformTF] xyz=({after_transform.transform.translation.x:.3f}, "
+            f"{after_transform.transform.translation.y:.3f}, "
+            f"{after_transform.transform.translation.z:.3f})"
+        )
 
         Logger.loginfo(f"[TransformTF] output={userdata.after_transform}")
         try:

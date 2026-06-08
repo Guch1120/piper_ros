@@ -62,6 +62,9 @@ class Ros2RealSenseObjectNameBridge(Node):
         self.declare_parameter("mask_topic", "/sam/mask")
         self.declare_parameter("overlay_topic", "/sam/overlay")
         self.declare_parameter("centroid_topic", "/sam3/mask/centroid")
+        
+        # === 追加: 重心可視化画像のトピック ===
+        self.declare_parameter("centroid_image_topic", "/sam3/mask/centroid_image")
 
         # 元launchに合わせて prompt を採用
         self.declare_parameter("prompt", "object")
@@ -82,6 +85,8 @@ class Ros2RealSenseObjectNameBridge(Node):
         self.mask_topic = self.get_parameter("mask_topic").value
         self.overlay_topic = self.get_parameter("overlay_topic").value
         self.centroid_topic = self.get_parameter("centroid_topic").value
+        self.centroid_image_topic = self.get_parameter("centroid_image_topic").value
+        
         self.publish_original_size = bool(
             self.get_parameter("publish_original_size").value
         )
@@ -106,6 +111,13 @@ class Ros2RealSenseObjectNameBridge(Node):
         self.centroid_pub = self.create_publisher(
             PointStamped,
             self.centroid_topic,
+            10
+        )
+        
+        # === 追加: 重心可視化画像のパブリッシャ ===
+        self.centroid_image_pub = self.create_publisher(
+            Image, 
+            self.centroid_image_topic, 
             10
         )
 
@@ -151,6 +163,7 @@ class Ros2RealSenseObjectNameBridge(Node):
         self.get_logger().info(f"mask出力topic: {self.mask_topic}")
         self.get_logger().info(f"overlay出力topic: {self.overlay_topic}")
         self.get_logger().info(f"centroid出力topic: {self.centroid_topic}")
+        self.get_logger().info(f"centroid_image出力topic: {self.centroid_image_topic}")
         self.get_logger().info(f"初期prompt: '{self.prompt}'")
         self.get_logger().info("prompt更新: /object_name std_msgs/String を購読")
 
@@ -275,20 +288,7 @@ class Ros2RealSenseObjectNameBridge(Node):
 
         send_h, send_w = send_image.shape[:2]
 
-        # デバッグ用。動作確認後はコメントアウト推奨。
-        # self.get_logger().info(
-        #     f"type(send_image)={type(send_image)} "
-        #     f"dtype={send_image.dtype} "
-        #     f"shape={send_image.shape} "
-        #     f"contiguous={send_image.flags['C_CONTIGUOUS']}"
-        # )
-
-        # まずは切り分け優先で2引数版
         ok, jpeg = cv2.imencode(".jpg", send_image)
-
-        # 品質指定を使うなら、安定後にこちらへ戻す
-        # encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), self.quality]
-        # ok, jpeg = cv2.imencode(".jpg", send_image, encode_param)
 
         if not ok:
             raise RuntimeError("cv2.imencode('.jpg', image) failed")
@@ -330,10 +330,31 @@ class Ros2RealSenseObjectNameBridge(Node):
         mask_msg.header = msg.header
         self.mask_pub.publish(mask_msg)
 
+        # ===== 重心の計算とパブリッシュ =====
         centroid_msg = self.create_centroid_msg(mask_for_pub, msg.header)
         if centroid_msg is not None:
             self.centroid_pub.publish(centroid_msg)
 
+        # ===== 追加: 新規トピック向けの重心画像の作成とパブリッシュ =====
+        # publish_original_size に応じて、描画対象のベース画像を決定
+        if self.publish_original_size:
+            centroid_vis_img = cv_image.copy()
+        else:
+            centroid_vis_img = send_image.copy()
+
+        if centroid_msg is not None:
+            cx = int(centroid_msg.point.x)
+            cy = int(centroid_msg.point.y)
+            # 1. 赤い塗りつぶしの円を描画
+            cv2.circle(centroid_vis_img, (cx, cy), radius=6, color=(0, 0, 255), thickness=-1)
+            # 2. 黄色の十字マーカーを描画
+            cv2.drawMarker(centroid_vis_img, (cx, cy), color=(0, 255, 255), markerType=cv2.MARKER_CROSS, markerSize=20, thickness=2)
+
+        centroid_image_msg = self.bridge.cv2_to_imgmsg(centroid_vis_img, encoding="bgr8")
+        centroid_image_msg.header = msg.header
+        self.centroid_image_pub.publish(centroid_image_msg)
+
+        # ===== オーバーレイ画像の処理 =====
         if response.overlay_image:
             overlay_array = np.frombuffer(
                 response.overlay_image,
@@ -365,8 +386,8 @@ class Ros2RealSenseObjectNameBridge(Node):
             f"publish prompt='{current_prompt}' "
             f"objects={response.num_objects} "
             f"inference={response.inference_ms:.1f}ms "
-            # f"image={orig_w}x{orig_h} send={send_w}x{send_h}"
         )
+
     def resize_for_inference(self, cv_image):
         h, w = cv_image.shape[:2]
 

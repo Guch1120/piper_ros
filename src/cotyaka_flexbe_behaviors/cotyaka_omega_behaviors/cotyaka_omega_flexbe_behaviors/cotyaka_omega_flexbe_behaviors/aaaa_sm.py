@@ -81,9 +81,9 @@ class aaaaSM(Behavior):
         _state_machine = OperatableStateMachine(outcomes=['finished', 'failed'])
         _state_machine.userdata.index = 0
         _state_machine.userdata.object_list = ["floor"]
-        _state_machine.userdata.object_name = "red box"
+        _state_machine.userdata.object_name = "apple"
         _state_machine.userdata.angle = 0
-        _state_machine.userdata.source_frame = "sam3_red_box_tf"
+        _state_machine.userdata.source_frame = "sam3_apple_tf"
 
         # Additional creation code can be added inside the following tags
         # [MANUAL_CREATE]
