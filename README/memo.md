@@ -44,3 +44,21 @@ increment index
  - complete
  リスト全てインクリメントし終えた
  </summarry></details>
+
+
+```python
+ ros2 run your_package_name rpy_calibration_node \
+  --ros-args \
+  -p image_topic:=/camera/camera/color/image_raw \
+  -p camera_info_topic:=/camera/camera/color/camera_info \
+  -p base_frame:=base_link \
+  -p parent_frame:=gripper_base \
+  -p camera_link_frame:=camera_link \
+  -p optical_frame:=camera_color_optical_frame \
+  -p marker_id:=0 \
+  -p marker_length:=0.17 \
+  -p calibration_mode:=normal_only \
+  -p samples:=50 \
+  -p min_samples_to_print:=20 \
+  -p print_every_n_frames:=10
+```
