@@ -43,9 +43,8 @@ setup(
             'piper_single_ctrl_moveit_action = piper.piper_single_ctrl_moveit_action_node:main',
             'keyboard_publisher = piper.keyboard_publisher:main',
             'camera_calibration = piper.camera_calibration:main',
-            'rpy_calibration = piper.rpy_calibration:main',
             'wait_enter_and_pub_msg = piper.wait_enter_and_pub_msg_node:main',
-            'rpy_calibiration_fixed = piper.rpy_calibration_fixed_node:main',
+            'camera_roll_pitch_calibration = piper.camera_roll_pitch_calibration:main',
         ],
     },
 )
