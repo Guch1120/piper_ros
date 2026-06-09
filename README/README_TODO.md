@@ -12,16 +12,16 @@
 - [x] sam3コンテナとpiperコンテナを共存させたterminatorレイアウトの構築。
 HSRのterminatorと同じようにする必要がある。
 - [x] flexbeのGUIで変更が実行時反映されない問題。
-怪しいのはinstallやbuildの中身をみて実行していて、変更毎にビルドしないといけない説。俺そこ直したよなぁぁ？？？？？？？srcの中身を見ろってさぁ
-- [ ] sam3_serverが不安定。/object nameトピックを飛ばしても変わらないときがある
+怪しいのはinstallやbuildの中身をみて実行していて、変更毎にビルドしないといけない
 - [x] URDFの修正。Realsenseの位置姿勢が不当
+- [x] RUN-DOCKER-CONTAINER.bash終了時にROSプロセス終了処理を追加
 
 ### SAM3でTF動作編
 - [x] 静的TF動作
 - [x] sam3_gRPCのオブジェクト名変更をFlexbeのステートでやる
 - [x] sam3でTF発行
 - [x] TF変換ステート作成
-- [ ] SAM3を用いて静的TF動作
+- [x] SAM3を用いて静的TF動作
 - [ ] SAM3を用いて動的TF動作
 
 - [x] ダイレクトティーチングの実装。動作させるのはMoveItClientParamStateステートを改良させる。パラメータではなくuserdataを使うようにする。
