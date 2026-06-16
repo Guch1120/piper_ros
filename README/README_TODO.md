@@ -15,7 +15,7 @@ HSRのterminatorと同じようにする必要がある。
 怪しいのはinstallやbuildの中身をみて実行していて、変更毎にビルドしないといけない
 - [x] URDFの修正。Realsenseの位置姿勢が不当
 - [x] RUN-DOCKER-CONTAINER.bash終了時にROSプロセス終了処理を追加
-
+- [ ] ダイレクトティーチング用に重力補償の実装
 ### SAM3でTF動作編
 - [x] 静的TF動作
 - [x] sam3_gRPCのオブジェクト名変更をFlexbeのステートでやる
