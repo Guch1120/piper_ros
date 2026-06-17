@@ -13,6 +13,7 @@ from control_msgs.action import FollowJointTrajectory
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Bool
 from geometry_msgs.msg import Pose, PoseStamped
+from trajectory_msgs.msg import JointTrajectoryPoint
 from piper_msgs.msg import PiperStatusMsg, PosCmd
 from piper_msgs.srv import Enable
 import time
@@ -123,10 +124,61 @@ class PiperUnitySimNode(Node):
         self.get_logger().info('Received cancel request')
         return CancelResponse.ACCEPT
 
+    def _ensure_trajectory_from_current(self, trajectory):
+        """Unityの現在状態が軌道開始点と大きくずれている場合、現在状態をt=0の点として先頭に追加する。"""
+        if not trajectory.points:
+            return trajectory
+
+        joint_names = trajectory.joint_names
+        name_to_idx = {n: i for i, n in enumerate(self.all_joint_names)}
+
+        with self.unity_state_lock:
+            current_pos = list(self.unity_joint_positions)
+
+        first_point = trajectory.points[0]
+        max_dev = 0.0
+        for k, name in enumerate(joint_names):
+            idx = name_to_idx.get(name)
+            if idx is not None and k < len(first_point.positions):
+                dev = abs(current_pos[idx] - first_point.positions[k])
+                max_dev = max(max_dev, dev)
+
+        if max_dev <= 0.01:
+            return trajectory
+
+        # 現在位置を t=0 の点として追加し、既存の点を ramp_time 分だけ後ろにずらす
+        ramp_time = max(0.5, max_dev / 1.0)
+        self.get_logger().warn(
+            f'Trajectory start deviates from Unity state by {max_dev:.4f} rad. '
+            f'Prepending current state as t=0 and shifting trajectory by {ramp_time:.2f}s.')
+
+        p0 = JointTrajectoryPoint()
+        p0.positions = [
+            current_pos[name_to_idx[n]] if n in name_to_idx else 0.0
+            for n in joint_names
+        ]
+        p0.velocities = [0.0] * len(joint_names)
+        p0.accelerations = [0.0] * len(joint_names)
+        p0.time_from_start = rclpy.duration.Duration(seconds=0.0).to_msg()
+
+        new_points = [p0]
+        for p in trajectory.points:
+            shifted = JointTrajectoryPoint()
+            shifted.positions = list(p.positions)
+            shifted.velocities = list(p.velocities) if p.velocities else [0.0] * len(joint_names)
+            shifted.accelerations = list(p.accelerations) if p.accelerations else [0.0] * len(joint_names)
+            t = p.time_from_start.sec + p.time_from_start.nanosec * 1e-9 + ramp_time
+            shifted.time_from_start = rclpy.duration.Duration(seconds=t).to_msg()
+            new_points.append(shifted)
+
+        trajectory.points = new_points
+        return trajectory
+
     def execute_callback(self, goal_handle):
         self.get_logger().info('Executing trajectory...')
+        trajectory = self._ensure_trajectory_from_current(goal_handle.request.trajectory)
         with self.trajectory_lock:
-            self.active_trajectory = goal_handle.request.trajectory
+            self.active_trajectory = trajectory
             self.start_time = self.get_clock().now()
 
         last_point = self.active_trajectory.points[-1]

@@ -34,8 +34,8 @@
     
 - [x] Unity内でjoint1だけ動かす
 - [ ] ROS2 /joint_statesをUnityで購読してjoint角を反映
-- [ ] ROS2 /joint_statesでUnity上のPiperを動作させる　
-- [ ] ROS2からPiperの実joint値を流してUnity上Piperを同期
+- [x] ROS2 /joint_statesでUnity上のPiperを動作させる　
+- [x] ROS2からPiperの実joint値を流してUnity上Piperを同期
 - [ ] Unity CameraをROS2画像としてpublish
 </details>
 - [ ] Mujoco実装

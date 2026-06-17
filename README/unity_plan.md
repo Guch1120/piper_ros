@@ -415,21 +415,46 @@ public class PiperJointStatePublisher : MonoBehaviour
 
 ---
 
-## ビルドと起動手順
+## ROS-TCP-Endpoint 配置変更に関する注記
 
-### ROS2 ビルド
+- 移動前: /home/hsr/ROS-TCP-Endpoint/
+- 移動後: /home/hsr/piper_ros/ROS-TCP-Endpoint/
+- Docker コンテナ内では /ros2_ws/ROS-TCP-Endpoint/ としてマウントされる（piper_ros 統合ワークスペースの一部）
+- launch ファイルへのコード変更は不要。colcon がワークスペースルートからパッケージを自動検出する
+- 注意: /ros2_ws/ROS-TCP-Endpoint/install/setup.bash は source しないこと。ワークスペースレベルの /ros2_ws/install/setup.bash を使用すること
+- ROS-TCP-Endpoint/build/ および ROS-TCP-Endpoint/install/ 内の旧スタンドアロンビルド成果物は使用しない
+
+---
+
+### ビルドと起動手順
+
+#### Docker コンテナ起動
 
 ```bash
-cd /home/hsr/piper_ros
+# ホスト側: コンテナを起動
+cd /home/hsr/piper_ros/docker
+docker compose up -d piper-humble-dev
+```
+
+#### ROS2 ビルド（コンテナ内）
+
+```bash
+# コンテナに入る
+docker exec -it piper-humble-dev bash
+
+# コンテナ内 (ワークスペースは /ros2_ws)
 source /opt/ros/humble/setup.bash
-colcon build --packages-select piper_unity
+cd /ros2_ws
+colcon build --packages-select ros_tcp_endpoint piper_unity
 source install/setup.bash
 ```
 
-### 起動（一発）
+#### 起動（コンテナ内）
 
 ```bash
-# Terminal 1
+# コンテナ内で実行
+source /opt/ros/humble/setup.bash
+source /ros2_ws/install/setup.bash
 ros2 launch piper_unity start_piper_unity.launch.py
 
 # Unity Editor: Piper.unity → Play
@@ -441,8 +466,8 @@ ros2 launch piper_unity start_piper_unity.launch.py
 
 | 環境 | コマンド |
 |---|---|
-| 実機 | `ros2 launch piper start_single_moveit_piper_action.launch.py` + `ros2 launch piper_with_gripper_moveit piper_real_moveit.launch.py` |
-| Unity シミュレータ | `ros2 launch piper_unity start_piper_unity.launch.py` + Unity Play |
+| 実機 | ホストから: `docker exec -it piper-humble-dev bash -c "source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && ros2 launch piper start_single_moveit_piper_action.launch.py"` + `docker exec -it piper-humble-dev bash -c "source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && ros2 launch piper_with_gripper_moveit piper_real_moveit.launch.py"`<br>コンテナ内から: `source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && ros2 launch piper start_single_moveit_piper_action.launch.py` + `ros2 launch piper_with_gripper_moveit piper_real_moveit.launch.py` |
+| Unity シミュレータ | ホストから: `docker exec -it piper-humble-dev bash -c "source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && ros2 launch piper_unity start_piper_unity.launch.py"` + Unity Play<br>コンテナ内から: `source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && ros2 launch piper_unity start_piper_unity.launch.py` + Unity Play |
 
 アプリケーションコード（MoveIt2 クライアント等）は変更不要。
 

@@ -58,6 +58,8 @@ def generate_launch_description():
             "publish_transforms_updates": should_publish,
             "monitor_dynamics": False,
             "use_sim_time": False,
+            # Unity sim: disable start-state deviation check (robot may not be at plan start)
+            "trajectory_execution.allowed_start_tolerance": 0.0,
         },
     ]
     add_debuggable_node(
