@@ -1,0 +1,17 @@
+<launch>
+  <arg name="config"
+       default="$(find-pkg-share sam3_bridge)/config/gemma4_vlm.yaml" />
+
+  <node pkg="sam3_bridge" exec="gemma4_image_node.py"
+        name="gemma4_vlm_image_node" output="screen">
+    <param from="$(var config)" />
+  </node>
+
+  <node pkg="sam3_bridge" exec="gemma4_wait_enter_key_and_msg_node.py"
+        name="gemma4_vlm_enter_trigger" output="screen" launch-prefix="xterm -e">
+    <param name="command_topic" value="/gemma4_vlm/request" />
+    <param name="record_command" value="record" />
+    <param name="done_command" value="done" />
+    <param name="publish_done_on_quit" value="false" />
+  </node>
+</launch>

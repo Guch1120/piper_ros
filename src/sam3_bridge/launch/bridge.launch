@@ -4,7 +4,7 @@
   <!-- ノード1：ROS→gRPC ブリッジ -->
   <node
     pkg="sam3_bridge"
-    type="grpc_bridge.py"
+    exec="grpc_bridge.py"
     name="grpc_bridge"
     output="screen">
 
@@ -17,5 +17,7 @@
     <param name="max_height"   value="480" />
     <param name="topic_name"   value="/hsrb/head_rgbd_sensor/rgb/image_rect_color" />
     <param name="prompt"       value="A male wearing gray hoodie" />
+    <param name="mask_topic"   value="/sam/mask" />
+    <param name="overlay_topic" value="/sam/overlay" />
   </node>
 </launch>

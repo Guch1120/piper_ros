@@ -5,7 +5,7 @@ import warnings
 
 import segment_overlay_pb2 as segment__overlay__pb2
 
-GRPC_GENERATED_VERSION = '1.70.0'
+GRPC_GENERATED_VERSION = '1.80.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in segment_overlay_pb2_grpc.py depends on'
+        + ' but the generated code in segment_overlay_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -65,7 +65,7 @@ def add_SegmentServiceServicer_to_server(servicer, server):
     server.add_registered_method_handlers('segment_overlay.SegmentService', rpc_method_handlers)
 
 
-# This class is part of an EXPERIMENTAL API.
+ # This class is part of an EXPERIMENTAL API.
 class SegmentService(object):
     """Missing associated documentation comment in .proto file."""
 

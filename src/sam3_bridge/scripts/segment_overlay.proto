@@ -7,17 +7,74 @@ service SegmentService {
 }
 
 message ImageRequest {
-  bytes  image   = 1;
-  int32  width   = 2;
-  int32  height  = 3;
-  string prompt  = 4;
+  bytes  image          = 1;
+  int32  width          = 2;
+  int32  height         = 3;
+  string prompt         = 4;
+
+  // Trackerを source + prompt ごとに分けるために使う。
+  // 例: "head", "hand", "default"
+  string source         = 5;
+
+  // prompt変更・カメラ切替などで、該当trackerをリセットしたいときtrue。
+  bool reset_tracking   = 6;
+
+  // 複数prompt。旧サーバ向けにはpromptも常に先頭要素で送る。
+  repeated string prompts = 7;
+}
+
+message DetectedObject {
+  // フレームをまたいで維持されるtrack ID。
+  // label mask内の画素値と対応する。
+  uint32 id             = 1;
+
+  float  score          = 2;
+
+  int32  bbox_x         = 3;
+  int32  bbox_y         = 4;
+  int32  bbox_w         = 5;
+  int32  bbox_h         = 6;
+
+  float  centroid_x     = 7;
+  float  centroid_y     = 8;
+
+  uint32 area           = 9;
+
+  // 各物体の個別binary mask。
+  // dtype=uint8, size=width*height, value=0 or 1
+  bytes  mask           = 10;
+
+  // 何フレーム連続で追跡されているか。
+  uint32 age            = 11;
+
+  // response.objectsには基本的に今見えている物体だけを入れるため通常0。
+  // 将来、見失い中trackも返したい場合に使える。
+  uint32 missed         = 12;
+
+  // この物体を検出したpromptと、ImageRequest.prompts内のindex。
+  string prompt         = 13;
+  uint32 prompt_index   = 14;
 }
 
 message MaskResponse {
-  bytes  mask          = 1;  // uint8マスク（0 or 1）
-  int32  width         = 2;
-  int32  height        = 3;
-  int32  num_objects   = 4;
-  float  inference_ms  = 5;
-  bytes  overlay_image = 6;  // JPEG圧縮済みオーバーレイ画像
+  // ID付きlabel mask。
+  // mask_encoding="16UC1" の場合:
+  //   dtype=uint16, size=width*height
+  //   0=background, 1..65535=track id
+  bytes  mask           = 1;
+
+  int32  width          = 2;
+  int32  height         = 3;
+  int32  num_objects    = 4;
+  float  inference_ms   = 5;
+
+  // JPEG圧縮済みオーバーレイ画像。
+  // 各物体のmask色塗り、輪郭、ID表示を含む。
+  bytes  overlay_image  = 6;
+
+  // 例: "16UC1"。旧実装互換なら "mono8" など。
+  string mask_encoding  = 7;
+
+  // 各track IDに対応する物体情報。
+  repeated DetectedObject objects = 8;
 }

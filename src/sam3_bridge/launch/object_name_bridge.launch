@@ -12,17 +12,28 @@
     <param name="max_width" value="640" />
     <param name="max_height" value="480" />
 
-    <!-- RealSense RGB image topic -->
+    <!-- Camera inputs and active-source switch -->
     <param name="topic_name"
            value="/camera/camera/color/image_raw" />
+    <param name="head_topic" value="" />
+    <param name="hand_topic" value="/hsrb/hand_camera/image_raw" />
+    <param name="switch_topic" value="/sam3/switch" />
 
-    <!-- SAM output topics -->
-    <param name="mask_topic"
-           value="/sam/mask" />
-    <param name="overlay_topic"
-           value="/sam/overlay" />
+    <!-- Prompt inputs -->
+    <param name="object_name_topic" value="/object_name" />
+    <param name="prompts_topic" value="/object_name_list" />
+    <param name="default_prompt" value="object" />
 
-    <param name="prompt"
-           value="object" />
+    <!-- Head-camera outputs -->
+    <param name="head_mask_topic" value="/sam/mask" />
+    <param name="head_overlay_topic" value="/sam/overlay" />
+    <param name="head_centroid_topic" value="/sam3/mask/centroid" />
+    <param name="head_object_list_topic" value="/sam3/object_list" />
+
+    <!-- Hand-camera outputs -->
+    <param name="hand_mask_topic" value="/sam3/hand/mask" />
+    <param name="hand_overlay_topic" value="/sam3/hand/overlay" />
+    <param name="hand_centroid_topic" value="/sam3/hand/mask/centroid" />
+    <param name="hand_object_list_topic" value="/sam3/hand/object_list" />
   </node>
 </launch>

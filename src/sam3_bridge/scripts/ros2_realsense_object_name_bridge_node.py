@@ -11,6 +11,7 @@ import numpy as np
 
 import rclpy
 from rclpy.node import Node
+from rclpy.executors import ExternalShutdownException
 
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
@@ -244,7 +245,8 @@ class Ros2RealSenseObjectNameBridge(Node):
 
                 self.get_logger().error(f"予期せぬエラー: {repr(e)}")
 
-        self.get_logger().info("gRPC worker thread stopped")
+        if rclpy.ok():
+            self.get_logger().info("gRPC worker thread stopped")
 
     def process_frame(self, msg: Image):
         # ROS Image -> OpenCV BGR
@@ -306,11 +308,19 @@ class Ros2RealSenseObjectNameBridge(Node):
             timeout=self.timeout
         )
 
-        # response.mask は 0/1 想定
-        mask = np.frombuffer(response.mask, dtype=np.uint8).reshape(
-            response.height,
-            response.width
-        )
+        if response.mask_encoding == "16UC1":
+            mask = np.frombuffer(response.mask, dtype=np.uint16).reshape(
+                response.height,
+                response.width
+            )
+            mask_encoding = "16UC1"
+        else:
+            mask = np.frombuffer(response.mask, dtype=np.uint8).reshape(
+                response.height,
+                response.width
+            )
+            mask = (mask > 0).astype(np.uint8) * 255
+            mask_encoding = "mono8"
 
         # 入力画像サイズへ戻す
         if self.publish_original_size and (
@@ -324,9 +334,10 @@ class Ros2RealSenseObjectNameBridge(Node):
         else:
             mask_for_pub = mask
 
-        mask_vis = (mask_for_pub > 0).astype(np.uint8) * 255
-
-        mask_msg = self.bridge.cv2_to_imgmsg(mask_vis, encoding="mono8")
+        mask_msg = self.bridge.cv2_to_imgmsg(
+            mask_for_pub,
+            encoding=mask_encoding
+        )
         mask_msg.header = msg.header
         self.mask_pub.publish(mask_msg)
 
@@ -440,6 +451,9 @@ class Ros2RealSenseObjectNameBridge(Node):
     def destroy_node(self):
         self.shutdown_event.set()
 
+        if self.worker_thread.is_alive():
+            self.worker_thread.join(timeout=max(1.0, self.timeout + 0.5))
+
         try:
             self.channel.close()
         except Exception:
@@ -455,7 +469,7 @@ def main(args=None):
 
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         node.destroy_node()

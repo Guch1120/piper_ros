@@ -4,16 +4,18 @@
   <!-- ノード1: GUI（カメラ画像表示・ドラッグ操作） -->
   <node
     pkg="sam3_bridge"
-    type="drag_segment_gui.py"
+    exec="drag_segment_gui.py"
     name="drag_segment_gui"
     output="screen">
     <param name="topic_name" value="/hsrb/head_rgbd_sensor/rgb/image_rect_color" />
+    <param name="overlay_topic" value="/sam/overlay" />
+    <param name="drag_box_topic" value="/drag_box" />
   </node>
 
   <!-- ノード2: Bridge（bbox受信・gRPC送信・mask publish） -->
   <node
     pkg="sam3_bridge"
-    type="drag_segment_bridge.py"
+    exec="drag_segment_bridge.py"
     name="drag_segment_bridge"
     output="screen">
     <param name="grpc_host"    value="localhost" />
@@ -23,6 +25,9 @@
     <param name="max_width"    value="640" />
     <param name="max_height"   value="480" />
     <param name="topic_name"   value="/hsrb/head_rgbd_sensor/rgb/image_rect_color" />
+    <param name="drag_box_topic" value="/drag_box" />
+    <param name="mask_topic" value="/sam/mask" />
+    <param name="overlay_topic" value="/sam/overlay" />
   </node>
 
 </launch>
