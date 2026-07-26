@@ -12,6 +12,11 @@ services:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       #開発用コードまるごとマウント
       - ..:/ros2_ws:rw
+      # oit_kobuki_ws-main (kobuki_description 等) を読み取り専用でマウント。
+      # モバイルマニピュレータ用 xacro (mobile_manipulator_description) が
+      # kobuki_description パッケージを $(find kobuki_description) で参照するために必要。
+      # このワークスペース自体は oit-kobuki-ws-ros2 サービス側で別途ビルド済みの前提。
+      - ../../oit_kobuki_ws-main:/home/kobuki_ws:ro
       #terminatorの設定ファイルをマウント
       - ../.config/terminator/config:/root/.config/terminator/config:rw
       #gitのssh鍵をマウント

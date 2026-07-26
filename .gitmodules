@@ -11,3 +11,7 @@
 [submodule "src/piper_sdk"]
 	path = src/piper_sdk
 	url = git@github.com:Guch1120/piper_sdk.git
+[submodule "ROS-TCP-Endpoint"]
+	path = ROS-TCP-Endpoint
+	url = https://github.com/Unity-Technologies/ROS-TCP-Endpoint.git
+	branch = main-ros2

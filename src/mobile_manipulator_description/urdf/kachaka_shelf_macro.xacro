@@ -1,0 +1,117 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <!--
+    カチャカシェルフ3段の外形寸法を基準にした簡略モデル。
+    棚板・支柱・キャスターをプリミティブで構成し、実測後に寸法だけを調整できるようにする。
+  -->
+  <xacro:macro name="kachaka_shelf"
+               params="parent
+                       prefix:='kachaka_'
+                       xyz:='0 0 0'
+                       rpy:='0 0 0'
+                       width:=0.488
+                       depth:=0.328
+                       height:=0.717
+                       mass:=8.8">
+    <xacro:property name="board_thickness" value="0.020"/>
+    <xacro:property name="post_size" value="0.020"/>
+    <xacro:property name="caster_radius" value="0.025"/>
+    <xacro:property name="caster_width" value="0.018"/>
+    <xacro:property name="half_pi" value="1.5707963267948966"/>
+    <xacro:property name="lower_board_z" value="0.145"/>
+    <xacro:property name="middle_board_z" value="0.426"/>
+    <xacro:property name="upper_board_z" value="${height - board_thickness / 2.0}"/>
+    <xacro:property name="post_height" value="${height - 2.0 * caster_radius}"/>
+    <xacro:property name="post_z" value="${caster_radius + post_height / 2.0}"/>
+    <xacro:property name="post_x" value="${depth / 2.0 - post_size / 2.0}"/>
+    <xacro:property name="post_y" value="${width / 2.0 - post_size / 2.0}"/>
+
+    <joint name="${prefix}shelf_joint" type="fixed">
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <parent link="${parent}"/>
+      <child link="${prefix}shelf_link"/>
+    </joint>
+
+    <link name="${prefix}shelf_link">
+      <inertial>
+        <origin xyz="0 0 ${height / 2.0}" rpy="0 0 0"/>
+        <mass value="${mass}"/>
+        <inertia
+          ixx="${mass * (width * width + height * height) / 12.0}"
+          ixy="0"
+          ixz="0"
+          iyy="${mass * (depth * depth + height * height) / 12.0}"
+          iyz="0"
+          izz="${mass * (depth * depth + width * width) / 12.0}"/>
+      </inertial>
+
+      <!-- 棚板 -->
+      <xacro:macro name="shelf_board" params="z">
+        <visual>
+          <origin xyz="0 0 ${z}" rpy="0 0 0"/>
+          <geometry>
+            <box size="${depth} ${width} ${board_thickness}"/>
+          </geometry>
+          <material name="${prefix}shelf_board_material">
+            <color rgba="0.72 0.61 0.47 1.0"/>
+          </material>
+        </visual>
+        <collision>
+          <origin xyz="0 0 ${z}" rpy="0 0 0"/>
+          <geometry>
+            <box size="${depth} ${width} ${board_thickness}"/>
+          </geometry>
+        </collision>
+      </xacro:macro>
+      <xacro:shelf_board z="${lower_board_z}"/>
+      <xacro:shelf_board z="${middle_board_z}"/>
+      <xacro:shelf_board z="${upper_board_z}"/>
+
+      <!-- 四隅のスチール支柱 -->
+      <xacro:macro name="shelf_post" params="x y">
+        <visual>
+          <origin xyz="${x} ${y} ${post_z}" rpy="0 0 0"/>
+          <geometry>
+            <box size="${post_size} ${post_size} ${post_height}"/>
+          </geometry>
+          <material name="${prefix}shelf_frame_material">
+            <color rgba="0.10 0.10 0.11 1.0"/>
+          </material>
+        </visual>
+        <collision>
+          <origin xyz="${x} ${y} ${post_z}" rpy="0 0 0"/>
+          <geometry>
+            <box size="${post_size} ${post_size} ${post_height}"/>
+          </geometry>
+        </collision>
+      </xacro:macro>
+      <xacro:shelf_post x="${post_x}" y="${post_y}"/>
+      <xacro:shelf_post x="${post_x}" y="${-post_y}"/>
+      <xacro:shelf_post x="${-post_x}" y="${post_y}"/>
+      <xacro:shelf_post x="${-post_x}" y="${-post_y}"/>
+
+      <!-- キャスターはシェルフへ固定された簡略形状とする -->
+      <xacro:macro name="shelf_caster" params="x y">
+        <visual>
+          <origin xyz="${x} ${y} ${caster_radius}" rpy="${half_pi} 0 0"/>
+          <geometry>
+            <cylinder radius="${caster_radius}" length="${caster_width}"/>
+          </geometry>
+          <material name="${prefix}shelf_caster_material">
+            <color rgba="0.04 0.04 0.04 1.0"/>
+          </material>
+        </visual>
+        <collision>
+          <origin xyz="${x} ${y} ${caster_radius}" rpy="${half_pi} 0 0"/>
+          <geometry>
+            <cylinder radius="${caster_radius}" length="${caster_width}"/>
+          </geometry>
+        </collision>
+      </xacro:macro>
+      <xacro:shelf_caster x="${post_x}" y="${post_y}"/>
+      <xacro:shelf_caster x="${post_x}" y="${-post_y}"/>
+      <xacro:shelf_caster x="${-post_x}" y="${post_y}"/>
+      <xacro:shelf_caster x="${-post_x}" y="${-post_y}"/>
+    </link>
+  </xacro:macro>
+</robot>

@@ -2,15 +2,24 @@
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
   <xacro:property name="finger_length" value="0.0" /> 
   <xacro:property name="joint_z_offset" value="0.1058" /> 
-  <xacro:macro name="piper_robot">
+  <xacro:macro name="piper_robot"
+               params="parent:='world'
+                       base_link_name:='base_link'
+                       base_joint_name:='fixed_base_joint'
+                       base_xyz:='0 0 0'
+                       base_rpy:='0 0 0'
+                       create_world:=true">
     <!-- world -->
-    <link name="world"/>
-    <joint name="fixed_base_joint" type="fixed">
-        <parent link="world"/>
-        <child link="base_link"/>
+    <xacro:if value="${create_world}">
+      <link name="world"/>
+    </xacro:if>
+    <joint name="${base_joint_name}" type="fixed">
+        <origin xyz="${base_xyz}" rpy="${base_rpy}"/>
+        <parent link="${parent}"/>
+        <child link="${base_link_name}"/>
     </joint>
     <!-- arm -->
-    <link name="base_link">
+    <link name="${base_link_name}">
         <inertial>
                 <origin xyz="-0.00473641164191482 2.56829134630247E-05 0.041451518036016" rpy="0 0 0" />
                 <mass value="1.02" />
@@ -56,7 +65,7 @@
     </link>
     <joint name="joint1" type="revolute">
         <origin xyz="0 0 0.123" rpy="0 0 0" />
-        <parent link="base_link" />
+        <parent link="${base_link_name}" />
         <child link="link1" />
         <axis xyz="0 0 1" />
         <limit lower="-2.618" upper="2.618" effort="100" velocity="5" />
@@ -307,7 +316,7 @@
     </joint>
 
     <!-- Gazebo Materials -->
-    <gazebo reference="base_link">
+    <gazebo reference="${base_link_name}">
       <material>Gazebo/White</material>
     </gazebo>
     <gazebo reference="link1">
