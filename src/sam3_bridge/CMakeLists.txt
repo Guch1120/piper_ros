@@ -24,6 +24,7 @@ install(
 
 install(PROGRAMS
   scripts/object_name_bridge.py
+  scripts/object_tracking_by_using_depth.py
   scripts/click_segment_bridge.py
   scripts/drag_segment_bridge.py
   scripts/drag_segment_gui.py
