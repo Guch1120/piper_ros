@@ -64,6 +64,11 @@ echo "ワークスペース内パッケージの依存関係をインストー�
 #   - src/mobile_manipulator_description : <depend>kobuki_description</depend> は
 #                                oit_kobuki_ws-main 側の未リリースパッケージで rosdep
 #                                キーが存在しない。
+#
+# src/kobuki_sim (kobuki_unity: Kobuki 用 Unity ブリッジ、piper_sim/piper_unity と対称の
+# 位置) は rclpy/geometry_msgs/sensor_msgs/nav_msgs/tf2_ros/std_msgs/ros_tcp_endpoint のみに
+# 依存し、いずれも解決可能 (ros_tcp_endpoint は --ignore-src で ROS-TCP-Endpoint を参照) な
+# ため、こちらは --from-paths に含める。
 apt-get update
 # --ignore-src: piper_sdk や ROS-TCP-Endpoint のようにソースとしてワークスペース内に
 # 存在するパッケージは apt での解決を試みずスキップする (開発PCごとの配置差異に対する耐性)
@@ -75,6 +80,7 @@ rosdep install -i --from-paths \
     src/piper_msgs \
     src/piper_sdk \
     src/piper_sim \
+    src/kobuki_sim \
     src/cotyaka_flexbe_behaviors \
     src/flexbe_behavior_engine \
     src/flexbe_app \

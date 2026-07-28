@@ -1,8 +1,16 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
   <!--
-    カチャカシェルフ3段の外形寸法を基準にした簡略モデル。
+    カチャカシェルフの外形寸法を基準にした簡略モデル。
     棚板・支柱・キャスターをプリミティブで構成し、実測後に寸法だけを調整できるようにする。
+
+    棚板の段数について:
+    実物は現時点では2段構成 (lower/upper の2枚) だが、将来3段に変更される可能性がある。
+    実行時引数 (xacro:arg/params) での切り替えは不要という要望のため、
+    段数はこのファイルを直接編集して切り替える方式とする。
+    3段に戻す/増やす場合は、下の middle_board_z のプロパティ定義と
+    <xacro:shelf_board z="${middle_board_z}"/> 呼び出しのコメントアウトを解除し、
+    lower/upper の値も実測に合わせて再調整すること。
   -->
   <xacro:macro name="kachaka_shelf"
                params="parent
@@ -18,8 +26,10 @@
     <xacro:property name="caster_radius" value="0.025"/>
     <xacro:property name="caster_width" value="0.018"/>
     <xacro:property name="half_pi" value="1.5707963267948966"/>
+    <!-- 実測前の placeholder。2段構成 (lower/upper) の高さ (m) -->
     <xacro:property name="lower_board_z" value="0.145"/>
-    <xacro:property name="middle_board_z" value="0.426"/>
+    <!-- 3段構成に戻す場合はコメントアウトを解除すること (下の shelf_board 呼び出しも合わせて解除) -->
+    <!-- <xacro:property name="middle_board_z" value="0.426"/> -->
     <xacro:property name="upper_board_z" value="${height - board_thickness / 2.0}"/>
     <xacro:property name="post_height" value="${height - 2.0 * caster_radius}"/>
     <xacro:property name="post_z" value="${caster_radius + post_height / 2.0}"/>
@@ -63,8 +73,10 @@
           </geometry>
         </collision>
       </xacro:macro>
+      <!-- 現在2段構成: lower(下段) + upper(最上段) の2枚のみ配置する -->
       <xacro:shelf_board z="${lower_board_z}"/>
-      <xacro:shelf_board z="${middle_board_z}"/>
+      <!-- 3段構成にする場合はコメントアウトを解除すること (上の middle_board_z の定義も合わせて解除) -->
+      <!-- <xacro:shelf_board z="${middle_board_z}"/> -->
       <xacro:shelf_board z="${upper_board_z}"/>
 
       <!-- 四隅のスチール支柱 -->
