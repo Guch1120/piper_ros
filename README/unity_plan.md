@@ -492,3 +492,116 @@ ros2 topic pub --once /enable_flag std_msgs/msg/Bool '{data: true}'
 ros2 topic echo /piper_unity/joint_cmd
 ros2 topic echo /piper_unity/joint_states
 ```
+
+---
+
+# コチャカ (Kobuki + カチャカシェルフ + Piper + RealSense) 統合シミュレータ
+
+## 1. 統合アーキテクチャとブリッジノードの役割
+
+### なぜブリッジノードが必要なのか？（ROS-TCP-Endpoint だけでは足りない理由）
+
+- **ROS-TCP-Endpoint**:
+  - Unity と ROS 2 間で TCP 接続（ポート 10000）を張り、ROS メッセージをシリアライズ/デシリアライズして素通しする「ネットワーク土管」。
+  - 制御の論理（運動学やオドメトリ計算、Action サーバー等）は持たない。
+- **Kobuki ブリッジノード (`kobuki_unity_sim_node.py`)**:
+  - **役割**: 実機 Kobuki のマイコン・モータドライバの振る舞いを完全に再現。
+  - **動作**: 上位ノード（Nav2 やテレオペ）からの `commands/velocity` (`Twist`: $v_x, \omega_z$) を受信 $\rightarrow$ 差動二輪運動学から左右車輪の目標角速度を計算して `/kobuki_unity/wheel_cmd` を Unity に送信。
+  - 逆に Unity の車輪回転角 `/kobuki_unity/wheel_states` を受信 $\rightarrow$ 累積回転からオドメトリ `/odom` および TF (`odom` $\rightarrow$ `base_footprint`) を計算して配信。`commands/reset_odometry` にも完全対応。
+- **Piper ブリッジノード (`piper_unity_sim_node.py`)**:
+  - **役割**: 実機 Piper の CAN バス制御と FollowJointTrajectory Action サーバーを再現。
+  - **動作**: MoveIt 2 からの関節軌道目標を受信して `/piper_unity/joint_cmd` を Unity へ送信。Unity から返る実関節角 `/piper_unity/joint_states` を上位の `/joint_states` や Action フィードバックとして配信。
+- **RealSense カメラ パブリッシャー (`RealSenseCameraPublisher.cs`)**:
+  - **役割**: Piper アーム先端（`gripper_base` / `camera_color_optical_frame`）の Unity カメラ映像を取得し、実機 RealSense D435i 完全互換トピック（`/camera/camera/color/image_raw`, `/camera/camera/color/camera_info`）を配信。
+
+---
+
+## 2. 起動 launch ファイル (`view_mobile_manipulator_unity.launch.py`) の詳細
+
+```text
+ros2 launch mobile_manipulator_description view_mobile_manipulator_unity.launch.py
+  ├─ [default_server_endpoint]      ROS-TCP-Endpoint (TCP: 10000)
+  ├─ [kobuki_unity_sim_node]        Kobuki 運動学・オドメトリ・TF・リセット
+  ├─ [piper_unity_sim_node]         Piper MoveIt2 アクションサーバー・JointState
+  ├─ [robot_state_publisher]        コチャカ合成 URDF から全 TF ツリーをブロードキャスト
+  └─ [rviz2]                        コチャカ 3D モデル・TF・オドメトリ表示
+```
+
+---
+
+## 3. 動作確認・検証手順 (Step 0 〜 Step 4)
+
+### Step 0: 事前確認（Unity エディタ）
+1. Unity Project ビューで `mobile_manipulator.urdf` を右クリック $\rightarrow$ `[Import Robot from Selected URDF]`。
+   - **Select Axis Type: `Y Axis`** （※メッシュが Y-up 基準のため）
+   - **Select Convex Decomposer: `Unity`**
+2. Hierarchy 上の `mobile_manipulator` を選択し、上部メニュー **`[Kotyaka] -> [Setup Components on Selected Robot]`** を実行。
+   - 車輪制御・アーム制御・RealSense カメラ・統合マネージャーが全自動でアサインされます。
+3. シーンを保存 (`Ctrl + S`)。
+
+### Step 1: 統合ブリッジ起動と Unity の Play
+```bash
+# Docker コンテナ内で実行
+source /opt/ros/humble/setup.bash
+source /home/kobuki_ws/install/setup.bash
+source /ros2_ws/install/setup.bash
+
+ros2 launch mobile_manipulator_description view_mobile_manipulator_unity.launch.py
+```
+- Unity Editor で **Play (再生 ▶)** ボタンを押下（左上に `ROS connected` 表示）。
+
+### Step 2: ROS 2 コマンドによる走行・トピック通信確認
+```bash
+# 1. 台車の遠隔走行 (前進 0.2 m/s, 旋回 0.3 rad/s)
+ros2 topic pub /commands/velocity geometry_msgs/msg/Twist "{linear: {x: 0.2, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.3}}" -r 10
+
+# 2. オドメトリの確認
+ros2 topic echo /odom
+
+# 3. TF ツリーの確認 (base_footprint からカメラ先端まで一本で結合)
+ros2 run tf2_ros tf2_echo odom camera_color_optical_frame
+
+# 4. RealSense カメラ映像の受信確認
+ros2 run rqt_image_view rqt_image_view /camera/camera/color/image_raw
+```
+
+### Step 3: MoveIt 2 によるアーム制御確認
+```bash
+# MoveIt 2 Action で Piper アームを目標軌道へ駆動
+ros2 action send_goal /arm_controller/follow_joint_trajectory control_msgs/action/FollowJointTrajectory "{
+  trajectory: {
+    joint_names: ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6'],
+    points: [
+      { positions: [0.2, 0.3, -0.4, 0.2, 0.5, 0.0], time_from_start: { sec: 2, nanosec: 0 } },
+      { positions: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], time_from_start: { sec: 5, nanosec: 0 } }
+    ]
+  }
+}"
+```
+
+### Step 4: 地図作成 (SLAM)・自己位置推定・Nav2 自律移動
+1. **自己位置推定・SLAM**:
+   - オドメトリ (`/odom`) + TF (`odom` $\rightarrow$ `base_footprint`) はすでに完成済み。
+   - `slam_toolbox` または `cartographer` に `/scan` (LiDAR または Depth 画像変換) を入力して地図作成 (`/map`)。
+2. **Nav2 自律移動**:
+   - `nav2_bringup` を起動し、RViz 上で `2D Pose Estimate` と `Nav2 Goal` を指定して自律走行。
+
+---
+
+## 4. 別の開発 PC への移行・セットアップ手順
+
+別の PC で作業する場合のセットアップ手順：
+1. **リポジトリのクローン・配置**:
+   - `piper_ros` および `oit_kobuki_ws-main` を配置。
+2. **Docker コンテナ起動**:
+   ```bash
+   cd ~/piper_ros
+   ./RUN-DOCKER-CONTAINER.bash
+   ```
+3. **Unity プロジェクトの準備**:
+   - Unity 6 (6000.4.x) または Unity 2021.3+ で `unity-ros` プロジェクトを開く。
+   - `Assets/scripts/Kotyaka/` に C# スクリプト群、`Assets/URDF/mobile_manipulator/` に URDF と各メッシュ（`kobuki_description`, `piper_description`, `realsense2_description`）が配置されていることを確認。
+4. **URDF のインポート**:
+   - `mobile_manipulator.urdf` を `Axis: Y Axis`, `Convex Decomposer: Unity` でインポート。
+   - ロボットを選択して `[Kotyaka] -> [Setup Components on Selected Robot]` を実行。
+

@@ -55,6 +55,7 @@ from rclpy.qos import QoSProfile
 from geometry_msgs.msg import Twist, TransformStamped
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import JointState
+from std_msgs.msg import Empty
 from tf2_ros import TransformBroadcaster
 
 
@@ -118,9 +119,11 @@ class KobukiUnitySimNode(Node):
         self.odom_pub = self.create_publisher(Odometry, 'odom', 50)
         self.joint_state_pub = self.create_publisher(JointState, 'joint_states', 100)
 
-        # --- Subscriber: identical external interface to real hardware ---
+        # --- Subscribers: identical external interface to real hardware ---
         self.create_subscription(
             Twist, 'commands/velocity', self._cmd_vel_callback, QoSProfile(depth=10))
+        self.create_subscription(
+            Empty, 'commands/reset_odometry', self._reset_odometry_callback, QoSProfile(depth=10))
 
         # --- Unity bridge publisher/subscriber (internal, not part of the real HW interface) ---
         self.wheel_cmd_pub = self.create_publisher(JointState, '/kobuki_unity/wheel_cmd', 10)
@@ -130,6 +133,22 @@ class KobukiUnitySimNode(Node):
         self.tf_broadcaster = TransformBroadcaster(self)
 
         self.create_timer(1.0 / control_rate_hz, self._control_timer_callback)
+
+    # ------------------------------------------------------------------
+    # commands/reset_odometry (identical topic/type/QoS to real kobuki_node)
+    # ------------------------------------------------------------------
+    def _reset_odometry_callback(self, _msg: Empty) -> None:
+        """Reset odometry pose to origin (0, 0, 0), mirroring real kobuki_node."""
+        now = self.get_clock().now()
+        with self._odom_lock:
+            self._pose_x = 0.0
+            self._pose_y = 0.0
+            self._pose_theta = 0.0
+            self._prev_wheel_left_pos = None
+            self._prev_wheel_right_pos = None
+            self._prev_wheel_time = None
+        self._publish_odometry(now.to_msg(), 0.0, 0.0, 0.0, 0.0, 0.0)
+        self.get_logger().info("[Unity sim] Odometry reset to (0, 0, 0)")
 
     # ------------------------------------------------------------------
     # commands/velocity (identical topic/type/QoS to real kobuki_node)
@@ -245,7 +264,10 @@ class KobukiUnitySimNode(Node):
             vx = ds / dt
             wz = dtheta / dt
 
-        # Yaw-only quaternion (roll = pitch = 0, matches tf2::Quaternion::setRPY(0,0,theta)).
+        self._publish_odometry(stamp, x, y, theta, vx, wz)
+
+    def _publish_odometry(self, stamp, x: float, y: float, theta: float, vx: float, wz: float) -> None:
+        """Publish Odometry msg and broadcast TF."""
         qz = math.sin(theta / 2.0)
         qw = math.cos(theta / 2.0)
 
