@@ -5,8 +5,6 @@ using RosMessageTypes.Sensor;
 
 /// <summary>
 /// Kobuki モバイルベースの車輪駆動コントローラ (Unity 側)。
-/// ROS 側の /kobuki_unity/wheel_cmd (JointStateMsg) を購読し、
-/// 左右の車輪 (ArticulationBody) の目標角速度 (targetVelocity) を設定します。
 /// </summary>
 public class KobukiWheelController : MonoBehaviour
 {
@@ -23,9 +21,9 @@ public class KobukiWheelController : MonoBehaviour
 
     [Header("Drive Parameters")]
     [Tooltip("ドライブの減衰係数 (damping)")]
-    public float damping = 1000f;
+    public float damping = 2000f;
     [Tooltip("ドライブの最大トルク/力制限 (forceLimit)")]
-    public float forceLimit = 1000f;
+    public float forceLimit = 2000f;
 
     [Header("Topic Settings")]
     [SerializeField] private string topicName = "/kobuki_unity/wheel_cmd";
@@ -37,7 +35,6 @@ public class KobukiWheelController : MonoBehaviour
         ros = ROSConnection.GetOrCreateInstance();
         ros.Subscribe<JointStateMsg>(topicName, OnWheelCmdReceived);
 
-        // 未アサインの場合、子要素から自動検索を試みる
         AutoAssignWheelsIfMissing();
         ApplyDriveSettings();
     }
@@ -72,13 +69,16 @@ public class KobukiWheelController : MonoBehaviour
     {
         if (body == null) return;
 
-        // 車輪速度制御のため stiffness は 0 (速度目標追従)、damping を設定
         var drive = body.xDrive;
         drive.stiffness = 0f;
         drive.damping = damping;
         drive.forceLimit = forceLimit;
+        drive.targetVelocity = 0f; // 初期状態は完全停止
         drive.driveType = ArticulationDriveType.Velocity;
         body.xDrive = drive;
+
+        body.jointFriction = 5f;
+        body.angularDamping = 10f;
     }
 
     private void OnWheelCmdReceived(JointStateMsg msg)

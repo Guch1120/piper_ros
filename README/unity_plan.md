@@ -512,7 +512,10 @@ ros2 topic echo /piper_unity/joint_states
   - **役割**: 実機 Piper の CAN バス制御と FollowJointTrajectory Action サーバーを再現。
   - **動作**: MoveIt 2 からの関節軌道目標を受信して `/piper_unity/joint_cmd` を Unity へ送信。Unity から返る実関節角 `/piper_unity/joint_states` を上位の `/joint_states` や Action フィードバックとして配信。
 - **RealSense カメラ パブリッシャー (`RealSenseCameraPublisher.cs`)**:
-  - **役割**: Piper アーム先端（`gripper_base` / `camera_color_optical_frame`）の Unity カメラ映像を取得し、実機 RealSense D435i 完全互換トピック（`/camera/camera/color/image_raw`, `/camera/camera/color/camera_info`）を配信。
+  - **役割**: Piper アーム先端（`gripper_base` / `camera_color_optical_frame`）の Unity カメラ映像を取得し、実機 RealSense D435i 完全互換トピックを配信。
+  - **カラー画像**: `/camera/camera/color/image_raw` (`rgb8`), `/camera/camera/color/camera_info`
+  - **深度画像**: `/camera/camera/aligned_depth_to_color/image_raw` (`16UC1`, 単位: mm), `/camera/camera/aligned_depth_to_color/camera_info`
+  - **Display 2 出力**: Game ビューの Display 2 にリアルタイム描画しつつ、ROS 2 へも画像/深度を同時配信。
 
 ---
 
