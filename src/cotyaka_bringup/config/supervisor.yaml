@@ -1,0 +1,10 @@
+/cotyaka/system_supervisor:
+  ros__parameters:
+    joint_states_topic: /joint_states
+    odom_topic: /odom
+    required_nodes:
+      - /piper_ctrl_single_node
+      - /move_group
+      - /piper_moveit_bridge
+    heartbeat_timeout_sec: 3.0
+    startup_grace_sec: 15.0
