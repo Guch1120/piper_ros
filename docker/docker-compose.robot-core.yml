@@ -1,0 +1,65 @@
+services:
+  piper-robot-core:
+    build:
+      context: .
+      dockerfile: dockerfile.robot-core
+    image: cotyaka-piper-robot-core:humble
+    container_name: cotyaka-piper-robot-core
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    ipc: host
+    devices:
+      - /dev:/dev
+    environment:
+      ROS_DOMAIN_ID: "${ROS_DOMAIN_ID:-12}"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+      RCUTILS_COLORIZED_OUTPUT: "1"
+    volumes:
+      - ..:/ros2_ws:rw
+      - ../../oit_kobuki_ws-main:/home/kobuki_ws:ro
+      - /dev:/dev
+    working_dir: /ros2_ws
+    command: >-
+      bash -lc '
+        source /opt/ros/humble/setup.bash &&
+        if [ ! -f /ros2_ws/install/setup.bash ]; then
+          echo "[robot-core] workspace is not built: /ros2_ws/install/setup.bash not found" >&2;
+          exit 2;
+        fi &&
+        source /ros2_ws/install/setup.bash &&
+        exec ros2 launch cotyaka_bringup robot_core.launch.py
+      '
+
+  kobuki-robot-core:
+    build:
+      context: ../../
+      dockerfile: ./piper_ros/docker/dockerfile.kobuki
+    image: oit-kobuki-ws:humble
+    container_name: cotyaka-kobuki-robot-core
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    ipc: host
+    devices:
+      - /dev:/dev
+    environment:
+      ROS_DOMAIN_ID: "${ROS_DOMAIN_ID:-12}"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+      DBUS_SYSTEM_BUS_ADDRESS: unix:path=/run/dbus/system_bus_socket
+    volumes:
+      - ../../oit_kobuki_ws-main:/home/kobuki/kobuki_ws:rw
+      - /dev:/dev
+      - /dev/bus/usb:/dev/bus/usb
+      - /run/dbus:/run/dbus:rw
+    working_dir: /home/kobuki/kobuki_ws
+    command: >-
+      bash -lc '
+        source /opt/ros/humble/setup.bash &&
+        if [ ! -f /home/kobuki/kobuki_ws/install/setup.bash ]; then
+          echo "[kobuki-core] workspace is not built" >&2;
+          exit 2;
+        fi &&
+        source /home/kobuki/kobuki_ws/install/setup.bash &&
+        exec ros2 launch kobuki_node kobuki_node-launch.py
+      '
