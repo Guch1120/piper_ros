@@ -10,19 +10,17 @@ from std_msgs.msg import String
 
 
 class SystemSupervisor(LifecycleNode):
-    """Lifecycle-managed readiness gate for the Cotyaka robot core.
-
-    This node does not start hardware itself.  ROS launch/Compose own process
-    startup; the supervisor observes the ROS graph and publishes one system
-    state that upper layers can trust.
-    """
+    """Lifecycle-managed readiness gate for the Cotyaka robot core."""
 
     def __init__(self):
         super().__init__('system_supervisor', namespace='/cotyaka')
 
         self.declare_parameter('joint_states_topic', '/joint_states')
         self.declare_parameter('odom_topic', '/odom')
-        self.declare_parameter('required_nodes', ['/piper_ctrl_single_node', '/move_group'])
+        self.declare_parameter(
+            'required_nodes',
+            ['/piper_ctrl_single_node', '/move_group', '/piper_moveit_bridge'],
+        )
         self.declare_parameter('heartbeat_timeout_sec', 3.0)
         self.declare_parameter('startup_grace_sec', 10.0)
 
@@ -38,6 +36,7 @@ class SystemSupervisor(LifecycleNode):
         self._last_odom = None
         self._activated_at = None
         self._last_state = None
+        self._last_missing_nodes = None
 
     def on_configure(self, state: State) -> TransitionCallbackReturn:
         joint_topic = self.get_parameter('joint_states_topic').value
@@ -53,20 +52,19 @@ class SystemSupervisor(LifecycleNode):
         return TransitionCallbackReturn.SUCCESS
 
     def on_activate(self, state: State) -> TransitionCallbackReturn:
-        super().on_activate(state)
+        result = super().on_activate(state)
         self._activated_at = time.monotonic()
         self._timer = self.create_timer(0.5, self._evaluate)
         self._publish_state('BOOTING')
         self.get_logger().info('Supervisor activated')
-        return TransitionCallbackReturn.SUCCESS
+        return result
 
     def on_deactivate(self, state: State) -> TransitionCallbackReturn:
         self._publish_state('INACTIVE')
         if self._timer is not None:
             self.destroy_timer(self._timer)
             self._timer = None
-        super().on_deactivate(state)
-        return TransitionCallbackReturn.SUCCESS
+        return super().on_deactivate(state)
 
     def on_cleanup(self, state: State) -> TransitionCallbackReturn:
         if self._joint_sub is not None:
@@ -77,6 +75,7 @@ class SystemSupervisor(LifecycleNode):
             self._odom_sub = None
         self._last_joint = None
         self._last_odom = None
+        self._last_missing_nodes = None
         return TransitionCallbackReturn.SUCCESS
 
     def _on_joint_state(self, _msg: JointState) -> None:
@@ -95,28 +94,33 @@ class SystemSupervisor(LifecycleNode):
             f'{ns.rstrip("/")}/{name}' if ns != '/' else f'/{name}'
             for name, ns in self.get_node_names_and_namespaces()
         }
-        missing_nodes = sorted(required_nodes - graph_nodes)
+        missing_nodes = tuple(sorted(required_nodes - graph_nodes))
+
+        if missing_nodes != self._last_missing_nodes:
+            if missing_nodes:
+                self.get_logger().warn(f'Missing required nodes: {list(missing_nodes)}')
+            self._last_missing_nodes = missing_nodes
 
         joint_ok = self._last_joint is not None and now - self._last_joint <= timeout
         odom_ok = self._last_odom is not None and now - self._last_odom <= timeout
 
         if not joint_ok:
-            state = 'WAITING_PIPER'
+            system_state = 'WAITING_PIPER'
         elif not odom_ok:
-            state = 'WAITING_KOBUKI'
+            system_state = 'WAITING_KOBUKI'
         elif missing_nodes:
-            state = 'WAITING_ROS_GRAPH'
+            system_state = 'WAITING_ROS_GRAPH'
         else:
-            state = 'READY'
+            system_state = 'READY'
 
-        if self._activated_at is not None and now - self._activated_at > grace:
-            if state != 'READY':
-                state = 'DEGRADED:' + state
+        if (
+            self._activated_at is not None
+            and now - self._activated_at > grace
+            and system_state != 'READY'
+        ):
+            system_state = 'DEGRADED:' + system_state
 
-        self._publish_state(state)
-
-        if missing_nodes and state != self._last_state:
-            self.get_logger().warn(f'Missing required nodes: {missing_nodes}')
+        self._publish_state(system_state)
 
     def _publish_state(self, value: str) -> None:
         if value == self._last_state:
