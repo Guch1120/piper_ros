@@ -23,6 +23,7 @@ setup(
     entry_points={
         'console_scripts': [
             'kobuki_unity_sim = kobuki_unity.kobuki_unity_sim_node:main',
+            'cmd_vel_relay = kobuki_unity.cmd_vel_relay:main',
         ],
     },
 )

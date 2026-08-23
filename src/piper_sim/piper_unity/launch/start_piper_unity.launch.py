@@ -1,7 +1,8 @@
 import os
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.conditions import UnlessCondition
+from launch.substitutions import IfElseSubstitution, LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 from moveit_configs_utils import MoveItConfigsBuilder
 from moveit_configs_utils.launch_utils import add_debuggable_node, DeclareBooleanLaunchArg
@@ -26,6 +27,11 @@ def generate_launch_description():
     ld.add_action(DeclareLaunchArgument(
         'gripper_exist', default_value='true',
         description='Whether gripper is present.'))
+    ld.add_action(DeclareLaunchArgument(
+        'composite_mode', default_value='false',
+        description=(
+            'Run as the Piper arm component of a mobile_manipulator. '
+            'Disables the standalone Piper RSP and endpoint.')))
     ld.add_action(DeclareBooleanLaunchArg("debug", default_value=False))
     ld.add_action(DeclareBooleanLaunchArg("allow_trajectory_execution", default_value=True))
     ld.add_action(DeclareBooleanLaunchArg("publish_monitored_planning_scene", default_value=True))
@@ -41,6 +47,7 @@ def generate_launch_description():
         executable="robot_state_publisher",
         output="screen",
         parameters=[moveit_config.robot_description],
+        condition=UnlessCondition(LaunchConfiguration('composite_mode')),
     ))
 
     # 2. move_group (MoveIt2)
@@ -71,6 +78,13 @@ def generate_launch_description():
         parameters=move_group_params,
         extra_debug_args=["--debug"],
         additional_env={"DISPLAY": ":0"},
+        remappings=[(
+            'joint_states',
+            IfElseSubstitution(
+                PythonExpression(["'", LaunchConfiguration('composite_mode'), "' == 'true'"]),
+                '/piper_unity/joint_states',
+                '/joint_states')),
+        ],
     )
 
     # 3. RViz
@@ -111,6 +125,7 @@ def generate_launch_description():
         executable='default_server_endpoint',
         emulate_tty=True,
         parameters=[{'ROS_IP': '0.0.0.0'}, {'ROS_TCP_PORT': 10000}],
+        condition=UnlessCondition(LaunchConfiguration('composite_mode')),
     ))
 
     return ld

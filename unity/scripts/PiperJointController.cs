@@ -6,10 +6,9 @@ using RosMessageTypes.Sensor;
 /// <summary>
 /// Piper アームの関節駆動コントローラ (Unity 側)。
 /// 
-/// 完全静止・即時初期化設計:
-///   1. Awake() / Start() で全コライダーの自己衝突を無効化。
-///   2. コルーチン待機を完全に撤廃し、1フレーム目から全関節の driveType = Target, target = 0, stiffness/damping を即時同期適用。
-///   3. useGravity = false で重力落下を完全防止。
+/// 制御方式:
+///   1. Start() で各 ArticulationBody の xDrive に適切な剛性 (stiffness)・減衰 (damping)・driveType=Target を設定
+///   2. ROS 2 (/piper_unity/joint_cmd) からの JointStateMsg 受信時に drive.target を更新し、PD サーボ制御でスムーズに駆動
 /// </summary>
 public class PiperJointController : MonoBehaviour
 {
@@ -18,50 +17,36 @@ public class PiperJointController : MonoBehaviour
 
     [Header("PD Drive Settings")]
     [Tooltip("関節の保持剛性 (Stiffness)")]
-    public float stiffness  = 20000f;
+    public float stiffness  = 50000f;
     [Tooltip("関節の減衰 (Damping)")]
-    public float damping    = 1000f;
+    public float damping    = 2000f;
     [Tooltip("最大トルク制限 (Force Limit)")]
-    public float forceLimit = 2000f;
+    public float forceLimit = 5000f;
 
     private ROSConnection ros;
     private const string CmdTopic = "/piper_unity/joint_cmd";
 
     void Awake()
     {
-        // 1. ロボット内部パーツ同士の自己衝突を無効化（めり込み反発力を排除）
-        IgnoreSelfCollisions();
-
-        // 2. 関節の自動検索
-        if (joints == null || joints.Length == 0)
-        {
-            AutoAssignJointsIfMissing();
-        }
-
-        // 3. 1フレーム目から即座に初期姿勢を固定
-        LockAllJointsImmediately();
+        AutoAssignJointsIfMissing();
     }
 
     void Start()
     {
         ros = ROSConnection.GetOrCreateInstance();
         ros.Subscribe<JointStateMsg>(CmdTopic, OnJointCmd);
+
+        AutoAssignJointsIfMissing();
+        ApplyDriveSettingsToAllJoints();
     }
 
-    private void IgnoreSelfCollisions()
+    public void ApplyDriveSettingsToAllJoints()
     {
-        var colliders = GetComponentsInChildren<Collider>();
-        for (int i = 0; i < colliders.Length; i++)
+        if (joints == null || joints.Length == 0)
         {
-            for (int j = i + 1; j < colliders.Length; j++)
-            {
-                Physics.IgnoreCollision(colliders[i], colliders[j], true);
-            }
+            AutoAssignJointsIfMissing();
         }
-    }
 
-    private void LockAllJointsImmediately()
-    {
         if (joints == null) return;
 
         for (int i = 0; i < joints.Length; i++)
@@ -79,11 +64,9 @@ public class PiperJointController : MonoBehaviour
             drive.damping    = damping;
             drive.forceLimit = forceLimit;
             drive.driveType  = ArticulationDriveType.Target;
-            drive.target     = 0f; // 初期ゼロ位置に即座に固定
             drive.targetVelocity = 0f;
             body.xDrive = drive;
 
-            // 速度のリセット
             if (body.dofCount > 0)
             {
                 body.jointVelocity = new ArticulationReducedSpace(0f);
