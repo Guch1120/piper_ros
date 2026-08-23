@@ -15,10 +15,10 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='Guch1120',
-    maintainer_email='guch1120@example.com',
+    maintainer='root',
+    maintainer_email='root@todo.todo',
     description='Bringup and supervision package for Cotyaka.',
-    license='MIT',
+    license='Apache-2.0',
     entry_points={
         'console_scripts': [
             'system_supervisor = cotyaka_bringup.system_supervisor:main',
