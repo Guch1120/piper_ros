@@ -3,6 +3,7 @@ import time
 import rclpy
 from lifecycle_msgs.msg import State
 from nav_msgs.msg import Odometry
+from rclpy.executors import MultiThreadedExecutor
 from rclpy.lifecycle import LifecycleNode, TransitionCallbackReturn
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import JointState
@@ -135,7 +136,7 @@ class SystemSupervisor(LifecycleNode):
 def main(args=None):
     rclpy.init(args=args)
     node = SystemSupervisor()
-    executor = rclpy.executors.MultiThreadedExecutor()
+    executor = MultiThreadedExecutor()
     executor.add_node(node)
     try:
         executor.spin()
