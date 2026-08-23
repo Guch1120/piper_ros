@@ -3,8 +3,8 @@
   <name>cotyaka_bringup</name>
   <version>0.1.0</version>
   <description>Bringup and supervision package for the Cotyaka mobile manipulator.</description>
-  <maintainer email="guch1120@example.com">Guch1120</maintainer>
-  <license>MIT</license>
+  <maintainer email="root@todo.todo">root</maintainer>
+  <license>Apache-2.0</license>
 
   <buildtool_depend>ament_python</buildtool_depend>
 
