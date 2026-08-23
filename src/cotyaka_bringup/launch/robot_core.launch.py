@@ -1,3 +1,5 @@
+import os
+
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import EmitEvent, IncludeLaunchDescription, RegisterEventHandler
@@ -16,7 +18,7 @@ def generate_launch_description():
 
     piper_driver = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            [piper_share, '/launch/start_single_moveit_piper.launch.py']
+            os.path.join(piper_share, 'launch', 'start_single_moveit_piper.launch.py')
         ),
         launch_arguments={
             'can_port': 'can0',
@@ -26,11 +28,15 @@ def generate_launch_description():
     )
 
     moveit_rsp = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([moveit_share, '/launch/rsp.launch.py'])
+        PythonLaunchDescriptionSource(
+            os.path.join(moveit_share, 'launch', 'rsp.launch.py')
+        )
     )
 
     move_group = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([moveit_share, '/launch/move_group.launch.py'])
+        PythonLaunchDescriptionSource(
+            os.path.join(moveit_share, 'launch', 'move_group.launch.py')
+        )
     )
 
     moveit_bridge = Node(
@@ -46,7 +52,7 @@ def generate_launch_description():
         name='system_supervisor',
         namespace='/cotyaka',
         output='screen',
-        parameters=[bringup_share + '/config/supervisor.yaml'],
+        parameters=[os.path.join(bringup_share, 'config', 'supervisor.yaml')],
     )
 
     configure_supervisor = RegisterEventHandler(
