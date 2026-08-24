@@ -214,7 +214,16 @@ class KobukiUnitySimNode(Node):
         right_vel = msg.velocity[ri] if ri < len(msg.velocity) else 0.0
 
         now = self.get_clock().now()
-        stamp = now.to_msg()
+        # Unity が付けた wall-clock stamp を odom/TF に引き継ぎ、scan と同じ
+        # センサー時刻系列にする。無効な stamp の古い入力だけ受信時刻へ戻す。
+        message_stamp_sec = float(msg.header.stamp.sec) + \
+            float(msg.header.stamp.nanosec) * 1e-9
+        if message_stamp_sec > 0.0:
+            sample_time_sec = message_stamp_sec
+            stamp = msg.header.stamp
+        else:
+            sample_time_sec = now.nanoseconds / 1e9
+            stamp = now.to_msg()
 
         # joint_states: forward Unity's actual wheel state as-is
         # (identical topic name/type to real hardware).
@@ -237,15 +246,15 @@ class KobukiUnitySimNode(Node):
                 # First sample: nothing to differentiate yet.
                 self._prev_wheel_left_pos = left_pos
                 self._prev_wheel_right_pos = right_pos
-                self._prev_wheel_time = now
+                self._prev_wheel_time = sample_time_sec
                 return
 
-            dt = (now - self._prev_wheel_time).nanoseconds / 1e9
+            dt = sample_time_sec - self._prev_wheel_time
             dl = left_pos - self._prev_wheel_left_pos
             dr = right_pos - self._prev_wheel_right_pos
             self._prev_wheel_left_pos = left_pos
             self._prev_wheel_right_pos = right_pos
-            self._prev_wheel_time = now
+            self._prev_wheel_time = sample_time_sec
 
             if dt <= 0.0:
                 return
