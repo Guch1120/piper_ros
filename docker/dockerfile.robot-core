@@ -1,0 +1,36 @@
+FROM ros:humble-ros-base-jammy
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Tokyo
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    can-utils \
+    ethtool \
+    git \
+    iproute2 \
+    net-tools \
+    python3-colcon-common-extensions \
+    python3-pip \
+    python3-rosdep \
+    ros-humble-controller-manager \
+    ros-humble-moveit \
+    ros-humble-robot-state-publisher \
+    ros-humble-ros2-control \
+    ros-humble-ros2-controllers \
+    ros-humble-xacro \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --no-cache-dir \
+    python-can \
+    scipy==1.11.4 \
+    piper_sdk
+
+RUN mkdir -p /ros2_ws/src
+WORKDIR /ros2_ws
+
+RUN echo 'source /opt/ros/humble/setup.bash' >> /root/.bashrc
+RUN git config --global --add safe.directory /ros2_ws
+
+CMD ["sleep", "infinity"]

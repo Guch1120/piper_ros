@@ -1,0 +1,6 @@
+{
+  "startup_full": "PiperとKobukiの接続を確認しました。すべてのロボットコアを起動しました。",
+  "startup_piper_only": "Kobukiの接続を確認できませんでした。Piperのみで起動しています。",
+  "startup_kobuki_only": "Piperの接続を確認できませんでした。Kobukiのみで起動しています。",
+  "startup_no_robot": "PiperとKobukiの接続を確認できませんでした。監視機能のみ起動しています。"
+}
