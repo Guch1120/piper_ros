@@ -127,7 +127,7 @@ Unity 側の ROS-TCP-Connector 連携用 C# スクリプトを `unity/scripts/` 
    source /opt/ros/humble/setup.bash
    source /home/kobuki_ws/install/setup.bash
    source /ros2_ws/install/setup.bash
-   ros2 launch mobile_manipulator_description view_mobile_manipulator_unity.launch.py
+   ros2 launch kobuki_unity view_mobile_manipulator_unity.launch.py
    ```
    - Unity Editor で Play ボタンを押下。
    - RealSense 画像トピックの受信確認:
@@ -149,4 +149,3 @@ Unity 側の ROS-TCP-Connector 連携用 C# スクリプトを `unity/scripts/` 
 - [x] ROS 2 側: Docker コンテナ内での自動統合テストスイート実装・全件合格検証 (`test_kobuki_unity_integration.py`)
 - [ ] Unity 側: 実機寸法の実測値計測および URDF パラメータ反映（※ユーザー側で実施）
 - [ ] （将来検討）自律移動・Nav2 / Nav Goal 対応方式の選定
-

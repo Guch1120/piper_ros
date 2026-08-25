@@ -19,7 +19,7 @@ services:
     command: >-
       bash -lc '
         source /opt/ros/humble/setup.bash &&
-        source /ros2_ws/install/setup.bash &&
+        source /ros2_ws/install/robot_core/setup.bash &&
         exec ros2 launch cotyaka_system system_monitor.launch.py
           expect_piper:=${COTYAKA_EXPECT_PIPER:-false}
           expect_kobuki:=${COTYAKA_EXPECT_KOBUKI:-false}
@@ -53,7 +53,7 @@ services:
     command: >-
       bash -lc '
         source /opt/ros/humble/setup.bash &&
-        source /ros2_ws/install/setup.bash &&
+        source /ros2_ws/install/robot_core/setup.bash &&
         exec ros2 run cotyaka_audio audio_node --ros-args
           -p cache_dir:=/opt/cotyaka/audio/cache
           -p messages_file:=/opt/cotyaka/audio/config/startup_messages.json
@@ -83,13 +83,13 @@ services:
       RCUTILS_COLORIZED_OUTPUT: "1"
     volumes:
       - ..:/ros2_ws:rw
-      - ../../oit_kobuki_ws-main:/home/kobuki_ws:ro
+      - ../../oit_kobuki_ws-main:/home/kobuki/kobuki_ws:ro
       - /dev:/dev
     working_dir: /ros2_ws
     command: >-
       bash -lc '
         source /opt/ros/humble/setup.bash &&
-        source /ros2_ws/install/setup.bash &&
+        source /ros2_ws/install/robot_core/setup.bash &&
         exec ros2 launch cotyaka_bringup piper_core.launch.py
       '
 
@@ -118,6 +118,6 @@ services:
     command: >-
       bash -lc '
         source /opt/ros/humble/setup.bash &&
-        source /home/kobuki/kobuki_ws/install/setup.bash &&
+        source /home/kobuki/kobuki_ws/install/robot_core/setup.bash &&
         exec ros2 launch kobuki_node kobuki_node-launch.py
       '

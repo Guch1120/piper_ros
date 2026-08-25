@@ -19,7 +19,7 @@ compose() { docker compose -f "$COMPOSE_FILE" "$@"; }
 common_preflight() {
   command -v docker >/dev/null || { log "docker command not found"; exit 1; }
   docker info >/dev/null 2>&1 || { log "Docker daemon is not available"; exit 1; }
-  [[ -f "$REPO_DIR/install/setup.bash" ]] || {
+  [[ -f "$REPO_DIR/install/robot_core/setup.bash" ]] || {
     log "Cotyaka workspace is not built. Run scripts/setup_robot_core.sh first."
     exit 1
   }
@@ -83,12 +83,12 @@ probe_components() {
 }
 
 validate_selected_workspaces() {
-  if [[ "$PIPER_DETECTED" == true && ! -f "$REPO_DIR/install/setup.bash" ]]; then
+  if [[ "$PIPER_DETECTED" == true && ! -f "$REPO_DIR/install/robot_core/setup.bash" ]]; then
     log "Piper/Cotyaka workspace is not built"
     exit 1
   fi
-  if [[ "$KOBUKI_DETECTED" == true && ! -f "$KOBUKI_WS/install/setup.bash" ]]; then
-    log "Kobuki workspace is not built: $KOBUKI_WS/install/setup.bash"
+  if [[ "$KOBUKI_DETECTED" == true && ! -f "$KOBUKI_WS/install/robot_core/setup.bash" ]]; then
+    log "Kobuki workspace is not built: $KOBUKI_WS/install/robot_core/setup.bash"
     exit 1
   fi
 }

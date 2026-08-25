@@ -522,7 +522,7 @@ ros2 topic echo /piper_unity/joint_states
 ## 2. 起動 launch ファイル (`view_mobile_manipulator_unity.launch.py`) の詳細
 
 ```text
-ros2 launch mobile_manipulator_description view_mobile_manipulator_unity.launch.py
+ros2 launch kobuki_unity view_mobile_manipulator_unity.launch.py
   ├─ [default_server_endpoint]      ROS-TCP-Endpoint (TCP: 10000)
   ├─ [kobuki_unity_sim_node]        Kobuki 運動学・オドメトリ・TF・リセット
   ├─ [piper_unity_sim_node]         Piper MoveIt2 アクションサーバー・JointState
@@ -549,7 +549,7 @@ source /opt/ros/humble/setup.bash
 source /home/kobuki_ws/install/setup.bash
 source /ros2_ws/install/setup.bash
 
-ros2 launch mobile_manipulator_description view_mobile_manipulator_unity.launch.py
+ros2 launch kobuki_unity view_mobile_manipulator_unity.launch.py
 ```
 - Unity Editor で **Play (再生 ▶)** ボタンを押下（左上に `ROS connected` 表示）。
 
@@ -607,4 +607,3 @@ ros2 action send_goal /arm_controller/follow_joint_trajectory control_msgs/actio
 4. **URDF のインポート**:
    - `mobile_manipulator.urdf` を `Axis: Y Axis`, `Convex Decomposer: Unity` でインポート。
    - ロボットを選択して `[Kotyaka] -> [Setup Components on Selected Robot]` を実行。
-

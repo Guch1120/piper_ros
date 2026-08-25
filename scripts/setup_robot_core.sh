@@ -20,22 +20,71 @@ docker compose -f "$COMPOSE_FILE" pull cotyaka-voicevox
 log "Building Robot Core, System Monitor and Audio container images"
 docker compose -f "$COMPOSE_FILE" build
 
-log "Installing dependencies and building Piper/Cotyaka workspace"
-docker compose -f "$COMPOSE_FILE" run --rm --no-deps piper-robot-core bash -lc '
-  set -e
-  source /opt/ros/humble/setup.bash
-  rosdep update
-  rosdep install -i --from-path src --rosdistro humble -y
-  colcon build --symlink-install
-'
-
-log "Installing dependencies and building Kobuki workspace"
+log "Installing dependencies and building Kobuki Robot Core workspace"
 docker compose -f "$COMPOSE_FILE" run --rm --no-deps kobuki-robot-core bash -lc '
   set -e
   source /opt/ros/humble/setup.bash
+  apt-get update
   rosdep update
-  rosdep install -i --from-path src --rosdistro humble -y
-  colcon build --symlink-install --executor sequential
+  mapfile -t robot_core_paths < <(
+    colcon list --paths-only --packages-up-to \
+      kobuki_node \
+      kobuki_description \
+      kobuki_safety_controller \
+      nav2_bringup \
+      slam_toolbox \
+      urg_node2
+  )
+  rosdep install -i --from-paths "${robot_core_paths[@]}" --rosdistro humble -y
+  colcon --log-base log/robot_core build \
+    --build-base build/robot_core \
+    --install-base install/robot_core \
+    --symlink-install \
+    --executor sequential \
+    --cmake-args -DBUILD_TESTING=OFF \
+    --packages-up-to \
+      kobuki_node \
+      kobuki_description \
+      kobuki_safety_controller \
+      nav2_bringup \
+      slam_toolbox \
+      urg_node2
+'
+
+log "Installing dependencies and building Piper/Cotyaka Robot Core workspace"
+docker compose -f "$COMPOSE_FILE" run --rm --no-deps piper-robot-core bash -lc '
+  set -e
+  source /opt/ros/humble/setup.bash
+  source /home/kobuki/kobuki_ws/install/robot_core/setup.bash
+  apt-get update
+  rosdep update
+  mapfile -t robot_core_paths < <(
+    colcon list --paths-only --packages-up-to \
+      cotyaka_bringup \
+      cotyaka_system \
+      cotyaka_audio
+  )
+  rosdep install -i \
+    --from-paths \
+      "${robot_core_paths[@]}" \
+      src/mobile_manipulator_description \
+      /home/kobuki/kobuki_ws/src/kobuki_ros/kobuki_description \
+    --rosdistro humble \
+    -y
+  colcon --log-base log/robot_core build \
+    --build-base build/robot_core \
+    --install-base install/robot_core \
+    --symlink-install \
+    --packages-up-to \
+      cotyaka_bringup \
+      cotyaka_system \
+      cotyaka_audio
+  source install/robot_core/setup.bash
+  colcon --log-base log/robot_core build \
+    --build-base build/robot_core \
+    --install-base install/robot_core \
+    --symlink-install \
+    --packages-select mobile_manipulator_description
 '
 
 log "Setup complete. If /dev/kobuki is absent, unplug/replug the Kobuki USB cable."
