@@ -1,4 +1,56 @@
 services:
+  cotyaka-system-monitor:
+    build:
+      context: .
+      dockerfile: dockerfile.system-monitor
+    image: cotyaka-system-monitor:humble
+    container_name: cotyaka-system-monitor
+    restart: unless-stopped
+    network_mode: host
+    ipc: host
+    environment:
+      ROS_DOMAIN_ID: "${ROS_DOMAIN_ID:-12}"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+      COTYAKA_EXPECT_PIPER: "${COTYAKA_EXPECT_PIPER:-false}"
+      COTYAKA_EXPECT_KOBUKI: "${COTYAKA_EXPECT_KOBUKI:-false}"
+    volumes:
+      - ..:/ros2_ws:ro
+    working_dir: /ros2_ws
+    command: >-
+      bash -lc '
+        source /opt/ros/humble/setup.bash &&
+        source /ros2_ws/install/setup.bash &&
+        exec ros2 launch cotyaka_system system_monitor.launch.py
+          expect_piper:=${COTYAKA_EXPECT_PIPER:-false}
+          expect_kobuki:=${COTYAKA_EXPECT_KOBUKI:-false}
+      '
+
+  cotyaka-audio:
+    build:
+      context: .
+      dockerfile: dockerfile.audio
+    image: cotyaka-audio:humble
+    container_name: cotyaka-audio
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    ipc: host
+    environment:
+      ROS_DOMAIN_ID: "${ROS_DOMAIN_ID:-12}"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+    volumes:
+      - ..:/ros2_ws:ro
+      - /dev:/dev:rw
+    working_dir: /ros2_ws
+    command: >-
+      bash -lc '
+        source /opt/ros/humble/setup.bash &&
+        source /ros2_ws/install/setup.bash &&
+        exec ros2 run cotyaka_audio audio_node --ros-args
+          -p audio_dir:=/ros2_ws/audio/assets
+          -p tts_lang:=ja
+      '
+
   piper-robot-core:
     build:
       context: .
@@ -23,12 +75,8 @@ services:
     command: >-
       bash -lc '
         source /opt/ros/humble/setup.bash &&
-        if [ ! -f /ros2_ws/install/setup.bash ]; then
-          echo "[robot-core] workspace is not built: /ros2_ws/install/setup.bash not found" >&2;
-          exit 2;
-        fi &&
         source /ros2_ws/install/setup.bash &&
-        exec ros2 launch cotyaka_bringup robot_core.launch.py
+        exec ros2 launch cotyaka_bringup piper_core.launch.py
       '
 
   kobuki-robot-core:
@@ -56,10 +104,6 @@ services:
     command: >-
       bash -lc '
         source /opt/ros/humble/setup.bash &&
-        if [ ! -f /home/kobuki/kobuki_ws/install/setup.bash ]; then
-          echo "[kobuki-core] workspace is not built" >&2;
-          exit 2;
-        fi &&
         source /home/kobuki/kobuki_ws/install/setup.bash &&
         exec ros2 launch kobuki_node kobuki_node-launch.py
       '

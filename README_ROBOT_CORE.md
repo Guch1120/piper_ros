@@ -1,145 +1,152 @@
-# Cotyaka Robot Core 自動起動
+# Cotyaka 自動起動 / Robot Core / System Monitor / Audio
 
-NUC 上でコチャカの Robot Core を自動起動するための構成です。
+NUC 上でコチャカを電源投入後に自動起動するための構成です。
 
-## 起動シーケンス
+## 設計方針
+
+Robot Core と監視系を分離します。
 
 ```text
 systemd
-  -> scripts/robot_core.sh preflight
-       -> Docker daemon確認
-       -> CAN(can0/1Mbps)設定・確認
-       -> workspace build済み確認
-  -> docker compose
-       -> piper-robot-core
-       -> kobuki-robot-core
-  -> ROS 2 launch (piper-robot-core)
-       -> Piper driver
-       -> robot_state_publisher
-       -> MoveIt move_group
-       -> piper_moveit_bridge
-       -> system_supervisor (LifecycleNode)
-  -> Lifecycle
-       unconfigured -> inactive -> active
-  -> Supervisor
-       BOOTING
-       WAITING_PIPER
-       WAITING_KOBUKI
-       WAITING_ROS_GRAPH
-       READY
+  -> host bootstrap (scripts/robot_core.sh)
+       -> Docker確認
+       -> Piper接続確認
+       -> Kobuki接続確認
+       -> 今回起動する hardware core を決定
+  -> Docker Compose
+       -> cotyaka-audio          (常時)
+       -> cotyaka-system-monitor (常時)
+       -> piper-robot-core       (Piper検出時のみ)
+       -> kobuki-robot-core      (Kobuki検出時のみ)
+  -> ROS 2
+       -> System Monitor は LifecycleNode として独立監視
+       -> Robot Core は監視ノードを含まない
 ```
 
-`systemd` の active は「Composeの起動要求が成功した」ことを意味します。ロボット全体が使用可能かどうかの最終判定は `/cotyaka/system_state` を使用します。
+接続されていないロボットを故障扱いして起動全体を失敗させません。
 
-## 追加ファイル
+- Piper + Kobuki 接続: 両方起動
+- Piper のみ接続: Piper のみ起動
+- Kobuki のみ接続: Kobuki のみ起動
+- どちらも未接続: Audio + System Monitor のみ起動
 
-- `docker/dockerfile.robot-core`: GPU非搭載NUC向けCPU-only ROS 2 image
-- `docker/docker-compose.robot-core.yml`: Piper/Kobuki Robot Core stack
-- `src/cotyaka_bringup/`: ROS 2 bringup + Lifecycle Supervisor
-- `scripts/setup_robot_core.sh`: 初回build
-- `scripts/robot_core.sh`: preflight/start/stop/status/logs
-- `systemd/cotyaka-robot-core.service`: OS boot連携
-- `systemd/robot-core.env.example`: NUC固有設定
-- `scripts/install_robot_core_service.sh`: systemd導入補助
+## 接続判定
 
-## 前提ディレクトリ
+### Piper
 
-Composeの既存構成に合わせ、Piper workspaceとKobuki workspaceを兄弟ディレクトリとして配置します。
+Linux上のCAN interfaceを確認し、`can_activate.sh` で `can0 / 1 Mbps` を設定した後、デフォルトでは `candump` でCAN frameを1つ確認します。
 
 ```text
-<parent>/
-  piper_ros/
-  oit_kobuki_ws-main/
+PIPER_PROBE_MODE=can-traffic
 ```
 
-## 1. 初回セットアップ
+CAN adapterの存在だけを接続扱いにしたい場合は `/etc/cotyaka/robot-core.env` で次に変更できます。
 
-`fix-humble-dev` から本構成を含むブランチをcheckout後、NUCで次を実行します。
+```text
+PIPER_PROBE_MODE=adapter
+```
+
+### Kobuki
+
+Kobukiのudev ruleによる `/dev/kobuki` の存在を確認します。別pathなら設定を変更します。
+
+```text
+KOBUKI_DEVICE=/dev/kobuki
+```
+
+## System Monitor
+
+System Monitorは `piper-robot-core` から分離された `cotyaka-system-monitor` コンテナで常時起動します。Lifecycleは `unconfigured -> inactive -> active` です。
+
+状態topic:
+
+```text
+/cotyaka/system_state
+```
+
+`std_msgs/String` 内にJSONを格納します。状態は `STARTING`, `READY_FULL`, `READY_PIPER_ONLY`, `READY_KOBUKI_ONLY`, `NO_ROBOT`, `DEGRADED` です。
+
+Piperは `/joint_states` と Piper/MoveIt/bridge のROS graphを監視し、Kobukiは現段階では `/odom` の更新を監視します。
+
+## Audio container
+
+`cotyaka-audio` は起動時に常に立ち上げ、Robot Coreとは独立させます。音声出力は2経路です。
+
+### 固定MP3
+
+Topic:
+
+```text
+/cotyaka/audio/play_mp3
+```
+
+定型keyは `startup_full`, `startup_piper_only`, `startup_kobuki_only`, `startup_no_robot` です。MP3は次に配置します。
+
+```text
+audio/assets/startup_full.mp3
+audio/assets/startup_piper_only.mp3
+audio/assets/startup_kobuki_only.mp3
+audio/assets/startup_no_robot.mp3
+```
+
+固定MP3が存在する場合はTTSより優先します。
+
+### TTS
+
+Topic:
+
+```text
+/cotyaka/audio/speak
+```
+
+任意文を `std_msgs/String` で送信します。
 
 ```bash
-cd /path/to/piper_ros
+ros2 topic pub --once /cotyaka/audio/speak std_msgs/msg/String "data: '動作確認を開始します'"
+```
+
+TTSはgTTSを第一経路として使用し、利用できない場合は`espeak-ng`日本語音声へフォールバックします。固定MP3が未配置の場合も起動通知はTTSへフォールバックします。
+
+System MonitorがREADYになった時点で一度だけ起動状態を告知します。Audio failureはRobot Coreの停止条件にはしません。
+
+## 初回セットアップ
+
+```bash
 bash scripts/setup_robot_core.sh
 ```
 
-これはDocker imageのbuild、ROS依存関係の解決、Piper/Cotyaka workspaceとKobuki workspaceの`colcon build`を行います。通常の電源投入時にはbuildしません。
+Robot Core, System Monitor, Audio imageと各ROS workspaceを構築します。
 
-## 2. systemdへ登録
-
-```bash
-sudo bash scripts/install_robot_core_service.sh
-```
-
-必要なら次を編集します。
+## 手動確認
 
 ```bash
-sudo nano /etc/cotyaka/robot-core.env
-```
-
-既定値:
-
-```text
-ROS_DOMAIN_ID=12
-CAN_INTERFACE=can0
-CAN_BITRATE=1000000
-```
-
-## 3. 手動テスト
-
-自動起動を有効化する前後で、次のコマンドから個別確認できます。
-
-```bash
-bash scripts/robot_core.sh preflight
+bash scripts/robot_core.sh probe
 bash scripts/robot_core.sh up
 bash scripts/robot_core.sh status
 bash scripts/robot_core.sh logs
 bash scripts/robot_core.sh down
 ```
 
-## 4. systemd操作
+## systemd
 
 ```bash
-sudo systemctl start cotyaka-robot-core
-sudo systemctl stop cotyaka-robot-core
-sudo systemctl restart cotyaka-robot-core
+sudo bash scripts/install_robot_core_service.sh
+```
+
+設定は `/etc/cotyaka/robot-core.env` に保存されます。
+
+```bash
 systemctl status cotyaka-robot-core
 journalctl -u cotyaka-robot-core -f
 ```
 
-`install_robot_core_service.sh` は `systemctl enable` まで行うため、その後のOS起動から自動起動されます。
+systemdの`active`はbootstrap/Compose起動完了を表します。実際に使用可能なRobot Coreは `/cotyaka/system_state` を参照します。
 
-## 5. ROS側のREADY確認
+## 実機確認が必要な点
 
-```bash
-docker exec -it cotyaka-piper-robot-core bash -lc \
-  'source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && ros2 topic echo /cotyaka/system_state'
-```
-
-最終的に次になれば Robot Core READY です。
-
-```text
-data: READY
-```
-
-Supervisorは現在、次を確認します。
-
-- `/joint_states` が一定時間内に更新されていること
-- `/odom` が一定時間内に更新されていること
-- `/piper_ctrl_single_node`
-- `/move_group`
-- `/piper_moveit_bridge`
-
-設定は `src/cotyaka_bringup/config/supervisor.yaml` で変更できます。
-
-## 注意点
-
-### Kobukiのodom topic
-
-Supervisorは現時点で `/odom` を既定値としています。実際のKobuki構成で別topic名を使用している場合は `supervisor.yaml` の `odom_topic` を変更してください。
-
-### Lifecycleの担当範囲
-
-既存のPiper driverやMoveItを無理にLifecycleNodeへ変更していません。`system_supervisor` 自身だけをLifecycle管理し、既存ノードの起動状態とheartbeatを監視してRobot Core全体のREADY gateにします。
-
-### Alienwareとの接続
-
-NUC側Composeの既定 `ROS_DOMAIN_ID` は既存開発構成に合わせて12です。Alienware側も同じDomain IDにすれば同一ROS 2 graphとして通信できます。上位AIは `/cotyaka/system_state == READY` を確認してからSkill要求を出す設計を想定します。
+1. Piperがドライバ起動前からCAN feedback frameを流すか
+2. `PIPER_PROBE_TIMEOUT_SEC=2` が適切か
+3. Kobukiのudev symlinkが `/dev/kobuki` か
+4. Kobuki odometry topicが `/odom` か
+5. NUCのスピーカでDockerからALSA (`/dev/snd`) が再生できるか
+6. 固定MP3実ファイルを `audio/assets/` に配置する

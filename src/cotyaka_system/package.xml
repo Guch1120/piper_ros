@@ -1,18 +1,20 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>cotyaka_bringup</name>
-  <version>0.2.0</version>
-  <description>Robot-core bringup package for the Cotyaka mobile manipulator.</description>
+  <name>cotyaka_system</name>
+  <version>0.1.0</version>
+  <description>Lifecycle system monitoring for Cotyaka.</description>
   <maintainer email="root@todo.todo">root</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_python</buildtool_depend>
 
-  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>lifecycle_msgs</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
-  <exec_depend>piper</exec_depend>
-  <exec_depend>piper_with_gripper_moveit</exec_depend>
 
   <export>
     <build_type>ament_python</build_type>
