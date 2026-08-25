@@ -48,7 +48,7 @@ services:
     volumes:
       - ..:/ros2_ws:ro
       - ../audio:/opt/cotyaka/audio:rw
-      - /dev/snd:/dev/snd:rw
+      - /dev:/dev:rw
     working_dir: /ros2_ws
     command: >-
       bash -lc '
