@@ -195,6 +195,11 @@ class SystemMonitor(LifecycleNode):
         if key is None:
             return
 
+        # Compose starts Monitor and Audio concurrently. Do not consume the
+        # one-shot startup announcement until DDS has discovered AudioNode.
+        if self._mp3_pub.get_subscription_count() == 0:
+            return
+
         msg = String()
         msg.data = f'{key}|{fallback}'
         self._mp3_pub.publish(msg)
