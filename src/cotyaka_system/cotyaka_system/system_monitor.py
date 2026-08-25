@@ -33,8 +33,8 @@ class SystemMonitor(LifecycleNode):
         state_qos.reliability = ReliabilityPolicy.RELIABLE
         state_qos.durability = DurabilityPolicy.TRANSIENT_LOCAL
         self._state_pub = self.create_lifecycle_publisher(String, 'system_state', state_qos)
-        self._mp3_pub = self.create_publisher(String, '/cotyaka/audio/play_mp3', 10)
-        self._tts_pub = self.create_publisher(String, '/cotyaka/audio/speak', 10)
+        self._fixed_audio_pub = self.create_publisher(
+            String, '/cotyaka/audio/play_fixed', 10)
 
         self._joint_sub = None
         self._odom_sub = None
@@ -178,31 +178,24 @@ class SystemMonitor(LifecycleNode):
             return
 
         key = None
-        fallback = None
         if state == 'READY_FULL':
             key = 'startup_full'
-            fallback = 'PiperとKobukiの接続を確認しました。すべてのロボットコアを起動しました。'
         elif state == 'READY_PIPER_ONLY':
             key = 'startup_piper_only'
-            fallback = 'Kobukiの接続を確認できませんでした。Piperのみで起動しています。'
         elif state == 'READY_KOBUKI_ONLY':
             key = 'startup_kobuki_only'
-            fallback = 'Piperの接続を確認できませんでした。Kobukiのみで起動しています。'
         elif state == 'NO_ROBOT':
             key = 'startup_no_robot'
-            fallback = 'PiperとKobukiの接続を確認できませんでした。監視機能のみ起動しています。'
 
         if key is None:
             return
 
-        # Compose starts Monitor and Audio concurrently. Do not consume the
-        # one-shot startup announcement until DDS has discovered AudioNode.
-        if self._mp3_pub.get_subscription_count() == 0:
+        if self._fixed_audio_pub.get_subscription_count() == 0:
             return
 
         msg = String()
-        msg.data = f'{key}|{fallback}'
-        self._mp3_pub.publish(msg)
+        msg.data = key
+        self._fixed_audio_pub.publish(msg)
         self._announcement_sent = True
 
 

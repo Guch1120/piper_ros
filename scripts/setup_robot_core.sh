@@ -11,6 +11,12 @@ command -v docker >/dev/null || { log "docker command not found"; exit 1; }
 docker info >/dev/null 2>&1 || { log "Docker daemon is not available"; exit 1; }
 [[ -d "$KOBUKI_WS" ]] || { log "Kobuki workspace not found: $KOBUKI_WS"; exit 1; }
 
+log "Installing Kobuki udev rule"
+bash "$REPO_DIR/scripts/install_kobuki_udev.sh"
+
+log "Pulling VOICEVOX CPU engine"
+docker compose -f "$COMPOSE_FILE" pull cotyaka-voicevox
+
 log "Building Robot Core, System Monitor and Audio container images"
 docker compose -f "$COMPOSE_FILE" build
 
@@ -32,4 +38,5 @@ docker compose -f "$COMPOSE_FILE" run --rm --no-deps kobuki-robot-core bash -lc 
   colcon build --symlink-install --executor sequential
 '
 
-log "Setup complete. Run: bash scripts/robot_core.sh up"
+log "Setup complete. If /dev/kobuki is absent, unplug/replug the Kobuki USB cable."
+log "Then run: bash scripts/robot_core.sh up"

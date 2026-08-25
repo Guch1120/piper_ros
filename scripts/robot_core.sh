@@ -63,10 +63,16 @@ probe_kobuki() {
   KOBUKI_DETECTED=false
   if [[ -e "$KOBUKI_DEVICE" ]]; then
     KOBUKI_DETECTED=true
-    log "Kobuki: detected at $KOBUKI_DEVICE"
+    log "Kobuki: detected at $KOBUKI_DEVICE -> $(readlink -f "$KOBUKI_DEVICE")"
     return 0
   fi
-  log "Kobuki: $KOBUKI_DEVICE not found"
+
+  if compgen -G '/dev/ttyUSB*' >/dev/null; then
+    log "Kobuki: $KOBUKI_DEVICE not found, but ttyUSB device(s) exist: $(printf '%s ' /dev/ttyUSB*)"
+    log "Kobuki: install/reload the udev rule with scripts/install_kobuki_udev.sh"
+  else
+    log "Kobuki: $KOBUKI_DEVICE not found"
+  fi
   return 1
 }
 
@@ -97,7 +103,7 @@ start_stack() {
 
   compose stop piper-robot-core kobuki-robot-core >/dev/null 2>&1 || true
 
-  services=(cotyaka-audio cotyaka-system-monitor)
+  services=(cotyaka-voicevox cotyaka-audio cotyaka-system-monitor)
   [[ "$PIPER_DETECTED" == true ]] && services+=(piper-robot-core)
   [[ "$KOBUKI_DETECTED" == true ]] && services+=(kobuki-robot-core)
 

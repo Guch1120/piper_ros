@@ -25,6 +25,13 @@ services:
           expect_kobuki:=${COTYAKA_EXPECT_KOBUKI:-false}
       '
 
+  cotyaka-voicevox:
+    image: voicevox/voicevox_engine:cpu-latest
+    container_name: cotyaka-voicevox
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:50021:50021"
+
   cotyaka-audio:
     build:
       context: .
@@ -40,16 +47,23 @@ services:
       RMW_IMPLEMENTATION: rmw_fastrtps_cpp
     volumes:
       - ..:/ros2_ws:ro
-      - /dev:/dev:rw
+      - ../audio:/opt/cotyaka/audio:rw
+      - /dev/snd:/dev/snd:rw
     working_dir: /ros2_ws
     command: >-
       bash -lc '
         source /opt/ros/humble/setup.bash &&
         source /ros2_ws/install/setup.bash &&
         exec ros2 run cotyaka_audio audio_node --ros-args
-          -p audio_dir:=/ros2_ws/audio/assets
-          -p tts_lang:=ja
+          -p cache_dir:=/opt/cotyaka/audio/cache
+          -p messages_file:=/opt/cotyaka/audio/config/startup_messages.json
+          -p voicevox_url:=http://127.0.0.1:50021
+          -p speaker_id:=${VOICEVOX_SPEAKER_ID:-1}
+          -p speed_scale:=${VOICEVOX_SPEED_SCALE:-1.0}
+          -p audio_device:=${COTYAKA_AUDIO_DEVICE:-default}
       '
+    depends_on:
+      - cotyaka-voicevox
 
   piper-robot-core:
     build:
