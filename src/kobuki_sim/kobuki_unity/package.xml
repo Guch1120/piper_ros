@@ -13,7 +13,10 @@
   <depend>nav_msgs</depend>
   <depend>tf2_ros</depend>
   <depend>std_msgs</depend>
+  <depend>nav2_msgs</depend>
+  <exec_depend>python3-yaml</exec_depend>
 
+  <exec_depend>mobile_manipulator_description</exec_depend>
   <exec_depend>ros_tcp_endpoint</exec_depend>
 
   <test_depend>ament_copyright</test_depend>

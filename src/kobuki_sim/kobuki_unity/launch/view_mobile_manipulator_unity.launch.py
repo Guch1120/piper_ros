@@ -29,6 +29,7 @@ from ament_index_python.packages import get_package_share_path
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.conditions import UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command, LaunchConfiguration
 
@@ -54,6 +55,11 @@ def generate_launch_description():
     log_level_arg = DeclareLaunchArgument(
         name='log_level', default_value='info',
         description='Logging level for kobuki_unity_sim (debug, info, warn, error, fatal).')
+    external_arm_joint_states_arg = DeclareLaunchArgument(
+        name='external_arm_joint_states', default_value='false',
+        description=(
+            'Set true when piper_unity publishes the arm joint states. '
+            'This prevents the composite launch from publishing zero-valued defaults.'))
 
     robot_description = ParameterValue(
         Command(['xacro ', LaunchConfiguration('model')]), value_type=str)
@@ -70,6 +76,7 @@ def generate_launch_description():
     arm_joint_state_publisher_node = Node(
         package='joint_state_publisher',
         executable='joint_state_publisher',
+        condition=UnlessCondition(LaunchConfiguration('external_arm_joint_states')),
     )
 
     kobuki_unity_launch = IncludeLaunchDescription(
@@ -91,6 +98,7 @@ def generate_launch_description():
         model_arg,
         rviz_arg,
         log_level_arg,
+        external_arm_joint_states_arg,
         robot_state_publisher_node,
         arm_joint_state_publisher_node,
         kobuki_unity_launch,

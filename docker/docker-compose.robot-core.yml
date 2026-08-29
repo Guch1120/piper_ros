@@ -1,0 +1,123 @@
+services:
+  cotyaka-system-monitor:
+    build:
+      context: .
+      dockerfile: dockerfile.system-monitor
+    image: cotyaka-system-monitor:humble
+    container_name: cotyaka-system-monitor
+    restart: unless-stopped
+    network_mode: host
+    ipc: host
+    environment:
+      ROS_DOMAIN_ID: "${ROS_DOMAIN_ID:-12}"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+      COTYAKA_EXPECT_PIPER: "${COTYAKA_EXPECT_PIPER:-false}"
+      COTYAKA_EXPECT_KOBUKI: "${COTYAKA_EXPECT_KOBUKI:-false}"
+    volumes:
+      - ..:/ros2_ws:ro
+    working_dir: /ros2_ws
+    command: >-
+      bash -lc '
+        source /opt/ros/humble/setup.bash &&
+        source /ros2_ws/install/robot_core/setup.bash &&
+        exec ros2 launch cotyaka_system system_monitor.launch.py
+          expect_piper:=${COTYAKA_EXPECT_PIPER:-false}
+          expect_kobuki:=${COTYAKA_EXPECT_KOBUKI:-false}
+      '
+
+  cotyaka-voicevox:
+    image: voicevox/voicevox_engine:cpu-latest
+    container_name: cotyaka-voicevox
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:50021:50021"
+
+  cotyaka-audio:
+    build:
+      context: .
+      dockerfile: dockerfile.audio
+    image: cotyaka-audio:humble
+    container_name: cotyaka-audio
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    ipc: host
+    environment:
+      ROS_DOMAIN_ID: "${ROS_DOMAIN_ID:-12}"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+    volumes:
+      - ..:/ros2_ws:ro
+      - ../audio:/opt/cotyaka/audio:rw
+      - /dev:/dev:rw
+    working_dir: /ros2_ws
+    command: >-
+      bash -lc '
+        source /opt/ros/humble/setup.bash &&
+        source /ros2_ws/install/robot_core/setup.bash &&
+        exec ros2 run cotyaka_audio audio_node --ros-args
+          -p cache_dir:=/opt/cotyaka/audio/cache
+          -p messages_file:=/opt/cotyaka/audio/config/startup_messages.json
+          -p voicevox_url:=http://127.0.0.1:50021
+          -p speaker_id:=${VOICEVOX_SPEAKER_ID:-1}
+          -p speed_scale:=${VOICEVOX_SPEED_SCALE:-1.0}
+          -p audio_device:=${COTYAKA_AUDIO_DEVICE:-default}
+      '
+    depends_on:
+      - cotyaka-voicevox
+
+  piper-robot-core:
+    build:
+      context: .
+      dockerfile: dockerfile.robot-core
+    image: cotyaka-piper-robot-core:humble
+    container_name: cotyaka-piper-robot-core
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    ipc: host
+    devices:
+      - /dev:/dev
+    environment:
+      ROS_DOMAIN_ID: "${ROS_DOMAIN_ID:-12}"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+      RCUTILS_COLORIZED_OUTPUT: "1"
+    volumes:
+      - ..:/ros2_ws:rw
+      - ../../oit_kobuki_ws-main:/home/kobuki/kobuki_ws:ro
+      - /dev:/dev
+    working_dir: /ros2_ws
+    command: >-
+      bash -lc '
+        source /opt/ros/humble/setup.bash &&
+        source /ros2_ws/install/robot_core/setup.bash &&
+        exec ros2 launch cotyaka_bringup piper_core.launch.py
+      '
+
+  kobuki-robot-core:
+    build:
+      context: ../../
+      dockerfile: ./piper_ros/docker/dockerfile.kobuki
+    image: oit-kobuki-ws:humble
+    container_name: cotyaka-kobuki-robot-core
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    ipc: host
+    devices:
+      - /dev:/dev
+    environment:
+      ROS_DOMAIN_ID: "${ROS_DOMAIN_ID:-12}"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+      DBUS_SYSTEM_BUS_ADDRESS: unix:path=/run/dbus/system_bus_socket
+    volumes:
+      - ../../oit_kobuki_ws-main:/home/kobuki/kobuki_ws:rw
+      - /dev:/dev
+      - /dev/bus/usb:/dev/bus/usb
+      - /run/dbus:/run/dbus:rw
+    working_dir: /home/kobuki/kobuki_ws
+    command: >-
+      bash -lc '
+        source /opt/ros/humble/setup.bash &&
+        source /home/kobuki/kobuki_ws/install/robot_core/setup.bash &&
+        exec ros2 launch kobuki_node kobuki_node-launch.py
+      '
