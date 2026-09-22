@@ -76,6 +76,15 @@ def generate_launch_description():
         default_value='enable_flag',
         description='Topic used to track whether the real arm has been enabled.'
     )
+    bidirectional_claim_topic_arg = DeclareLaunchArgument(
+        'bidirectional_claim_topic',
+        default_value='/piper_leader_follower_bridge/coordination/bidirectional_claim',
+        description='Cross-instance coordination topic used ONLY to best-effort detect '
+                     'whether another piper_leader_follower_bridge instance already has '
+                     'bidirectional mode enabled (see docs/teleop_bridge.md). Leave this '
+                     'at its default so it matches every other instance targeting the '
+                     'SAME real arm -- do NOT override it per sim target.'
+    )
     log_level_arg = DeclareLaunchArgument(
         'log_level',
         default_value='info',
@@ -98,6 +107,7 @@ def generate_launch_description():
             'sim_joint_feedback_topic': LaunchConfiguration('sim_joint_feedback_topic'),
             'real_joint_ctrl_topic': LaunchConfiguration('real_joint_ctrl_topic'),
             'enable_flag_topic': LaunchConfiguration('enable_flag_topic'),
+            'bidirectional_claim_topic': LaunchConfiguration('bidirectional_claim_topic'),
         }],
     )
 
@@ -111,6 +121,7 @@ def generate_launch_description():
         sim_joint_feedback_topic_arg,
         real_joint_ctrl_topic_arg,
         enable_flag_topic_arg,
+        bidirectional_claim_topic_arg,
         log_level_arg,
         bridge_node,
     ])

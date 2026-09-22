@@ -89,6 +89,27 @@ MODE 2: bidirectional test mode (sim -> real), OPT-IN, OFF BY DEFAULT
   warning is logged. We do NOT fall back to piper_single_ctrl_node's own dict-based
   `.get(name, 0)` defaulting, because that would silently command a missing joint to 0
   -- exactly the kind of surprise motion this bridge exists to prevent.
+
+--------------------------------------------------------------------------------
+MULTIPLE INSTANCES (multiple sim targets against the SAME real arm)
+--------------------------------------------------------------------------------
+  All topic names (real- and sim-side) are ROS 2 parameters (see the declare_parameter
+  calls below), so more than one instance of this SAME node can be launched under
+  DISTINCT node names, each pointed at a different sim target's topics (e.g. Cotyaka's
+  /sim/piper/* vs a standalone-Piper scene's /sim/piper_standalone/*), while all reading
+  the SAME real /joint_states. One-directional mode fans out safely to any number of
+  instances -- it never writes to the real arm.
+
+  Bidirectional mode is a different story: if TWO instances both had it enabled, BOTH
+  would independently forward their own sim's feedback straight to the same real
+  joint_ctrl_single topic, fighting each other. This node includes a best-effort,
+  NOT-a-hardware-interlock guard against that (see the "Cross-instance bidirectional-
+  mode coordination" methods below and `bidirectional_claim_topic`): live set_parameters
+  toggles are refused if a peer instance's claim was heard recently. This guard cannot
+  catch two instances that both start up with bidirectional_enabled=true already set in
+  launch args (see the startup warning below) -- operators remain responsible for never
+  enabling bidirectional mode on more than one instance at a time. See
+  docs/teleop_bridge.md "複数インスタンス同時稼働時の安全上の注意" for full detail.
 """
 import time
 from typing import Dict, List, Optional
@@ -97,7 +118,21 @@ import rclpy
 from rclpy.node import Node
 from rcl_interfaces.msg import SetParametersResult
 from sensor_msgs.msg import JointState
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
+
+
+# Cross-instance bidirectional-mode coordination. This topic name is intentionally
+# NOT sim-target-specific (i.e. NOT parameterized alongside sim_joint_targets_topic /
+# sim_joint_feedback_topic) -- every bridge instance that could possibly command the
+# SAME real arm must publish/subscribe the SAME claim topic for the guard below to see
+# every peer, regardless of which sim target (Cotyaka, standalone-Piper, ...) each
+# instance talks to. It IS still exposed as a parameter so a deployment can rename it
+# if needed, but both launch files ship with the identical default on purpose. See
+# docs/teleop_bridge.md "複数インスタンス同時稼働時の安全上の注意" for the full
+# rationale and its known limitation (best-effort, not a hardware interlock).
+DEFAULT_BIDIRECTIONAL_CLAIM_TOPIC: str = '/piper_leader_follower_bridge/coordination/bidirectional_claim'
+BIDIRECTIONAL_CLAIM_PERIOD_S: float = 1.0
+BIDIRECTIONAL_CLAIM_STALE_S: float = 3.0 * BIDIRECTIONAL_CLAIM_PERIOD_S
 
 
 # ---------------------------------------------------------------------------------
@@ -150,6 +185,7 @@ class PiperLeaderFollowerBridge(Node):
         self.declare_parameter('sim_joint_feedback_topic', '/sim/piper/joint_state_feedback')
         self.declare_parameter('real_joint_ctrl_topic', 'joint_ctrl_single')
         self.declare_parameter('enable_flag_topic', 'enable_flag')
+        self.declare_parameter('bidirectional_claim_topic', DEFAULT_BIDIRECTIONAL_CLAIM_TOPIC)
 
         self.publish_rate_hz: float = float(self.get_parameter('publish_rate_hz').value)
         self.bidirectional_enabled: bool = bool(self.get_parameter('bidirectional_enabled').value)
@@ -161,17 +197,26 @@ class PiperLeaderFollowerBridge(Node):
         sim_joint_feedback_topic = self.get_parameter('sim_joint_feedback_topic').value
         real_joint_ctrl_topic = self.get_parameter('real_joint_ctrl_topic').value
         enable_flag_topic = self.get_parameter('enable_flag_topic').value
+        bidirectional_claim_topic = self.get_parameter('bidirectional_claim_topic').value
 
         self.get_logger().info(
-            f"piper_leader_follower_bridge starting: publish_rate_hz={self.publish_rate_hz}, "
+            f"{self.get_name()} starting: publish_rate_hz={self.publish_rate_hz}, "
             f"bidirectional_enabled={self.bidirectional_enabled} (OFF unless explicitly set), "
-            f"heartbeat_timeout_ms={self.heartbeat_timeout_ms}, max_step_rad={self.max_step_rad}"
+            f"heartbeat_timeout_ms={self.heartbeat_timeout_ms}, max_step_rad={self.max_step_rad}, "
+            f"sim_joint_targets_topic={sim_joint_targets_topic}, "
+            f"sim_joint_feedback_topic={sim_joint_feedback_topic}, "
+            f"bidirectional_claim_topic={bidirectional_claim_topic}"
         )
         if self.bidirectional_enabled:
             self.get_logger().warn(
                 "bidirectional_enabled=True at startup: this node will forward sim feedback "
                 "to the REAL arm's command topic once enable_flag/heartbeat/clamp conditions "
-                "are met. Double check this is intentional."
+                "are met. Double check this is intentional. NOTE: the multi-instance "
+                "bidirectional guard (see docs/teleop_bridge.md) only protects live "
+                "set_parameters toggles -- it CANNOT catch two instances both starting up "
+                "with bidirectional_enabled=true already set in their launch args, since "
+                "neither has had time to announce itself yet. Never launch more than one "
+                "instance with bidirectional_enabled:=true from the start."
             )
 
         # --- runtime state -----------------------------------------------------------
@@ -180,15 +225,24 @@ class PiperLeaderFollowerBridge(Node):
         self._real_arm_enabled: bool = False
         self._last_feedback_monotonic: Optional[float] = None
         self._heartbeat_ok: bool = False  # cached watchdog result; only log on transition
+        # node_name -> monotonic time of last-seen bidirectional-active claim from a
+        # PEER instance (never includes our own claims -- see _on_bidirectional_claim).
+        self._remote_bidirectional_claims: Dict[str, float] = {}
 
         # --- publishers --------------------------------------------------------------
         self.sim_target_pub = self.create_publisher(JointState, sim_joint_targets_topic, 10)
         self.real_ctrl_pub = self.create_publisher(JointState, real_joint_ctrl_topic, 10)
+        # Cross-instance coordination (see BIDIRECTIONAL_CLAIM_* constants above and
+        # docs/teleop_bridge.md): every instance publishes AND subscribes the same
+        # claim topic so each can see whether a PEER instance currently has
+        # bidirectional mode active, regardless of which sim target it drives.
+        self._claim_pub = self.create_publisher(String, bidirectional_claim_topic, 10)
 
         # --- subscriptions -------------------------------------------------------------
         self.create_subscription(JointState, real_joint_states_topic, self._on_real_joint_state, 10)
         self.create_subscription(Bool, enable_flag_topic, self._on_enable_flag, 10)
         self.create_subscription(JointState, sim_joint_feedback_topic, self._on_sim_feedback, 10)
+        self.create_subscription(String, bidirectional_claim_topic, self._on_bidirectional_claim, 10)
 
         # --- timers --------------------------------------------------------------------
         # Downsample timer for MODE 1: latch-and-republish the most recent /joint_states
@@ -200,6 +254,12 @@ class PiperLeaderFollowerBridge(Node):
         # detected and logged promptly even between feedback messages.
         watchdog_period_s = max(0.05, (self.heartbeat_timeout_ms / 1000.0) / 2.0)
         self._watchdog_timer = self.create_timer(watchdog_period_s, self._on_watchdog_tick)
+
+        # Cross-instance coordination: while OUR bidirectional mode is active, announce
+        # it periodically so any PEER instance's guard (see _other_active_peer() /
+        # _on_set_parameters) can see us. Runs independently of bidirectional_enabled's
+        # value at any given tick -- the tick handler itself checks the current value.
+        self._claim_timer = self.create_timer(BIDIRECTIONAL_CLAIM_PERIOD_S, self._on_claim_tick)
 
         # Allow `bidirectional_enabled` (and the other safety parameters) to be toggled
         # live via the standard set_parameters service -- this is what the web GUI's
@@ -265,6 +325,38 @@ class PiperLeaderFollowerBridge(Node):
         elif not stale and not self._heartbeat_ok:
             self.get_logger().info("bidirectional: heartbeat restored, forwarding resumed.")
             self._heartbeat_ok = True
+
+    # ------------------------------------------------------------------------------
+    # Cross-instance bidirectional-mode coordination (best-effort, NOT a hardware
+    # interlock -- see docs/teleop_bridge.md "複数インスタンス同時稼働時の安全上の
+    # 注意"). Only meaningful when more than one piper_leader_follower_bridge
+    # instance is running against the SAME real arm (e.g. one per sim target).
+    # ------------------------------------------------------------------------------
+    def _on_claim_tick(self) -> None:
+        if not self.bidirectional_enabled:
+            return
+        self._claim_pub.publish(String(data=self.get_name()))
+
+    def _on_bidirectional_claim(self, msg: String) -> None:
+        if msg.data == self.get_name():
+            return  # our own claim, looped back over the shared topic -- ignore
+        self._remote_bidirectional_claims[msg.data] = time.monotonic()
+
+    def _other_active_peer(self) -> Optional[str]:
+        """Return a peer node name whose bidirectional-mode claim is still fresh, or
+        None. Best-effort only: relies on that peer already having published at least
+        one claim (i.e. having been in bidirectional mode for up to
+        BIDIRECTIONAL_CLAIM_PERIOD_S already) and on both instances sharing the same
+        `bidirectional_claim_topic`. Does NOT protect against two instances enabling
+        bidirectional mode within the same short window before either has announced
+        itself -- see docs for the operator responsibility this leaves in place.
+        """
+        now = time.monotonic()
+        fresh = [
+            name for name, last_seen in self._remote_bidirectional_claims.items()
+            if (now - last_seen) <= BIDIRECTIONAL_CLAIM_STALE_S
+        ]
+        return fresh[0] if fresh else None
 
     # ------------------------------------------------------------------------------
     # MODE 2: sim -> real (opt-in, safety-gated)
@@ -367,6 +459,24 @@ class PiperLeaderFollowerBridge(Node):
         for param in params:
             if param.name == 'bidirectional_enabled':
                 new_value = bool(param.value)
+                if new_value and not self.bidirectional_enabled:
+                    peer = self._other_active_peer()
+                    if peer is not None:
+                        self.get_logger().error(
+                            f"REFUSING to enable bidirectional_enabled: peer instance "
+                            f"'{peer}' already claims bidirectional mode active (heard "
+                            f"within the last {BIDIRECTIONAL_CLAIM_STALE_S:.0f}s on "
+                            f"'{self._claim_pub.topic_name}'). Only ONE bridge instance's "
+                            f"bidirectional mode may be enabled at a time -- see "
+                            f"docs/teleop_bridge.md. Disable it on '{peer}' first."
+                        )
+                        return SetParametersResult(
+                            successful=False,
+                            reason=(
+                                f"another piper_leader_follower_bridge instance ('{peer}') "
+                                f"already has bidirectional_enabled=true"
+                            ),
+                        )
                 if new_value != self.bidirectional_enabled:
                     self.get_logger().warn(
                         f"bidirectional_enabled changed: {self.bidirectional_enabled} -> {new_value}"
