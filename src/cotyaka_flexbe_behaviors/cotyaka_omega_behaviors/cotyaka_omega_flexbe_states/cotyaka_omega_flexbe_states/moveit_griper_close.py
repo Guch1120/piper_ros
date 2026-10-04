@@ -22,7 +22,7 @@ class PiperMoveItCloseState(EventState):
     <= failed        移動失敗
     '''
 
-    def __init__(self, target_value=0.0, joint_name='joint7', group_name='gripper', tolerance=0.01, action_topic='move_action'):
+    def __init__(self, target_value, joint_name='joint7', group_name='gripper', tolerance=0.01, action_topic='move_action'):
         # FlexBEのエディタで設定可能なパラメータを定義
         super(PiperMoveItCloseState, self).__init__(outcomes=['reached', 'failed'])
         

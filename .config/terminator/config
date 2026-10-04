@@ -209,11 +209,11 @@
       parent = ""
       order = 0
       position = 0:27
-      maximised = False
+      maximised = True
       fullscreen = False
-      size = 960, 1016
+      size = 1920, 1016
       title = @robo25-Alienware-m15-R3:/ros2_ws
-      last_active_term = 79e6da3c-5668-4c46-bb35-75634b63a509
+      last_active_term = 6854fada-49cc-4de9-9ade-25f6d9a9b88c
       last_active_window = True
     [[[child1]]]
       type = VPaned
@@ -225,8 +225,8 @@
       type = HPaned
       parent = child1
       order = 0
-      position = 479
-      ratio = 0.5015706806282723
+      position = 961
+      ratio = 0.5018276762402089
     [[[child3]]]
       type = VPaned
       parent = child2
@@ -237,8 +237,8 @@
       type = HPaned
       parent = child3
       order = 0
-      position = 237
-      ratio = 0.5
+      position = 476
+      ratio = 0.497907949790795
     [[[terminal5]]]
       type = Terminal
       parent = child4
@@ -255,8 +255,8 @@
       type = HPaned
       parent = child3
       order = 1
-      position = 237
-      ratio = 0.5
+      position = 480
+      ratio = 0.502092050209205
     [[[terminal8]]]
       type = Terminal
       parent = child7
@@ -279,8 +279,8 @@
       type = HPaned
       parent = child10
       order = 0
-      position = 237
-      ratio = 0.5031847133757962
+      position = 478
+      ratio = 0.5036880927291886
     [[[terminal12]]]
       type = Terminal
       parent = child11
@@ -291,14 +291,14 @@
       type = Terminal
       parent = child11
       order = 1
-      profile = cmd_yolov8-seg
+      profile = default
       uuid = 81ab64ea-4a43-44dc-aa01-d0580c85e002
     [[[child14]]]
       type = HPaned
       parent = child10
       order = 1
-      position = 238
-      ratio = 0.505307855626327
+      position = 480
+      ratio = 0.505795574288725
     [[[terminal15]]]
       type = Terminal
       parent = child14
@@ -309,7 +309,7 @@
       type = Terminal
       parent = child14
       order = 1
-      profile = default
+      profile = cmd_sam3_node
       uuid = 02b9354c-a24d-4fc9-9fd6-20dab91b6e97
     [[[child17]]]
       type = VPaned
@@ -321,8 +321,8 @@
       type = HPaned
       parent = child17
       order = 0
-      position = 477
-      ratio = 0.49947643979057593
+      position = 956
+      ratio = 0.49921671018276764
     [[[terminal19]]]
       type = Terminal
       parent = child18
@@ -339,8 +339,8 @@
       type = HPaned
       parent = child17
       order = 1
-      position = 478
-      ratio = 0.5005235602094241
+      position = 959
+      ratio = 0.5007832898172324
     [[[terminal22]]]
       type = Terminal
       parent = child21

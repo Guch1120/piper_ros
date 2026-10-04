@@ -36,6 +36,7 @@ from flexbe_core import ConcurrencyContainer
 from flexbe_core import Logger
 from flexbe_core import OperatableStateMachine
 from flexbe_core import PriorityContainer
+from cotyaka_omega_flexbe_states.broadcast_tf_param import BroadcastStaticTFParamState
 from cotyaka_omega_flexbe_states.moveit_client_tf import MoveItClientTF
 from cotyaka_omega_flexbe_states.moveit_griper_close import PiperMoveItCloseState
 from cotyaka_omega_flexbe_states.moveit_griper_open import PiperMoveItOpenState
@@ -65,6 +66,7 @@ class Grasp_to_TFSM(Behavior):
         ConcurrencyContainer.initialize_ros(node)
         PriorityContainer.initialize_ros(node)
         Logger.initialize(node)
+        BroadcastStaticTFParamState.initialize_ros(node)
         MoveItClientTF.initialize_ros(node)
         PiperMoveItCloseState.initialize_ros(node)
         PiperMoveItOpenState.initialize_ros(node)
@@ -77,7 +79,7 @@ class Grasp_to_TFSM(Behavior):
         # Behavior comments:
 
     def create(self):
-        # x:547 y:283, x:329 y:327
+        # x:547 y:283, x:344 y:446
         _state_machine = OperatableStateMachine(outcomes=['finished', 'failed'])
         _state_machine.userdata.target_frame = "target"
 
@@ -89,21 +91,27 @@ class Grasp_to_TFSM(Behavior):
             # x:30 y:40
             OperatableStateMachine.add('gripper_open',
                                        PiperMoveItOpenState(target_value=0.10, joint_name='joint7', group_name='gripper', tolerance=0.01, action_topic='move_action'),
-                                       transitions={'reached': 'move_TF', 'failed': 'failed'},
+                                       transitions={'reached': 'create tf', 'failed': 'failed'},
                                        autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
 
-            # x:254 y:60
+            # x:701 y:42
+            OperatableStateMachine.add('gripper_close',
+                                       PiperMoveItCloseState(target_value=0.065, joint_name='joint7', group_name='gripper', tolerance=0.01, action_topic='move_action'),
+                                       transitions={'reached': 'finished', 'failed': 'failed'},
+                                       autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
+
+            # x:452 y:43
             OperatableStateMachine.add('move_TF',
                                        MoveItClientTF(group_name='arm', end_effector_link='link6', reference_frame='base_link', pos_tolerance=0.01, orient_tolerance=0.01, action_topic='move_action'),
                                        transitions={'reached': 'gripper_close', 'failed': 'failed'},
                                        autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off},
                                        remapping={'target_frame': 'target_frame'})
 
-            # x:482 y:51
-            OperatableStateMachine.add('gripper_close',
-                                       PiperMoveItCloseState(target_value=0.065, joint_name='joint7', group_name='gripper', tolerance=0.01, action_topic='move_action'),
-                                       transitions={'reached': 'finished', 'failed': 'failed'},
-                                       autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
+            # x:241 y:54
+            OperatableStateMachine.add('create tf',
+                                       BroadcastStaticTFParamState(parent_frame='base_link', child_frame='interactive_set', xyz_val=[0.3,1.3,0.3], rpy_val=[0.0,0.0,0.0], wait_time=0.5),
+                                       transitions={'done': 'finished'},
+                                       autonomy={'done': Autonomy.Off})
 
         return _state_machine
 

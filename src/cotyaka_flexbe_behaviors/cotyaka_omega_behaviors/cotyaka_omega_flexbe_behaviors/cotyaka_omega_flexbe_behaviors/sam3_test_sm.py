@@ -87,7 +87,7 @@ class sam3_testSM(Behavior):
         with _state_machine:
             # x:69 y:31
             OperatableStateMachine.add('detect',
-                                       DetectObjectWithSAM3State(object_name="apple"),
+                                       DetectObjectWithSAM3State(object_name="watch"),
                                        transitions={'succeeded': 'tf', 'failed': 'Pose for init', 'timeout': 'failed'},
                                        autonomy={'succeeded': Autonomy.Off, 'failed': Autonomy.Off, 'timeout': Autonomy.Off},
                                        remapping={'pose_array': 'pose_array'})
