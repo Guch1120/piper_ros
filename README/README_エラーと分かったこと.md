@@ -616,3 +616,41 @@ ros2 launch piper calibration_tf.launch.py
 2. この計算値と、`piper_macro.xacro` に書かれている `xyz="-0.04 0.0 0.055"` の数値を見比べます。
    （例：計算上Xが `-0.045` なのに URDFが `-0.040` だった場合、URDFの設定が実機に対して5mm間違っています）
 3. 計算値がより実機（実測値）に近いと判断した場合は、`piper_macro.xacro` の `xyz="..."` をターミナルに表示された計算値（m単位）に書き換えて微調整します。
+
+
+
+実機のlaunchを起動しない限りlinkのTFは出てこないのでbase linkとlink6はつながらない
+
+
+
+# そもそもURDFってなんだっけ
+
+URDF: <br>
+ロボットの物理構造を書くXMLです。link、joint、mesh、慣性、可動範囲などを定義する<br>
+xacro:<br>
+URDFを生成するためのテンプレート言語です。include、macro、property、引数などが使える。これを参照してURDFに展開する<br>
+SRDF:<br>
+MoveIt用の意味情報。URDFの代替ではない。<br>
+URDFに定義済みのlink/jointを前提にMoveItのplanning group、end effector、初期姿勢、衝突無視ペアなどを定義する
+
+## PiperにおけるURDF構成
+
+```bash
+ros2 run xacro xacro xacroファイルパス -o 作成後のファイルパス
+```
+src/piper_description/urdf/piper_macro.xacroはマクロ定義を行っている<br>
+実態を生成するにはマクロを呼び出しているファイルをパス指定しないとダメ<br>
+
+根本のURDF<br>
+piper_description.xacro <br>
+ --> include piper_macro.xacroでxacro:piper_robotを用いてURDFを呼び出す<br>
+
+
+Gazebo用<br>
+piper_description_gazebo.xacro<br>
+ --> include piper_macro.xacroでxacro:piper_robotを用いてURDFを呼び出す<br>
+ --> 加えてGazebo用 ros2_controlとpluginを追加
+
+MoveIt用<br>
+piper_moveit/中略/config/piper.urdf.xacro
+ --> piper_description/urdf/piper_description.xacroとpiper.ros2_control.xacroをインクルードしている

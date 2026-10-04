@@ -1,0 +1,109 @@
+<?xml version="1.0"?>
+<robot name="mobile_manipulator" xmlns:xacro="http://ros.org/wiki/xacro">
+  <!--
+    ============================================================================
+     Kobuki + カチャカシェルフ + Piper 合成モバイルマニピュレータ URDF (xacro)
+    ============================================================================
+
+     構成: base_footprint (Kobuki root)
+             -> base_link (Kobuki 本体, kobuki_description の "kobuki" マクロ)
+               -> kachaka_shelf_link (カチャカシェルフ, プレースホルダー形状の箱型近似)
+                 -> kachaka_shelf_top_link (シェルフ上面の仮想マウントリンク, 質量ゼロ)
+                   -> piper_base_link (Piper アーム, piper_description の piper_robot マクロ)
+
+     *** 重要: このファイルの寸法・取付位置はすべて "実測前の placeholder" です ***
+     - kachaka_shelf_* : シェルフの外形寸法はメーカー公表値(488x328x717mm, 8.8kg)を
+       流用していますが、Kobuki 本体上のどこにどの姿勢で固定するか(x/y/z/roll/pitch/yaw)
+       は未計測です。下の xacro:property セクションで一箇所にまとめてあるので、
+       実機を計測したらここだけを書き換えてください。
+     - piper_mount_* : シェルフ上面に対する Piper base_link の取付位置・姿勢も未計測の
+       placeholder です。同様に下の property を実測値で更新してください。
+     - Piper 側の既存 joint 名 (joint1..joint6, joint7/joint8, tcp_joint 等) および
+       link 名は unity_urdf 連携や既存の制御設定との互換性のため変更していません。
+       Kobuki と重複する "base_link" という名前だけ、Piper 側は
+       piper_base_link にリネームして衝突を避けています。
+
+     *** Docker 環境での実行について ***
+     piper_ros と oit_kobuki_ws-main は別々の Docker コンテナ (piper-humble-dev /
+     oit-kobuki-ws-ros2) で動作しており、ファイルシステムは共有していません。
+     kobuki_description パッケージを piper-humble-dev コンテナ内から参照できるように、
+     docker/docker-compose.yml の piper-humble-dev サービスに
+       - ../../oit_kobuki_ws-main:/home/kobuki_ws:ro
+     を追加しています(読み取り専用マウント)。このファイルを xacro 展開する際は、
+     コンテナ内で以下の両方を source してください:
+       source /ros2_ws/install/setup.bash              # piper_description, 本パッケージ等
+       source /home/kobuki_ws/install/setup.bash        # kobuki_description (oit_kobuki_ws-main 側で事前ビルド済みのもの)
+     docker-compose.yml のマウント設定は起動中のコンテナには反映されないため、
+     反映するにはコンテナの再作成が必要です(具体的なコマンドは
+     view_mobile_manipulator.launch.py 冒頭のコメントを参照)。
+  -->
+
+  <xacro:include filename="$(find kobuki_description)/urdf/kobuki.urdf.xacro"/>
+  <xacro:include filename="$(find mobile_manipulator_description)/urdf/kachaka_shelf_macro.xacro"/>
+  <xacro:include filename="$(find piper_description)/urdf/piper_macro.xacro"/>
+
+  <!-- ===================== TODO: 実測して調整すること ===================== -->
+  <!-- カチャカシェルフの外形寸法 (メーカー公表値ベースの placeholder) -->
+  <xacro:property name="kachaka_shelf_width"  value="0.488"/>
+  <xacro:property name="kachaka_shelf_depth"  value="0.328"/>
+  <xacro:property name="kachaka_shelf_height" value="0.717"/>
+  <xacro:property name="kachaka_shelf_mass"   value="8.8"/>
+
+  <!-- カチャカシェルフの Kobuki base_link に対する取付位置・姿勢 (未計測 placeholder) -->
+  <xacro:property name="kachaka_shelf_x"     value="0.0"/>
+  <xacro:property name="kachaka_shelf_y"     value="0.0"/>
+  <xacro:property name="kachaka_shelf_z"     value="0.0"/>
+  <xacro:property name="kachaka_shelf_roll"  value="0.0"/>
+  <xacro:property name="kachaka_shelf_pitch" value="0.0"/>
+  <xacro:property name="kachaka_shelf_yaw"   value="0.0"/>
+
+  <!-- Piper base_link のシェルフ上面 (kachaka_shelf_top_link) に対する取付位置・姿勢 (未計測 placeholder) -->
+  <xacro:property name="piper_mount_x"     value="0.0"/>
+  <xacro:property name="piper_mount_y"     value="0.0"/>
+  <xacro:property name="piper_mount_z"     value="0.0"/>
+  <xacro:property name="piper_mount_roll"  value="0.0"/>
+  <xacro:property name="piper_mount_pitch" value="0.0"/>
+  <xacro:property name="piper_mount_yaw"   value="0.0"/>
+  <!-- ===================================================================== -->
+
+  <!-- Kobuki: base_footprint -> base_link -->
+  <xacro:kobuki/>
+
+  <!-- カチャカシェルフ: Kobuki の base_link に固定 -->
+  <xacro:kachaka_shelf
+    parent="base_link"
+    prefix="kachaka_"
+    xyz="${kachaka_shelf_x} ${kachaka_shelf_y} ${kachaka_shelf_z}"
+    rpy="${kachaka_shelf_roll} ${kachaka_shelf_pitch} ${kachaka_shelf_yaw}"
+    width="${kachaka_shelf_width}"
+    depth="${kachaka_shelf_depth}"
+    height="${kachaka_shelf_height}"
+    mass="${kachaka_shelf_mass}"/>
+
+  <!--
+    シェルフ上面の仮想マウントリンク。
+    kachaka_shelf マクロは棚全体を1つの link (kachaka_shelf_link) として生成するため、
+    Piper の取付基準を分かりやすくするために質量ゼロの mount link を上面に追加する。
+  -->
+  <joint name="kachaka_shelf_top_joint" type="fixed">
+    <origin xyz="0 0 ${kachaka_shelf_height}" rpy="0 0 0"/>
+    <parent link="kachaka_shelf_link"/>
+    <child link="kachaka_shelf_top_link"/>
+  </joint>
+  <link name="kachaka_shelf_top_link"/>
+
+  <!--
+    Piper アーム: シェルフ上面マウントリンクに固定。
+    piper_macro.xacro 側は "world" ルートを作らず、任意の parent link と origin を
+    受け取れるよう拡張済み (parent / base_xyz / base_rpy / create_world 引数)。
+    既存の単体表示用 piper_description.xacro は引数なし呼び出しのままなので、
+    world リンクを作る従来動作と後方互換を維持している。
+  -->
+  <xacro:piper_robot
+    parent="kachaka_shelf_top_link"
+    base_link_name="piper_base_link"
+    base_joint_name="piper_mount_joint"
+    base_xyz="${piper_mount_x} ${piper_mount_y} ${piper_mount_z}"
+    base_rpy="${piper_mount_roll} ${piper_mount_pitch} ${piper_mount_yaw}"
+    create_world="false"/>
+</robot>

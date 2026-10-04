@@ -12,6 +12,11 @@ services:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       #開発用コードまるごとマウント
       - ..:/ros2_ws:rw
+      # oit_kobuki_ws-main (kobuki_description 等) を読み取り専用でマウント。
+      # モバイルマニピュレータ用 xacro (mobile_manipulator_description) が
+      # kobuki_description パッケージを $(find kobuki_description) で参照するために必要。
+      # このワークスペース自体は oit-kobuki-ws-ros2 サービス側で別途ビルド済みの前提。
+      - ../../oit_kobuki_ws-main:/home/kobuki_ws:ro
       #terminatorの設定ファイルをマウント
       - ../.config/terminator/config:/root/.config/terminator/config:rw
       #gitのssh鍵をマウント
@@ -28,6 +33,9 @@ services:
       - DISPLAY=${DISPLAY}
       - NVIDIA_DRIVER_CAPABILITIES=all
       - NVIDIA_VISIBLE_DEVICES=all
+      - ROS_DOMAIN_ID=12
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+
 
     # GPUの使用 (NVIDIA CUDA)
     deploy:
@@ -48,3 +56,73 @@ services:
       - /dev:/dev
     # コンテナを起動し続ける
     command: sleep infinity
+
+
+  sam3_noros:
+    build:
+      context: ..
+      dockerfile: docker/dockerfile.noROS
+    container_name: sam3_noros
+    working_dir: /workspace/sam3/grpc_sam3
+    stdin_open: true
+    tty: true
+    ipc: host
+    network_mode: host
+    shm_size: "16gb"
+    gpus: all
+    privileged: true
+    devices:
+      - /dev:/dev
+    environment:
+      DISPLAY: ${DISPLAY}
+      QT_X11_NO_MITSHM: "1"
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: all
+      HF_HOME: /root/.cache/huggingface
+      PYTHONPATH: /sam3:/sam3/sam3_repo_linux
+    volumes: 
+    # コンテナとホストの変更が共有される．
+    # ファイルパスはdocker-compose.ymlからの相対パス．
+      - ..:/workspace
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${HOME}/.cache/huggingface:/root/.cache/huggingface
+      - ../terminator/config:/root/.config/terminator:rw
+      - /dev:/dev
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    command: sleep infinity
+
+  oit-kobuki-ws-ros2:
+    build:
+      context: ../../
+      dockerfile: ./piper_ros/docker/dockerfile.kobuki
+    image: oit-kobuki-ws:humble
+    container_name: oit-kobuki-ws-ros2
+    privileged: true
+    network_mode: host
+    ipc: host
+    devices:
+      - /dev:/dev
+    environment:
+      DISPLAY: ${DISPLAY:-:0}
+      QT_X11_NO_MITSHM: "1"
+      XAUTHORITY: ${XAUTHORITY:-}
+      ROS_DOMAIN_ID: "12"
+      DBUS_SYSTEM_BUS_ADDRESS: "unix:path=/run/dbus/system_bus_socket"
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+    volumes:
+      - ../../oit_kobuki_ws-main:/home/kobuki/kobuki_ws
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /dev:/dev
+      - /dev/bus/usb:/dev/bus/usb
+      - /run/dbus:/run/dbus:rw
+      - ${XAUTHORITY:-/dev/null}:${XAUTHORITY:-/dev/null}:ro
+    working_dir: /home/kobuki/kobuki_ws
+    stdin_open: true
+    tty: true
+    command: tail -f /dev/null

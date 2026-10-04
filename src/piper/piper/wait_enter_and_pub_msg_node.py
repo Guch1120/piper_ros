@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import sys
+import select
+import termios
+import tty
+
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+
+
+class WaitEnterAndPubMsgNode(Node):
+    """
+    Enterキーで record をpublishし、
+    qキーで done をpublishして終了するノード。
+    """
+
+    def __init__(self):
+        super().__init__('wait_enter_and_pub_msg_node')
+
+        self.declare_parameter('command_topic', '/record_joint_command')
+        self.declare_parameter('record_command', 'record')
+        self.declare_parameter('done_command', 'done')
+
+        self._command_topic = self.get_parameter(
+            'command_topic'
+        ).get_parameter_value().string_value
+
+        self._record_command = self.get_parameter(
+            'record_command'
+        ).get_parameter_value().string_value
+
+        self._done_command = self.get_parameter(
+            'done_command'
+        ).get_parameter_value().string_value
+
+        self._pub = self.create_publisher(
+            String,
+            self._command_topic,
+            10
+        )
+
+        self._old_terminal_settings = None
+        self._running = True
+
+        self.get_logger().info(
+            'Publish command to topic: {}'.format(self._command_topic)
+        )
+        self.get_logger().info(
+            'Press Enter to publish "{}". Press q to publish "{}" and quit.'.format(
+                self._record_command,
+                self._done_command
+            )
+        )
+
+    def setup_terminal(self):
+        if not sys.stdin.isatty():
+            self.get_logger().warn(
+                'stdin is not a TTY. Keyboard input may not work.'
+            )
+            return False
+
+        self._old_terminal_settings = termios.tcgetattr(sys.stdin)
+        tty.setcbreak(sys.stdin.fileno())
+        return True
+
+    def restore_terminal(self):
+        if self._old_terminal_settings is not None:
+            termios.tcsetattr(
+                sys.stdin,
+                termios.TCSADRAIN,
+                self._old_terminal_settings
+            )
+            self._old_terminal_settings = None
+
+    def publish_command(self, command):
+        msg = String()
+        msg.data = command
+        self._pub.publish(msg)
+
+        self.get_logger().info(
+            'Published "{}" to {}'.format(command, self._command_topic)
+        )
+
+    def spin_keyboard(self):
+        terminal_ok = self.setup_terminal()
+
+        if not terminal_ok:
+            self.get_logger().error(
+                'This node requires an interactive terminal.'
+            )
+            return
+
+        try:
+            while rclpy.ok() and self._running:
+                rclpy.spin_once(self, timeout_sec=0.05)
+
+                readable, _, _ = select.select([sys.stdin], [], [], 0.0)
+
+                if not readable:
+                    continue
+
+                key = sys.stdin.read(1)
+
+                # Enter
+                if key in ['\n', '\r']:
+                    self.publish_command(self._record_command)
+
+                # q
+                elif key == 'q':
+                    self.publish_command(self._done_command)
+                    self.get_logger().info('Quit.')
+                    self._running = False
+
+                # Ctrl+C
+                elif key == '\x03':
+                    self.get_logger().info('Interrupted by Ctrl+C.')
+                    self._running = False
+
+        finally:
+            self.restore_terminal()
+
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    node = WaitEnterAndPubMsgNode()
+
+    try:
+        node.spin_keyboard()
+    except KeyboardInterrupt:
+        node.get_logger().info('KeyboardInterrupt.')
+    finally:
+        node.restore_terminal()
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

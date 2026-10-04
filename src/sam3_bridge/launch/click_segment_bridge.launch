@@ -1,0 +1,24 @@
+<!-- launch/click_segment_bridge.launch -->
+<launch>
+
+  <node
+    pkg="sam3_bridge"
+    exec="click_segment_bridge.py"
+    name="click_segment_bridge"
+    output="screen">
+
+    <param name="grpc_host"    value="localhost" />
+    <param name="grpc_port"    value="50051" />
+    <param name="grpc_timeout" value="10.0" />
+    <param name="jpeg_quality" value="75" />
+    <param name="max_width"    value="640" />
+    <param name="max_height"   value="480" />
+    <param name="topic_name"   value="/hsrb/head_rgbd_sensor/rgb/image_rect_color" />
+    <param name="camera_info_topic" value="/hsrb/head_rgbd_sensor/rgb/camera_info" />
+    <param name="clicked_point_topic" value="/clicked_point" />
+    <param name="target_frame" value="head_rgbd_sensor_rgb_frame" />
+    <param name="mask_topic" value="/sam/mask" />
+    <param name="overlay_topic" value="/sam/overlay" />
+  </node>
+
+</launch>

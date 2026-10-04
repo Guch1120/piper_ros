@@ -1,0 +1,14 @@
+FROM ros:humble-ros-base-jammy
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Tokyo
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    alsa-utils \
+    ros-humble-std-msgs \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /ros2_ws
+CMD ["sleep", "infinity"]

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<behavior name="test sam3 gRPC">
+
+    <executable package_path="cotyaka_omega_flexbe_behaviors.test_sam3_grpc_sm" class="testsam3gRPCSM" />
+    <tagstring>test</tagstring>
+    <author>Yamaguchi Takuma</author>
+    <date>Tue May 19 2026</date>
+    <description>
+        test sam3 gRPC playground
+
+    </description>
+
+
+    <!-- Contained Behaviors -->
+
+    <!-- Available Parameters -->
+
+</behavior>

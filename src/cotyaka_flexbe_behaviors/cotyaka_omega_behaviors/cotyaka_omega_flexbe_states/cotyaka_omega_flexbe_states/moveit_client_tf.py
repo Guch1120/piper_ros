@@ -35,6 +35,7 @@ class MoveItClientTF(EventState):
         self._pos_tol = pos_tolerance
         self._ort_tol = orient_tolerance
         self._topic = action_topic
+        ProxyActionClient.initialize(MoveItClientTF._node)
 
         # MoveIt Action
         self._client = ProxyActionClient({self._topic: MoveGroup})
