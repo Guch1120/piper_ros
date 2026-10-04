@@ -91,7 +91,7 @@ class test_grasp_and_slideSM(Behavior):
         with _state_machine:
             # x:102 y:44
             OperatableStateMachine.add('Broadcast_TF',
-                                       BroadcastStaticTFParamState(parent_frame='base_link', child_frame='interactive_set', xyz_val=[0.45,0.0,0.0], rpy_val=[-1.5,1.7,-1.5], wait_time=1.0),
+                                       BroadcastStaticTFParamState(parent_frame='base_link', child_frame='interactive_set', xyz_val=[0.20,0.0,0.0], rpy_val=[-1.5,1.7,-1.5], wait_time=1.0),
                                        transitions={'done': 'Move_ZeroPosition'},
                                        autonomy={'done': Autonomy.Off})
 
@@ -103,7 +103,7 @@ class test_grasp_and_slideSM(Behavior):
 
             # x:614 y:36
             OperatableStateMachine.add('Gripper_Close_for_Grasp',
-                                       PiperMoveItCloseState(target_value=0.063, joint_name='joint7', group_name='gripper', tolerance=0.01, action_topic='move_action'),
+                                       PiperMoveItCloseState(target_value=0.00, joint_name='joint7', group_name='gripper', tolerance=0.01, action_topic='move_action'),
                                        transitions={'reached': 'Change_Broadcast_TF', 'failed': 'failed'},
                                        autonomy={'reached': Autonomy.Off, 'failed': Autonomy.Off})
 

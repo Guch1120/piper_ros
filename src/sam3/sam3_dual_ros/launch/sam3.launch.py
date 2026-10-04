@@ -1,13 +1,74 @@
 from __future__ import annotations
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackagePrefix
 
 
 def _arg(name: str, default: str, description: str):
-    return DeclareLaunchArgument(name, default_value=default, description=description)
+    return DeclareLaunchArgument(
+        name,
+        default_value=default,
+        description=description,
+    )
+
+
+def _launch_setup(context, *args, **kwargs):
+    package_prefix = FindPackagePrefix("sam3_dual_ros").perform(context)
+
+    backend = LaunchConfiguration("backend").perform(context)
+    node_name = LaunchConfiguration("node_name").perform(context)
+    checkpoint_path = LaunchConfiguration("checkpoint_path").perform(context)
+    device = LaunchConfiguration("device").perform(context)
+    resolution = LaunchConfiguration("resolution").perform(context)
+    text_prompt = LaunchConfiguration("text_prompt").perform(context)
+
+    image_topic = LaunchConfiguration("image_topic").perform(context)
+    prompt_topic = LaunchConfiguration("prompt_topic").perform(context)
+    annotated_topic = LaunchConfiguration("annotated_topic").perform(context)
+    masks_topic = LaunchConfiguration("masks_topic").perform(context)
+    boxes_topic = LaunchConfiguration("boxes_topic").perform(context)
+    scores_topic = LaunchConfiguration("scores_topic").perform(context)
+
+    frame_id = LaunchConfiguration("frame_id").perform(context)
+    input_encoding = LaunchConfiguration("input_encoding").perform(context)
+    queue_size = LaunchConfiguration("queue_size").perform(context)
+
+    executable_path = f"{package_prefix}/lib/sam3_dual_ros/sam3-dual-ros"
+
+    cmd = [
+        executable_path,
+        "--backend", backend,
+        "--node-name", node_name,
+        "--device", device,
+        "--resolution", resolution,
+        "--image-topic", image_topic,
+        "--prompt-topic", prompt_topic,
+        "--annotated-topic", annotated_topic,
+        "--masks-topic", masks_topic,
+        "--boxes-topic", boxes_topic,
+        "--scores-topic", scores_topic,
+        "--frame-id", frame_id,
+        "--input-encoding", input_encoding,
+        "--queue-size", queue_size,
+    ]
+
+    # 空文字のときは渡さない。
+    # 渡してしまうと `--checkpoint-path --device cuda` のように崩れる。
+    if checkpoint_path:
+        cmd.extend(["--checkpoint-path", checkpoint_path])
+
+    if text_prompt:
+        cmd.extend(["--text-prompt", text_prompt])
+
+    return [
+        ExecuteProcess(
+            cmd=cmd,
+            output="screen",
+            name=node_name,
+        )
+    ]
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -29,28 +90,8 @@ def generate_launch_description() -> LaunchDescription:
         _arg("queue_size", "1", "Queue size"),
     ]
 
-    node = Node(
-        package="sam3_dual_ros",
-        executable="sam3-dual-ros",
-        name=LaunchConfiguration("node_name"),
-        output="screen",
-        arguments=[
-            "--backend", LaunchConfiguration("backend"),
-            "--node-name", LaunchConfiguration("node_name"),
-            "--checkpoint-path", LaunchConfiguration("checkpoint_path"),
-            "--device", LaunchConfiguration("device"),
-            "--resolution", LaunchConfiguration("resolution"),
-            "--text-prompt", LaunchConfiguration("text_prompt"),
-            "--image-topic", LaunchConfiguration("image_topic"),
-            "--prompt-topic", LaunchConfiguration("prompt_topic"),
-            "--annotated-topic", LaunchConfiguration("annotated_topic"),
-            "--masks-topic", LaunchConfiguration("masks_topic"),
-            "--boxes-topic", LaunchConfiguration("boxes_topic"),
-            "--scores-topic", LaunchConfiguration("scores_topic"),
-            "--frame-id", LaunchConfiguration("frame_id"),
-            "--input-encoding", LaunchConfiguration("input_encoding"),
-            "--queue-size", LaunchConfiguration("queue_size"),
-        ],
+    return LaunchDescription(
+        launch_args + [
+            OpaqueFunction(function=_launch_setup),
+        ]
     )
-
-    return LaunchDescription(launch_args + [node])

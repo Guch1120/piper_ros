@@ -21,3 +21,6 @@ src/sam3_ros/assets/saved_frames
 debug_data/
 *.db3
 *.gz
+debug_data/
+debug_data/
+debug_data/
