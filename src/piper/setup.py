@@ -46,6 +46,7 @@ setup(
             'camera_calibration = piper.camera_calibration:main',
             'wait_enter_and_pub_msg = piper.wait_enter_and_pub_msg_node:main',
             'camera_roll_pitch_calibration = piper.camera_roll_pitch_calibration:main',
+            'piper_leader_follower_bridge = piper.piper_leader_follower_bridge:main',
         ],
     },
 )
