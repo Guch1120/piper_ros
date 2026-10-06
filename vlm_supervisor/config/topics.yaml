@@ -1,0 +1,52 @@
+# Phase 1: 購読する ROS topic. 不要な入力は enabled: false にする.
+# topic 名は ros2 topic list の結果に合わせて変更すること (README の Phase 1 手順参照).
+
+camera:
+  enabled: true
+  topic: /camera/camera/color/image_raw
+  # sensor_msgs/msg/Image | sensor_msgs/msg/CompressedImage
+  type: sensor_msgs/msg/Image
+  # 30Hz を全部 JPEG 化しないよう間引く. "latest" はこの周期で更新される
+  max_rate_hz: 5.0
+  jpeg_quality: 85
+  # 0 なら縮小しない. VLM へ送るなら 640 程度で十分
+  max_width: 640
+  qos: sensor_data   # sensor_data (best effort) | reliable
+
+joint_state:
+  enabled: true
+  topic: /joint_states
+  qos: reliable
+
+odom:
+  enabled: false     # Kobuki 接続時に true
+  topic: /odom
+  qos: reliable
+
+# SAM3 等の物体情報. 型ごとに変換器がある:
+#   geometry_msgs/msg/Point, PointStamped, PoseArray, PoseStamped,
+#   std_msgs/msg/Int32MultiArray (bbox), std_msgs/msg/String (JSON 文字列)
+objects:
+  - name: sam3_result
+    enabled: false
+    topic: /sam3/result
+    type: geometry_msgs/msg/Point
+    label: target
+  - name: sam3_result_points
+    enabled: false
+    topic: /sam3/result_points
+    type: geometry_msgs/msg/PoseArray
+    label: target
+  - name: sam3_bbox
+    enabled: false
+    topic: /sam3/bbox
+    type: std_msgs/msg/Int32MultiArray
+    label: target
+
+# tf2 で解決する frame pair のみ Observation へ入れる (/tf 全体は保存しない)
+tf:
+  enabled: true
+  rate_hz: 5.0
+  pairs:
+    - {parent: base_link, child: link6}
+    - {parent: base_link, child: camera_color_optical_frame}

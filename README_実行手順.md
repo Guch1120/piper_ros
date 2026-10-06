@@ -267,3 +267,16 @@ ros2 run piper pick_and_place_trajectory
 ```
 alias cb='colcon build --symlink-install'
 ```
+# SAM3マスクへのMoveIt横方向追従 (eye-in-hand)
+手先のD435iに対象を映し続けるよう、link6をカメラ横軸方向へMoveItで動かす（姿勢制約なし）。
+
+```
+# 前提: realsense / sam3_server(gRPC) / piper_single_ctrl_moveit / piper_moveit_bridge / piper_real_moveit.launch.py は起動済み
+ros2 launch sam3_bridge ros2_realsense_object_name_bridge.launch   # /sam/mask を出す
+ros2 launch sam3_bridge target_diff.launch                         # /sam/mask -> /sam3/target_diff (HSR ditf_target の移植)
+ros2 launch piper follow_target.launch.py                          # MoveIt追従ノード（起動時は停止状態）
+ros2 topic pub --once /object_name std_msgs/msg/String "{data: cup}"
+ros2 service call /follow_target/enable std_srvs/srv/SetBool "{data: true}"   # 追従開始 (data: false で停止)
+```
+- 動く方向が逆なら `gain_m_per_px:=-0.0004`。`max_total_offset`(0.15m) を超えると起点から離れる動きは止まる。
+- デバッグ画像: `/debug/mask_grid/image`（緑=ガイド, 赤=物体）

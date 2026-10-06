@@ -1,0 +1,21 @@
+<launch>
+  <!-- ROS2版 DiffTarget: /sam/mask -> /sam3/target_diff (PointStamped, x=diff_pixel) -->
+  <node
+    pkg="sam3_bridge"
+    exec="target_diff_node.py"
+    name="target_diff"
+    output="screen">
+
+    <param name="mask_topic" value="/sam/mask" />
+    <param name="diff_topic" value="/sam3/target_diff" />
+    <!-- ガイド線のx[pixel]。負の値で画像中心 -->
+    <param name="grid_x_pixel" value="-1" />
+    <!-- left / right / center -->
+    <param name="target_edge" value="center" />
+    <param name="y_min_ratio" value="0.0" />
+    <param name="y_max_ratio" value="1.0" />
+    <param name="min_mask_pixels" value="50" />
+    <param name="publish_debug_image" value="true" />
+    <param name="debug_image_topic" value="/debug/mask_grid/image" />
+  </node>
+</launch>

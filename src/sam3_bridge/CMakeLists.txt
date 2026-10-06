@@ -31,6 +31,7 @@ install(PROGRAMS
   scripts/grpc_bridge.py
   scripts/ros_publisher.py
   scripts/ros2_realsense_object_name_bridge_node.py
+  scripts/target_diff_node.py
   scripts/gemma4_image_node.py
   scripts/gemma4_wait_enter_key_and_msg_node.py
   scripts/wait_enter_and_pub_msg_node.py

@@ -1,0 +1,68 @@
+# VLM Supervisor 設定. Phase ごとに機能を on にしていく (同時接続しない).
+#   Phase 1: flexbe.enabled=false, vlm.enabled=false  (既定)
+#   Phase 2: flexbe.enabled=true
+#   Phase 3: snapshot.* を有効化
+#   Phase 4: tools/check_iphone.py, tools/evaluate_snapshot.py で ROS 無しに確認
+#   Phase 5: vlm.enabled=true, vlm.mode=shadow
+
+task_instruction: ""
+
+# ObservationStore の stale 判定閾値 [sec]. Phase 1 では空 (age の計測のみ) で開始し,
+# observations.jsonl の age から決める. 例: {image: 0.5, joint_state: 0.2, "tf/*": 1.0}
+stale_thresholds: {}
+
+logging:
+  # observations.jsonl へ入力サマリを書く周期 [sec]. 0 で無効
+  observation_summary_period_sec: 1.0
+  # ROS console にもサマリを出す周期 [sec]. 0 で無効
+  console_summary_period_sec: 5.0
+
+flexbe:
+  enabled: false
+  namespace: ""                  # flexbe_onboard の namespace (通常は空)
+  userdata_service: get_user_data
+  # state 進入/outcome 時に userdata を取得する
+  fetch_userdata_on_state_change: true
+  userdata_poll_period_sec: 0.0  # 0 で周期取得しない
+  # structure を受け取れていない時に flexbe/request_mirror_structure を送るか.
+  # GUI (mirror) 実行中に送ると mirror 側が structure を再処理するため既定 false.
+  # GUI 無しで behavior を起動する場合に true にする.
+  request_structure_if_missing: false
+  history_size: 20
+
+snapshot:
+  # 周期保存 [sec]. 0 で無効
+  period_sec: 0.0
+  # FlexBE event で保存する event 種別
+  on_events: [BEHAVIOR_STARTED, STATE_ENTERED, STATE_OUTCOME, BEHAVIOR_FINISHED, BEHAVIOR_FAILED]
+  # state 進入時の画像を保持し state_entry_image として snapshot に含める
+  keep_state_entry_image: true
+  # outcome 直後は画像が古い可能性があるので少し待ってから保存 [sec]
+  event_delay_sec: 0.3
+
+# 各 State の目的 (短い説明). key は state 名 or state path
+state_descriptions: {}
+#  /Pick/CloseGripper: "Grasp the target object with the gripper."
+
+vlm:
+  enabled: false
+  mode: shadow                   # Phase 5: 判断を記録するだけ. FlexBE へは介入しない
+  client: mock                   # mock | iphone
+  base_url: http://127.0.0.1:8080
+  api: openai_chat               # openai_chat (現行 iPhone アプリ) | supervisor (将来の専用 API)
+  model: ""                      # 空なら GET /v1/models の先頭
+  api_key_env: VLM_API_KEY       # API key は環境変数から読む (ログには出さない)
+  api_key_file: ""
+  timeout_sec: 60.0
+  connect_timeout_sec: 3.0
+  max_tokens: 256
+  temperature: 0.0
+  # 評価をかける event (この event で保存した snapshot を評価する)
+  evaluate_on_events: [STATE_OUTCOME]
+  # 前回の評価が終わっていなければ新しい依頼は捨てる (iPhone は1件ずつしか処理できない)
+  drop_if_busy: true
+  mock_responses: null
+  prompt:
+    include_graph: true
+    include_userdata: true
+    include_state_entry_image: true

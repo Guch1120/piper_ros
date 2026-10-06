@@ -35,6 +35,7 @@ setup(
             'moveit_client = piper.moveit_client_node:main ',
             'moveit_client_tf = piper.moveit_client_tf_node:main',
             'moveit_client_tf_robust = piper.moveit_client_tf_robust_node:main',
+            'moveit_follow_target = piper.moveit_follow_target:main',
             'piper_single_ctrl_moveit_visual_servo = piper.piper_single_ctrl_moveit_visual_servo:main',
             'moveit_client_tf_interactive = piper.moveit_client_tf_interactive:main',
             'pick_and_place_trajectory = piper.pick_and_place_trajectry:main',
