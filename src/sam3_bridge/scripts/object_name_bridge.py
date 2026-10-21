@@ -32,6 +32,7 @@ class ObjectNameBridge(Node):
         self.quality = int(self._param("jpeg_quality"))
         self.max_w = int(self._param("max_width"))
         self.max_h = int(self._param("max_height"))
+        self.max_in_flight = max(1, int(self._param("max_in_flight")))
 
         legacy_head_topic = str(self._param("topic_name"))
         self.head_topic = str(self._param("head_topic")) or legacy_head_topic
@@ -82,9 +83,15 @@ class ObjectNameBridge(Node):
         }
 
         self.frame_queue = queue.Queue(maxsize=1)
-        self.stats = {"received": 0, "dropped": 0, "sent": 0, "failed": 0}
+        self.stats = {
+            "received": 0, "dropped": 0, "sent": 0, "failed": 0, "stale": 0
+        }
         self.stats_lock = threading.Lock()
         self.shutdown_event = threading.Event()
+        # 複数リクエストを並行させると応答順が入れ替わり得るため、
+        # sourceごとに最後にpublishしたフレームより古い結果は捨てる。
+        self.publish_lock = threading.Lock()
+        self.last_published_stamp = {}
 
         self.object_name_sub = self.create_subscription(
             String, self.object_name_topic, self.object_name_callback, 1
@@ -108,14 +115,20 @@ class ObjectNameBridge(Node):
             Bool, self.switch_topic, self.switch_callback, 1
         )
 
-        self.worker_thread = threading.Thread(
-            target=self._worker_loop, daemon=True, name="grpc_worker"
-        )
-        self.worker_thread.start()
+        # SAM3推論中に次フレームを送れるよう、max_in_flight本のworkerで並行して投げる。
+        self.worker_threads = [
+            threading.Thread(
+                target=self._worker_loop, daemon=True, name=f"grpc_worker_{i}"
+            )
+            for i in range(self.max_in_flight)
+        ]
+        for worker_thread in self.worker_threads:
+            worker_thread.start()
         self.stats_timer = self.create_timer(10.0, self._log_stats)
 
         logger = self.get_logger()
         logger.info(f"[ObjectNameBridge] gRPC接続先: {addr}")
+        logger.info(f"[ObjectNameBridge] 同時リクエスト数: {self.max_in_flight}")
         logger.info(f"[ObjectNameBridge] 初期prompts: {self.prompts!r}")
         logger.info(
             f"[ObjectNameBridge] head入力/出力: {self.head_topic} -> "
@@ -145,6 +158,7 @@ class ObjectNameBridge(Node):
             "jpeg_quality": 75,
             "max_width": 640,
             "max_height": 480,
+            "max_in_flight": 2,
             "topic_name": "/hsrb/head_rgbd_sensor/rgb/image_rect_color",
             "head_topic": "",
             "hand_topic": "/hsrb/hand_camera/image_raw",
@@ -279,9 +293,9 @@ class ObjectNameBridge(Node):
                 continue
 
             try:
-                self._process_frame(source, msg)
+                published = self._process_frame(source, msg)
                 with self.stats_lock:
-                    self.stats["sent"] += 1
+                    self.stats["sent" if published else "stale"] += 1
             except grpc.RpcError as exc:
                 with self.stats_lock:
                     self.stats["failed"] += 1
@@ -337,18 +351,11 @@ class ObjectNameBridge(Node):
         publishers = self.publishers_by_source[source]
         id_mask, mask_msg = self._create_mask_message(response)
         mask_msg.header = msg.header
-        publishers["mask"].publish(mask_msg)
-
         centroid_msg = self._create_centroid_msg(id_mask, msg.header)
-        if centroid_msg is not None:
-            publishers["centroid"].publish(centroid_msg)
-
-        publishers["object_list"].publish(
-            self._create_object_list_msg(
-                response, msg.header, source, current_prompts
-            )
+        object_list_msg = self._create_object_list_msg(
+            response, msg.header, source, current_prompts
         )
-
+        overlay_msg = None
         if response.overlay_image:
             overlay = cv2.imdecode(
                 np.frombuffer(response.overlay_image, dtype=np.uint8),
@@ -357,6 +364,17 @@ class ObjectNameBridge(Node):
             if overlay is not None:
                 overlay_msg = self.bridge.cv2_to_imgmsg(overlay, encoding="bgr8")
                 overlay_msg.header = msg.header
+
+        stamp_ns = msg.header.stamp.sec * 1_000_000_000 + msg.header.stamp.nanosec
+        with self.publish_lock:
+            if stamp_ns < self.last_published_stamp.get(source, -1):
+                return False
+            self.last_published_stamp[source] = stamp_ns
+            publishers["mask"].publish(mask_msg)
+            if centroid_msg is not None:
+                publishers["centroid"].publish(centroid_msg)
+            publishers["object_list"].publish(object_list_msg)
+            if overlay_msg is not None:
                 publishers["overlay"].publish(overlay_msg)
 
         object_ids = [obj.id for obj in response.objects]
@@ -366,6 +384,7 @@ class ObjectNameBridge(Node):
             f"objects={response.num_objects} ids={object_ids} "
             f"inference={response.inference_ms:.1f}ms"
         )
+        return True
 
     def _create_mask_message(self, response):
         if response.mask_encoding == "16UC1":
@@ -426,13 +445,15 @@ class ObjectNameBridge(Node):
         self.get_logger().info(
             "[ObjectNameBridge] 統計 | "
             f"受信:{stats['received']} 破棄:{stats['dropped']} "
-            f"送信成功:{stats['sent']} 失敗:{stats['failed']}"
+            f"送信成功:{stats['sent']} 失敗:{stats['failed']} "
+            f"順序逆転破棄:{stats['stale']}"
         )
 
     def destroy_node(self):
         self.shutdown_event.set()
-        if self.worker_thread.is_alive():
-            self.worker_thread.join(timeout=max(1.0, self.timeout + 0.5))
+        for worker_thread in self.worker_threads:
+            if worker_thread.is_alive():
+                worker_thread.join(timeout=max(1.0, self.timeout + 0.5))
         self.channel.close()
         return super().destroy_node()
 
