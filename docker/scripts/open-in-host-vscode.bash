@@ -3,6 +3,8 @@
 # FlexBE editor setting: bash /ros2_ws/docker/scripts/open-in-host-vscode.bash $FILE
 set -euo pipefail
 
+# CONTAINER_ROOT: コンテナ内のワークスペースルート
+# REQUEST_DIR: ホスト側の FlexBE "view source" リクエストディレクトリ.ここにファイルパスを書き込むとホスト側のwatch-flexbe-vscode.bashによってVSCodeが起動
 CONTAINER_ROOT="${FLEXBE_CONTAINER_ROOT:-/ros2_ws}"
 REQUEST_DIR="${FLEXBE_REQUEST_DIR:-$CONTAINER_ROOT/.flexbe/open-requests}"
 
@@ -31,8 +33,10 @@ esac
 
 # Same-directory atomic rename means the watcher never observes partial content.
 # mktemp uses 0600, so change to 0644 for the host user to read Docker-root files.
+# 一時ファイルを作成
 tmp="$(mktemp "$REQUEST_DIR/.pending.XXXXXXXXXX")"
 trap 'rm -f -- "$tmp"' EXIT
+# 一時ファイル名から開きたい対象pythonファイル名へと変更
 printf '%s\n' "$file" > "$tmp"
 chmod 0644 -- "$tmp"
 request="$REQUEST_DIR/request-$(date +%s%N)-$$-$RANDOM.req"

@@ -31,6 +31,8 @@ TERMINATOR_LAYOUT="piper-arm"
 export PIPER_PROJECT_DIR="$PROJECT_DIR"
 
 # Ctrl+C と EXIT の両方で cleanup が二重実行されるのを防ぐ
+# FLEXBE_WATCHER_PID： FLEXBE_WATCHER によって起動されるbashファイルのPIDを保持する
+# FLEXBE_WATCHER： 起動するFlexbe の "view source" ボタンの押下でホスト側のVSCodeで開くためのwatcherスクリプトのパス
 CLEANED_UP=0
 FLEXBE_WATCHER_PID=""
 FLEXBE_WATCHER="$PROJECT_DIR/docker/scripts/watch-flexbe-vscode.bash"
