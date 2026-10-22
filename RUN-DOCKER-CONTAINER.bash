@@ -32,12 +32,24 @@ export PIPER_PROJECT_DIR="$PROJECT_DIR"
 
 # Ctrl+C と EXIT の両方で cleanup が二重実行されるのを防ぐ
 CLEANED_UP=0
+FLEXBE_WATCHER_PID=""
+FLEXBE_WATCHER="$PROJECT_DIR/docker/scripts/watch-flexbe-vscode.bash"
+
+stop_flexbe_watcher() {
+    if [[ -n "$FLEXBE_WATCHER_PID" ]]; then
+        echo "[INFO] FlexBE VS Code watcher を停止します: PID=$FLEXBE_WATCHER_PID"
+        kill "$FLEXBE_WATCHER_PID" 2>/dev/null || true
+        wait "$FLEXBE_WATCHER_PID" 2>/dev/null || true
+        FLEXBE_WATCHER_PID=""
+    fi
+}
 
 cleanup() {
     if [ "$CLEANED_UP" -eq 1 ]; then
         return 0
     fi
     CLEANED_UP=1
+    stop_flexbe_watcher
 
     echo
     echo "[INFO] cleanup: Terminator 終了後の処理を開始します"
@@ -120,6 +132,18 @@ if [ ! -f "$PIPER_PROJECT_DIR/docker/scripts/exec-in-docker-container.bash" ]; t
     echo "[ERROR] exec-in-docker-container.bash が見つかりません"
     echo "[ERROR] expected: $PIPER_PROJECT_DIR/docker/scripts/exec-in-docker-container.bash"
     exit 1
+fi
+
+if [ -f "$FLEXBE_WATCHER" ]; then
+    if command -v code >/dev/null 2>&1; then
+        echo "[INFO] FlexBE VS Code watcher をホスト側で起動します"
+        bash "$FLEXBE_WATCHER" "$PROJECT_DIR" &
+        FLEXBE_WATCHER_PID=$!
+    else
+        echo "[WARN] ホスト側の code コマンドが見つかりません。FlexBE VIEW SOURCE 連携は無効です"
+    fi
+else
+    echo "[WARN] FlexBE watcher が見つかりません: $FLEXBE_WATCHER"
 fi
 
 echo "[INFO] ホスト側で Terminator を起動します..."
