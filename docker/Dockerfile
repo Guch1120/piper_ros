@@ -56,7 +56,9 @@ RUN add-apt-repository universe \
     net-tools \
     ros-humble-cv-bridge \
     ros-humble-image-transport \
-    ros-humble-vision-msgs
+    ros-humble-vision-msgs \
+    ros-humble-moveit \
+    ros-humble-moveit-configs-utils
 
 # piper_ros の依存関係のインストール (README より)
 RUN apt-get update && apt-get install -y \
@@ -66,6 +68,25 @@ RUN apt-get update && apt-get install -y \
     ros-humble-joint-state-publisher-gui \
     ros-humble-robot-state-publisher \
     && rm -rf /var/lib/apt/lists/*
+
+# RealSense (librealsense2 SDK + ROS 2 wrapper)
+RUN mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://librealsense.realsenseai.com/Debian/librealsenseai.asc \
+       | gpg --dearmor \
+       | tee /etc/apt/keyrings/librealsenseai.gpg > /dev/null \
+    && chmod 644 /etc/apt/keyrings/librealsenseai.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/librealsenseai.gpg] https://librealsense.realsenseai.com/Debian/apt-repo $(lsb_release -cs) main" \
+       | tee /etc/apt/sources.list.d/librealsense.list > /dev/null \
+    && apt-get update && apt-get install -y --no-install-recommends \
+       librealsense2-utils \
+       librealsense2-dev \
+       librealsense2-dbg \
+       ros-humble-realsense2-camera \
+       ros-humble-realsense2-camera-msgs \
+       ros-humble-realsense2-description \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --no-cache-dir pyrealsense2
 
 # Python (pip) の依存関係
 RUN pip3 install \

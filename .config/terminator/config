@@ -22,7 +22,7 @@
     show_titlebar = False
     scrollback_lines = 5000
     use_custom_command = True
-    custom_command = '''bash -lc 'bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev; echo "command finished"; read -p "Press Enter to close..."''''
+    custom_command = '''bash -lc 'bash ./docker/scripts/exec-in-docker-container.bash cotyaka-piper-robot-core; echo "command finished"; read -p "Press Enter to close..."''''
     use_system_font = False
   [[cmd_shell_sam3]]
     background_color = "#300a24"
@@ -44,7 +44,18 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true enable_sync:=true enable_rgbd:=true pointcloud.enable:=true
+    custom_command = '''bash -lc 'bash ./docker/scripts/exec-in-docker-container.bash cotyaka-piper-robot-core "bash /ros2_ws/run_ros_cmd.sh ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true enable_sync:=true enable_rgbd:=true pointcloud.enable:=true"; echo "command finished"; read -p "Press Enter to close..."''''
+    use_system_font = False
+  [[cmd_realsense_imu]]
+    background_color = "#300a24"
+    background_darkness = 0.9
+    background_type = transparent
+    cursor_color = "#aaaaaa"
+    font = Monospace 10
+    foreground_color = "#ffffff"
+    show_titlebar = False
+    use_custom_command = True
+    custom_command = '''bash -lc 'bash ./docker/scripts/exec-in-docker-container.bash cotyaka-piper-robot-core "bash /ros2_ws/run_ros_cmd.sh ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true enable_sync:=true enable_rgbd:=true pointcloud.enable:=true enable_gyro:=true enable_accel:=true unite_imu_method:=2"; echo "command finished"; read -p "Press Enter to close..."''''
     use_system_font = False
   [[cmd_detic]]
     background_color = "#300a24"
@@ -99,7 +110,29 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client
+    custom_command = '''bash -lc 'bash ./docker/scripts/exec-in-docker-container.bash cotyaka-piper-robot-core "bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client"; echo "command finished"; read -p "Press Enter to close..."''''
+    use_system_font = False
+  [[cmd_piper_start_nuc]]
+    background_color = "#300a24"
+    background_darkness = 0.9
+    background_type = transparent
+    cursor_color = "#aaaaaa"
+    font = Monospace 10
+    foreground_color = "#ffffff"
+    show_titlebar = False
+    use_custom_command = True
+    custom_command = '''bash -lc 'bash ./docker/scripts/exec-in-docker-container.bash cotyaka-piper-robot-core "bash /ros2_ws/run_ros_cmd.sh ros2 launch piper start_single_moveit_piper.launch.py"; echo "command finished"; read -p "Press Enter to close..."''''
+    use_system_font = False
+  [[cmd_real_moveit_nuc]]
+    background_color = "#300a24"
+    background_darkness = 0.9
+    background_type = transparent
+    cursor_color = "#aaaaaa"
+    font = Monospace 10
+    foreground_color = "#ffffff"
+    show_titlebar = False
+    use_custom_command = True
+    custom_command = '''bash -lc 'bash ./docker/scripts/exec-in-docker-container.bash cotyaka-piper-robot-core "bash /ros2_ws/run_ros_cmd.sh ros2 launch piper_with_gripper_moveit piper_real_moveit.launch.py"; echo "command finished"; read -p "Press Enter to close..."''''
     use_system_font = False
   [[cmd_sim_moveit]]
     background_darkness = 0.9
@@ -128,7 +161,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client_tf_interactive
+    custom_command = '''bash -lc 'bash ./docker/scripts/exec-in-docker-container.bash cotyaka-piper-robot-core "bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client_tf_interactive"; echo "command finished"; read -p "Press Enter to close..."''''
     use_system_font = False
   [[cmd_moveit_tf]]
     background_color = "#300a24"
@@ -139,7 +172,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client_tf
+    custom_command = '''bash -lc 'bash ./docker/scripts/exec-in-docker-container.bash cotyaka-piper-robot-core "bash /ros2_ws/run_ros_cmd.sh ros2 run piper moveit_client_tf"; echo "command finished"; read -p "Press Enter to close..."''''
     use_system_font = False
   [[cmd_flexbe]]
     background_color = "#300a24"
@@ -161,7 +194,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = 'bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 topic pub --once /enable_flag std_msgs/msg/Bool "{data: false}"'
+    custom_command = '''bash -lc 'bash ./docker/scripts/exec-in-docker-container.bash cotyaka-piper-robot-core "bash /ros2_ws/run_ros_cmd.sh ros2 topic pub --once /enable_flag std_msgs/msg/Bool \"{data: false}\""; echo "command finished"; read -p "Press Enter to close..."''''
     use_system_font = False
   [[cmd_sam3_node]]
     background_color = "#300a24"
@@ -205,7 +238,7 @@
     foreground_color = "#ffffff"
     show_titlebar = False
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh bash can_activate.sh can0 1000000
+    custom_command = '''bash -lc 'bash ./docker/scripts/exec-in-docker-container.bash cotyaka-piper-robot-core "bash /ros2_ws/run_ros_cmd.sh bash can_activate.sh can0 1000000"; echo "command finished"; read -p "Press Enter to close..."''''
     use_system_font = False
   [[cmd_yolov8-seg]]
     background_color = "#300a24"
@@ -217,7 +250,7 @@
     show_titlebar = False
     scrollback_lines = 5000
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch sam3_bridge object_name_bridge.launch
+    custom_command = '''bash -lc 'bash ./docker/scripts/exec-in-docker-container.bash cotyaka-piper-robot-core "bash /ros2_ws/run_ros_cmd.sh ros2 launch sam3_bridge object_name_bridge.launch"; echo "command finished"; read -p "Press Enter to close..."''''
     use_system_font = False
   [[cmd_sam3_grpc_bridge]]
     background_color = "#300a24"
@@ -229,7 +262,7 @@
     show_titlebar = False
     scrollback_lines = 5000
     use_custom_command = True
-    custom_command = bash ./docker/scripts/exec-in-docker-container.bash piper-humble-dev bash /ros2_ws/run_ros_cmd.sh ros2 launch sam3_bridge ros2_realsense_object_name_bridge.launch
+    custom_command = '''bash -lc 'bash ./docker/scripts/exec-in-docker-container.bash cotyaka-piper-robot-core "bash /ros2_ws/run_ros_cmd.sh ros2 launch sam3_bridge ros2_realsense_object_name_bridge.launch"; echo "command finished"; read -p "Press Enter to close..."''''
     use_system_font = False
   [[cmd_shell_kobuki]]
     background_color = "#300a24"
@@ -242,6 +275,18 @@
     scrollback_lines = 5000
     use_custom_command = True
     custom_command = '''bash -lc 'bash ./docker/scripts/exec-in-docker-container.bash oit-kobuki-ws-ros2; echo "command finished"; read -p "Press Enter to close..."''''
+    use_system_font = False
+  [[cmd_rosbag_record]]
+    background_color = "#300a24"
+    background_darkness = 0.9
+    background_type = transparent
+    cursor_color = "#aaaaaa"
+    font = Monospace 10
+    foreground_color = "#ffffff"
+    show_titlebar = False
+    scrollback_lines = 5000
+    use_custom_command = True
+    custom_command = '''bash -lc 'bash ./docker/scripts/exec-in-docker-container.bash cotyaka-piper-robot-core "bash /ros2_ws/run_ros_cmd.sh ros2 bag record -e \"^/camera/.*|^/joint_states\$\" -x \"depth/color/points|/rgbd\$\" -o /ros2_ws/bags/realsense_joint_$(date +%Y%m%d_%H%M%S)"; echo "command finished"; read -p "Press Enter to close..."''''
     use_system_font = False
 [layouts]
   [[default]]
@@ -261,7 +306,7 @@
       fullscreen = False
       size = 925, 1016
       title = piper-arm
-      last_active_term = 79e6da3c-5668-4c46-bb35-75634b63a509
+      last_active_term = 02b9354c-a24d-4fc9-9fd6-20dab91b6e97
       last_active_window = True
     [[[child1]]]
       type = VPaned
@@ -299,48 +344,24 @@
       order = 1
       profile = cmd_activate_can
       uuid = 10e3a3f2-ce23-4e3b-965b-1430016c2c1d
-    [[[child7]]]
-      type = HPaned
-      parent = child3
-      order = 1
-      position = 228
-      ratio = 0.5
     [[[terminal8]]]
       type = Terminal
-      parent = child7
-      order = 0
+      parent = child3
+      order = 1
       profile = cmd_arm_powerdown
       uuid = 2fa10286-fcbd-40ae-bd00-291a7d1057cb
-    [[[terminal9]]]
-      type = Terminal
-      parent = child7
-      order = 1
-      profile = cmd_flexbe
-      uuid = beb724a4-a6de-4245-a310-daff63918b4d
     [[[child10]]]
       type = VPaned
       parent = child2
       order = 1
       position = 255
       ratio = 0.5069582504970179
-    [[[child11]]]
-      type = HPaned
-      parent = child10
-      order = 0
-      position = 228
-      ratio = 0.5022026431718062
     [[[terminal12]]]
       type = Terminal
-      parent = child11
+      parent = child10
       order = 0
       profile = cmd_shell_piper
       uuid = 6854fada-49cc-4de9-9ade-25f6d9a9b88c
-    [[[terminal13]]]
-      type = Terminal
-      parent = child11
-      order = 1
-      profile = cmd_sam3_grpc_bridge
-      uuid = 81ab64ea-4a43-44dc-aa01-d0580c85e002
     [[[child14]]]
       type = HPaned
       parent = child10
@@ -351,78 +372,120 @@
       type = Terminal
       parent = child14
       order = 0
-      profile = cmd_shell_kobuki
+      profile = default
       uuid = 79e6da3c-5668-4c46-bb35-75634b63a509
     [[[terminal16]]]
       type = Terminal
       parent = child14
       order = 1
-      profile = cmd_shell_sam3
+      profile = cmd_realsense_imu
       uuid = 02b9354c-a24d-4fc9-9fd6-20dab91b6e97
-    [[[child17]]]
-      type = VPaned
-      parent = child1
-      order = 1
-      position = 249
-      ratio = 0.5
     [[[child18]]]
       type = HPaned
-      parent = child17
+      parent = child1
+      order = 1
+      position = 460
+      ratio = 0.5
+    [[[terminal21]]]
+      type = Terminal
+      parent = child18
+      order = 0
+      profile = cmd_shell_piper
+      uuid = 0ee77ee9-0cea-45e3-b0cc-6fd3aa4b415a
+    [[[terminal23]]]
+      type = Terminal
+      parent = child18
+      order = 1
+      profile = default
+      uuid = 39522684-192a-457c-87c8-5fe1840fec9b
+  [[piper-arm-nuc]]
+    [[[child0]]]
+      type = Window
+      parent = ""
+      order = 0
+      position = 70:27
+      maximised = False
+      fullscreen = False
+      size = 925, 1016
+      title = piper-arm-nuc
+      last_active_term = d7c0d246-532f-4217-8911-ccfe07de64ba
+      last_active_window = True
+    [[[child1]]]
+      type = VPaned
+      parent = child0
+      order = 0
+      position = 506
+      ratio = 0.5004945598417408
+    [[[child2]]]
+      type = HPaned
+      parent = child1
       order = 0
       position = 460
       ratio = 0.5
-    [[[child19]]]
+    [[[child3]]]
       type = HPaned
-      parent = child18
+      parent = child2
       order = 0
       position = 228
       ratio = 0.5010989010989011
-    [[[terminal20]]]
+    [[[terminal4]]]
       type = Terminal
-      parent = child19
+      parent = child3
       order = 0
-      profile = cmd_real_moveit
-      uuid = bf24ef60-f3d3-46be-bf47-8203353d647f
-    [[[terminal21]]]
+      profile = cmd_realsense
+      uuid = 4058a38b-1b02-4c93-8a17-eeac2b8cb810
+    [[[terminal5]]]
       type = Terminal
-      parent = child19
+      parent = child3
+      order = 1
+      profile = cmd_activate_can
+      uuid = 7bf56306-18b0-426a-bd9e-ffb1890b6cf9
+    [[[child6]]]
+      type = HPaned
+      parent = child2
+      order = 1
+      position = 228
+      ratio = 0.5010989010989011
+    [[[terminal7]]]
+      type = Terminal
+      parent = child6
+      order = 0
+      profile = cmd_piper_start_nuc
+      uuid = fcfb205c-8f59-4a60-9b57-260d2ff0a5e0
+    [[[terminal8]]]
+      type = Terminal
+      parent = child6
+      order = 1
+      profile = cmd_real_moveit_nuc
+      uuid = 2689b8d6-9b7f-4b63-a3ab-edacfaa2d033
+    [[[child9]]]
+      type = VPaned
+      parent = child1
+      order = 1
+      position = 250
+      ratio = 0.5
+    [[[child10]]]
+      type = HPaned
+      parent = child9
+      order = 0
+      position = 460
+      ratio = 0.5
+    [[[terminal11]]]
+      type = Terminal
+      parent = child10
+      order = 0
+      profile = cmd_arm_powerdown
+      uuid = 47ab4696-2a3a-45c9-bb4b-a58268b942a0
+    [[[terminal12]]]
+      type = Terminal
+      parent = child10
+      order = 1
+      profile = cmd_rosbag_record
+      uuid = d7c0d246-532f-4217-8911-ccfe07de64ba
+    [[[terminal13]]]
+      type = Terminal
+      parent = child9
       order = 1
       profile = cmd_shell_piper
-      uuid = 0ee77ee9-0cea-45e3-b0cc-6fd3aa4b415a
-    [[[child22]]]
-      type = HPaned
-      parent = child18
-      order = 1
-      position = 228
-      ratio = 0.5010989010989011
-    [[[terminal23]]]
-      type = Terminal
-      parent = child22
-      order = 0
-      profile = cmd_shell_kobuki
-      uuid = 39522684-192a-457c-87c8-5fe1840fec9b
-    [[[terminal24]]]
-      type = Terminal
-      parent = child22
-      order = 1
-      profile = cmd_sim_moveit
-      uuid = 9b3428e7-7a19-4056-bb0f-41166984f31e
-    [[[child25]]]
-      type = HPaned
-      parent = child17
-      order = 1
-      position = 461
-      ratio = 0.5010869565217392
-    [[[terminal26]]]
-      type = Terminal
-      parent = child25
-      order = 0
-      profile = cmd_piper_start_action
-      uuid = 53a0e0dc-8601-4b28-8dcf-00e3f3f11356
-    [[[terminal27]]]
-      type = Terminal
-      parent = child25
-      order = 1
-      profile = cmd_sim_gazebo
-      uuid = d54a7512-d7e2-4682-ba00-65cecc56dd94
+      uuid = 58e1eaac-9933-4def-8b5d-dd114afb9355
 [plugins]

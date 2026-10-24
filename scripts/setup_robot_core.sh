@@ -3,7 +3,8 @@ set -euo pipefail
 
 REPO_DIR="${COTYAKA_REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 COMPOSE_FILE="$REPO_DIR/docker/docker-compose.robot-core.yml"
-KOBUKI_WS="${KOBUKI_WS:-$(cd "$REPO_DIR/.." && pwd)/oit_kobuki_ws-main}"
+KOBUKI_WS="${KOBUKI_WS:-$(cd "$REPO_DIR/.." && pwd)/kobuki_ws}"
+export KOBUKI_WS
 
 log() { echo "[cotyaka-setup] $*"; }
 
@@ -24,8 +25,10 @@ log "Installing dependencies and building Piper/Cotyaka workspace"
 docker compose -f "$COMPOSE_FILE" run --rm --no-deps piper-robot-core bash -lc '
   set -e
   source /opt/ros/humble/setup.bash
+  apt-get update
   rosdep update
-  rosdep install -i --from-path src --rosdistro humble -y
+  rosdep install -i --from-path src --rosdistro humble -y \
+    --skip-keys="detic_onnx_ros2 ultralytics ros_tcp_endpoint kobuki_description flexbe_core flexbe_widget"
   colcon build --symlink-install
 '
 
@@ -33,6 +36,7 @@ log "Installing dependencies and building Kobuki workspace"
 docker compose -f "$COMPOSE_FILE" run --rm --no-deps kobuki-robot-core bash -lc '
   set -e
   source /opt/ros/humble/setup.bash
+  apt-get update
   rosdep update
   rosdep install -i --from-path src --rosdistro humble -y
   colcon build --symlink-install --executor sequential

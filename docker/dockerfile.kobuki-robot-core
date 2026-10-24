@@ -1,0 +1,9 @@
+FROM oit-kobuki-ws:humble
+
+# Runtime dependencies required by the headless robot_core launch.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      ros-humble-robot-state-publisher \
+      ros-humble-xacro \
+      ros-humble-joy && \
+    rm -rf /var/lib/apt/lists/*

@@ -31,20 +31,12 @@ services:
     # 環境変数 (GUI用)
     environment:
       - DISPLAY=${DISPLAY}
-      - NVIDIA_DRIVER_CAPABILITIES=all
-      - NVIDIA_VISIBLE_DEVICES=all
       - ROS_DOMAIN_ID=12
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
-
-    # GPUの使用 (NVIDIA CUDA)
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [ gpu ]
+    # 注意: このホストにはNVIDIA GPUが存在しないため、GPU予約(deploy.resources.reservations.devices)は
+    # 削除している。RViz/MoveItの表示はIntel内蔵GPU上のMesa(OpenGL)で描画される。
+    # NVIDIA GPU搭載マシンで使う場合は、GPU予約とNVIDIA_VISIBLE_DEVICES / NVIDIA_DRIVER_CAPABILITIES を戻すこと。
 
     # ネットワーク (シミュレータとホストの通信を簡単にする)
     network_mode: host
