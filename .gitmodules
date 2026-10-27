@@ -15,3 +15,9 @@
 	path = ROS-TCP-Endpoint
 	url = https://github.com/Unity-Technologies/ROS-TCP-Endpoint.git
 	branch = main-ros2
+[submodule "sam3"]
+    path = sam3
+    url = git@github.com:HSR-OIT/sam3.git
+[submodule "src/realsense-ros"]
+	path = src/realsense-ros
+	url = https://github.com/IntelRealSense/realsense-ros.git

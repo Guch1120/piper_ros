@@ -80,15 +80,15 @@ RUN pip3 install \
 RUN pip3 install --pre --ignore-installed torch==2.9.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 
 #Record3d用インストール
-RUN apt-get update && apt-get install -y \
-    mpg123 \
-    && rm -rf /var/lib/apt/lists/*
-RUN pip3 install \
-    gTTS \
-    lzfse \
-    numpy==1.26.4 \
-    scipy==1.11.4 \
-    opencv-contrib-python==4.8.1.78
+# RUN apt-get update && apt-get install -y \
+#     mpg123 \
+#     && rm -rf /var/lib/apt/lists/*
+# RUN pip3 install \
+#     gTTS \
+#     lzfse \
+#     numpy==1.26.4 \
+#     scipy==1.11.4 \
+#     opencv-contrib-python==4.8.1.78
 
 # ワークスペースの作成
 RUN mkdir -p /ros2_ws/src

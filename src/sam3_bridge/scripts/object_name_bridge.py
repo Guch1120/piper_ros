@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
+import csv
+import datetime
+import os
 import queue
 import threading
+import time
 
 import cv2
 import grpc
@@ -33,6 +37,10 @@ class ObjectNameBridge(Node):
         self.max_w = int(self._param("max_width"))
         self.max_h = int(self._param("max_height"))
         self.max_in_flight = max(1, int(self._param("max_in_flight")))
+        self.publish_original_size = bool(self._param("publish_original_size"))
+        self._open_timing_log(
+            bool(self._param("timing_log")), str(self._param("timing_log_dir"))
+        )
 
         legacy_head_topic = str(self._param("topic_name"))
         self.head_topic = str(self._param("head_topic")) or legacy_head_topic
@@ -150,6 +158,38 @@ class ObjectNameBridge(Node):
         )
         logger.info("[ObjectNameBridge] mask出力: 16UC1 track-ID label mask")
 
+    TIMING_COLUMNS = [
+        "t_wall", "source", "prompts", "src_size", "send_size", "n_objects", "inflight", "stamp_age_ms", "queue_wait_ms",
+        "convert_ms", "resize_ms", "jpeg_ms", "jpeg_kb", "rtt_ms", "server_gpu_ms",
+        "mask_ms", "msgs_ms", "overlay_ms", "publish_ms", "work_ms", "e2e_ms", "stale",
+    ]
+
+    def _open_timing_log(self, enabled, directory):
+        self.timing_file = None
+        self.timing_lock = threading.Lock()
+        self.inflight = 0
+        if not enabled:
+            return
+        try:
+            os.makedirs(directory, exist_ok=True)
+            stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            path = os.path.join(directory, f"bridge_{stamp}.csv")
+            self.timing_file = open(path, "w", newline="", buffering=1)
+            csv.writer(self.timing_file).writerow(self.TIMING_COLUMNS)
+            self.get_logger().info(f"[ObjectNameBridge] 計測ログ: {path}")
+        except OSError as exc:
+            self.get_logger().warning(
+                f"[ObjectNameBridge] 計測ログを作成できません({directory}): {exc}"
+            )
+
+    def _write_timing(self, **values):
+        if self.timing_file is None:
+            return
+        row = [values.get(c, "") for c in self.TIMING_COLUMNS]
+        row = [f"{v:.2f}" if isinstance(v, float) else v for v in row]
+        with self.timing_lock:
+            csv.writer(self.timing_file).writerow(row)
+
     def _declare_parameters(self):
         parameters = {
             "grpc_host": "localhost",
@@ -159,6 +199,12 @@ class ObjectNameBridge(Node):
             "max_width": 640,
             "max_height": 480,
             "max_in_flight": 2,
+            # Trueならmask/centroid/object_listを入力画像の解像度に戻してpublishする。
+            # aligned depthやCameraInfoと同じpixel座標系で扱えるようにするため。
+            "publish_original_size": True,
+            # 段階別の処理時間をCSVに記録する(ボトルネック計測用)。
+            "timing_log": True,
+            "timing_log_dir": "/ros2_ws/logs/sam3_timing",
             "topic_name": "/hsrb/head_rgbd_sensor/rgb/image_rect_color",
             "head_topic": "",
             "hand_topic": "/hsrb/hand_camera/image_raw",
@@ -262,7 +308,7 @@ class ObjectNameBridge(Node):
         except queue.Empty:
             pass
         try:
-            self.frame_queue.put_nowait((source, msg))
+            self.frame_queue.put_nowait((source, msg, time.perf_counter()))
         except queue.Full:
             with self.stats_lock:
                 self.stats["dropped"] += 1
@@ -288,12 +334,12 @@ class ObjectNameBridge(Node):
         self.get_logger().info("[ObjectNameBridge] Workerスレッド起動")
         while rclpy.ok() and not self.shutdown_event.is_set():
             try:
-                source, msg = self.frame_queue.get(timeout=0.1)
+                source, msg, t_recv = self.frame_queue.get(timeout=0.1)
             except queue.Empty:
                 continue
 
             try:
-                published = self._process_frame(source, msg)
+                published = self._process_frame(source, msg, t_recv)
                 with self.stats_lock:
                     self.stats["sent" if published else "stale"] += 1
             except grpc.RpcError as exc:
@@ -312,24 +358,35 @@ class ObjectNameBridge(Node):
         if rclpy.ok():
             self.get_logger().info("[ObjectNameBridge] Workerスレッド終了")
 
-    def _process_frame(self, source, msg):
+    def _process_frame(self, source, msg, t_recv):
+        t0 = time.perf_counter()
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
         cv_image = np.ascontiguousarray(cv_image, dtype=np.uint8)
-        h, w = cv_image.shape[:2]
+        t_converted = time.perf_counter()
+        orig_h, orig_w = cv_image.shape[:2]
+        h, w = orig_h, orig_w
+        # 縦横比を保ったままmax_width x max_heightに収まるよう縮小する。
         if w > self.max_w or h > self.max_h:
-            cv_image = cv2.resize(cv_image, (self.max_w, self.max_h))
-            h, w = self.max_h, self.max_w
+            scale = min(self.max_w / float(w), self.max_h / float(h))
+            w = max(1, int(round(w * scale)))
+            h = max(1, int(round(h * scale)))
+            cv_image = cv2.resize(cv_image, (w, h), interpolation=cv2.INTER_AREA)
+        t_resized = time.perf_counter()
 
         ok, jpeg = cv2.imencode(
             ".jpg", cv_image, [int(cv2.IMWRITE_JPEG_QUALITY), self.quality]
         )
         if not ok:
             raise RuntimeError("JPEG encodeに失敗しました")
+        t_encoded = time.perf_counter()
 
         with self.prompt_lock:
             current_prompts = list(self.prompts)
         reset_tracking = self._consume_tracking_reset_flag()
 
+        with self.timing_lock:
+            self.inflight += 1
+            inflight = self.inflight
         try:
             response = self.stub.SegmentImage(
                 segment_pb2.ImageRequest(
@@ -347,14 +404,24 @@ class ObjectNameBridge(Node):
             if reset_tracking:
                 self._request_tracking_reset()
             raise
+        finally:
+            with self.timing_lock:
+                self.inflight -= 1
+        t_rpc = time.perf_counter()
 
         publishers = self.publishers_by_source[source]
-        id_mask, mask_msg = self._create_mask_message(response)
+        if self.publish_original_size:
+            out_size = (orig_w, orig_h)
+        else:
+            out_size = (int(response.width), int(response.height))
+        id_mask, mask_msg = self._create_mask_message(response, out_size)
         mask_msg.header = msg.header
         centroid_msg = self._create_centroid_msg(id_mask, msg.header)
+        t_mask = time.perf_counter()
         object_list_msg = self._create_object_list_msg(
-            response, msg.header, source, current_prompts
+            response, msg.header, source, current_prompts, out_size
         )
+        t_msgs = time.perf_counter()
         overlay_msg = None
         if response.overlay_image:
             overlay = cv2.imdecode(
@@ -365,17 +432,50 @@ class ObjectNameBridge(Node):
                 overlay_msg = self.bridge.cv2_to_imgmsg(overlay, encoding="bgr8")
                 overlay_msg.header = msg.header
 
+        t_overlay = time.perf_counter()
         stamp_ns = msg.header.stamp.sec * 1_000_000_000 + msg.header.stamp.nanosec
+        stale = False
         with self.publish_lock:
             if stamp_ns < self.last_published_stamp.get(source, -1):
-                return False
-            self.last_published_stamp[source] = stamp_ns
-            publishers["mask"].publish(mask_msg)
-            if centroid_msg is not None:
-                publishers["centroid"].publish(centroid_msg)
-            publishers["object_list"].publish(object_list_msg)
-            if overlay_msg is not None:
-                publishers["overlay"].publish(overlay_msg)
+                stale = True
+            else:
+                self.last_published_stamp[source] = stamp_ns
+                publishers["mask"].publish(mask_msg)
+                if centroid_msg is not None:
+                    publishers["centroid"].publish(centroid_msg)
+                publishers["object_list"].publish(object_list_msg)
+                if overlay_msg is not None:
+                    publishers["overlay"].publish(overlay_msg)
+        t_pub = time.perf_counter()
+        # header.stampが現在時刻と同じ時計のときだけ意味を持つ(カメラ時計だと大きくずれる)。
+        stamp_age_ms = self.get_clock().now().nanoseconds / 1e6 - stamp_ns / 1e6
+        ms = lambda a, b: (b - a) * 1000.0
+        self._write_timing(
+            t_wall=time.time(),
+            source=source,
+            prompts="|".join(current_prompts),
+            src_size=f"{orig_w}x{orig_h}",
+            send_size=f"{w}x{h}",
+            n_objects=int(response.num_objects),
+            inflight=inflight,
+            stamp_age_ms=stamp_age_ms,
+            queue_wait_ms=ms(t_recv, t0),
+            convert_ms=ms(t0, t_converted),
+            resize_ms=ms(t_converted, t_resized),
+            jpeg_ms=ms(t_resized, t_encoded),
+            jpeg_kb=len(jpeg) / 1024.0,
+            rtt_ms=ms(t_encoded, t_rpc),
+            server_gpu_ms=float(response.inference_ms),
+            mask_ms=ms(t_rpc, t_mask),
+            msgs_ms=ms(t_mask, t_msgs),
+            overlay_ms=ms(t_msgs, t_overlay),
+            publish_ms=ms(t_overlay, t_pub),
+            work_ms=ms(t0, t_pub),
+            e2e_ms=ms(t_recv, t_pub),
+            stale=int(stale),
+        )
+        if stale:
+            return False
 
         object_ids = [obj.id for obj in response.objects]
         self.get_logger().info(
@@ -386,19 +486,28 @@ class ObjectNameBridge(Node):
         )
         return True
 
-    def _create_mask_message(self, response):
+    def _create_mask_message(self, response, out_size):
         if response.mask_encoding == "16UC1":
             id_mask = np.frombuffer(response.mask, dtype=np.uint16).reshape(
                 response.height, response.width
             )
+            id_mask = self._resize_label_mask(id_mask, out_size)
             return id_mask, self.bridge.cv2_to_imgmsg(id_mask, encoding="16UC1")
 
         mask = np.frombuffer(response.mask, dtype=np.uint8).reshape(
             response.height, response.width
         )
+        mask = self._resize_label_mask(mask, out_size)
         id_mask = mask.astype(np.uint16)
         mask_vis = (mask > 0).astype(np.uint8) * 255
         return id_mask, self.bridge.cv2_to_imgmsg(mask_vis, encoding="mono8")
+
+    @staticmethod
+    def _resize_label_mask(mask, out_size):
+        if (mask.shape[1], mask.shape[0]) == tuple(out_size):
+            return mask
+        # ラベル値(track ID)を混ぜないよう最近傍補間で拡大する。
+        return cv2.resize(mask, out_size, interpolation=cv2.INTER_NEAREST)
 
     @staticmethod
     def _create_centroid_msg(mask, header):
@@ -413,25 +522,30 @@ class ObjectNameBridge(Node):
         return msg
 
     @staticmethod
-    def _create_object_list_msg(response, header, source, prompts):
+    def _create_object_list_msg(response, header, source, prompts, out_size):
+        out_w, out_h = out_size
+        # 推論画像のpixel座標をpublish解像度のpixel座標へ変換する。
+        sx = out_w / float(response.width)
+        sy = out_h / float(response.height)
+
         msg = Sam3ObjectArray()
         msg.header = header
         msg.source = source
         msg.prompt = prompts[0] if len(prompts) == 1 else ", ".join(prompts)
-        msg.width = int(response.width)
-        msg.height = int(response.height)
+        msg.width = int(out_w)
+        msg.height = int(out_h)
         msg.num_objects = int(response.num_objects)
         for detected in response.objects:
             obj = Sam3Object()
             obj.id = int(detected.id)
             obj.score = float(detected.score)
-            obj.bbox_x = int(detected.bbox_x)
-            obj.bbox_y = int(detected.bbox_y)
-            obj.bbox_w = int(detected.bbox_w)
-            obj.bbox_h = int(detected.bbox_h)
-            obj.centroid_x = float(detected.centroid_x)
-            obj.centroid_y = float(detected.centroid_y)
-            obj.area = int(detected.area)
+            obj.bbox_x = int(round(detected.bbox_x * sx))
+            obj.bbox_y = int(round(detected.bbox_y * sy))
+            obj.bbox_w = int(round(detected.bbox_w * sx))
+            obj.bbox_h = int(round(detected.bbox_h * sy))
+            obj.centroid_x = float((detected.centroid_x + 0.5) * sx - 0.5)
+            obj.centroid_y = float((detected.centroid_y + 0.5) * sy - 0.5)
+            obj.area = int(round(detected.area * sx * sy))
             obj.age = int(detected.age)
             obj.missed = int(detected.missed)
             obj.prompt = detected.prompt
@@ -455,6 +569,8 @@ class ObjectNameBridge(Node):
             if worker_thread.is_alive():
                 worker_thread.join(timeout=max(1.0, self.timeout + 0.5))
         self.channel.close()
+        if self.timing_file is not None:
+            self.timing_file.close()
         return super().destroy_node()
 
 
