@@ -1,0 +1,25 @@
+# スタンドアロンPiper（`?robot=piper`）用のMoveIt→simブリッジ設定。
+# cotyakaの`bridge.yaml`と**同じノード**（piper_websim/trajectory_bridge.py）を別の
+# simトピックで起動するためのoverrideのみ。ソースコードは共有しているので実装修正は1箇所。
+#
+# MoveIt側の契約はcotyakaと同一（変更不要）:
+#   arm_controller     → joint1..joint6
+#   gripper_controller → joint7（joint8はMJCFの<equality>制約でネイティブに追従するため不要）
+# action名も`/arm_controller`・`/gripper_controller`のまま。改名すると
+# piper_ros側の実機経路（`piper/piper/moveit_bridge.py` 等がaction名をハードコード）が壊れるため。
+#
+# キーはノード名に厳密に一致させること。launchはノード名を`piper_standalone_sim_bridge`に
+# 改名しているので、ここが`piper_websim`のままだとパラメータが一切適用されず、
+# 転送先がデフォルト(cotyaka用)の`/sim/piper/joint_targets`のままになる。
+#
+# 運用: piperは単体運用を前提とするため、cotyaka版bridgeとは**同時に起動しない**こと。
+# 同一action名に2ノードが登録されるとROS 2が片方だけをアクションサーバとして報告し
+# （`ros2 action info`が "Action servers: 1"）、もう片方がノード一覧から消える。
+# 詳細は launch/trajectory_bridge_standalone.launch.py のdocstringを参照。
+piper_standalone_sim_bridge:
+  ros__parameters:
+    trajectory_topic: /sim/piper_standalone/trajectory
+    joint_target_topic: /sim/piper_standalone/joint_targets
+    joint_state_topic: /joint_states
+    action_name: /arm_controller/follow_joint_trajectory
+    gripper_action_name: /gripper_controller/follow_joint_trajectory

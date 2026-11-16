@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>piper_websim</name>
+  <version>0.1.0</version>
+  <description>Web MuJoCoシミュレータ(kotyaka_web_sim)とMoveIt/FollowJointTrajectoryを結ぶブリッジ。実機のpiper_single_ctrl_moveit_actionと同じaction名を提供する。</description>
+  <maintainer email="maintainer@example.invalid">piper_ros</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>control_msgs</exec_depend>
+  <exec_depend>trajectory_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>piper</exec_depend>
+  <exec_depend>piper_with_gripper_moveit</exec_depend>
+  <exec_depend>moveit_ros_move_group</exec_depend>
+  <exec_depend>moveit_configs_utils</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>rosbridge_server</exec_depend>
+  <exec_depend>rosapi</exec_depend>
+  <export><build_type>ament_python</build_type></export>
+</package>

@@ -1,0 +1,7 @@
+piper_websim:
+  ros__parameters:
+    trajectory_topic: /sim/piper/trajectory
+    joint_target_topic: /sim/piper/joint_targets
+    joint_state_topic: /joint_states
+    action_name: /arm_controller/follow_joint_trajectory
+    gripper_action_name: /gripper_controller/follow_joint_trajectory
