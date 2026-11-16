@@ -67,6 +67,14 @@ RUN apt-get update && apt-get install -y \
     ros-humble-robot-state-publisher \
     && rm -rf /var/lib/apt/lists/*
 
+# Webシミュレータ(kotyaka_web_sim)との接続用: rosbridge_server + rosapi（WebSocket 9090）。
+# src/piper_sim/piper_websim の websim_moveit.launch.py が使う。
+# 既存のレイヤーのキャッシュを無効にしないよう、独立したRUNにしている。
+# （MoveIt本体は setup/piper.bash の rosdep install が package.xml の依存から入れる）
+RUN apt-get update && apt-get install -y \
+    ros-humble-rosbridge-suite \
+    && rm -rf /var/lib/apt/lists/*
+
 # Python (pip) の依存関係
 RUN pip3 install \
     python-can \

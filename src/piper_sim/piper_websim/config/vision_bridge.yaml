@@ -1,7 +1,7 @@
 piper_websim_vision_bridge:
   ros__parameters:
     endpoint: ""
-    image_topic: /camera/color/image_raw/compressed
-    depth_topic: /camera/depth/image_raw
+    image_topic: /camera/camera/color/image_raw/compressed
+    depth_topic: /camera/camera/aligned_depth_to_color/image_raw
     result_topic: /vision/inference_result
     period: 0.5

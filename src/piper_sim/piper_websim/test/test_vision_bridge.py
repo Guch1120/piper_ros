@@ -25,8 +25,8 @@ class Handler(BaseHTTPRequestHandler):
 class Probe(Node):
     def __init__(self):
         super().__init__('vision_bridge_probe')
-        self.image = self.create_publisher(CompressedImage, '/camera/color/image_raw/compressed', 10)
-        self.depth = self.create_publisher(Image, '/camera/depth/image_raw', 10)
+        self.image = self.create_publisher(CompressedImage, '/camera/camera/color/image_raw/compressed', 10)
+        self.depth = self.create_publisher(Image, '/camera/camera/aligned_depth_to_color/image_raw', 10)
         self.create_timer(0.2, self.publish_once)
     def publish_once(self):
         image = CompressedImage(); image.format = 'jpeg'; image.data = [1, 2, 3, 4]

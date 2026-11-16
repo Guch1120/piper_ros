@@ -13,8 +13,8 @@ class VisionBridge(Node):
     def __init__(self):
         super().__init__("piper_websim_vision_bridge")
         self.declare_parameter("endpoint", "")
-        self.declare_parameter("image_topic", "/camera/color/image_raw/compressed")
-        self.declare_parameter("depth_topic", "/camera/depth/image_raw")
+        self.declare_parameter("image_topic", "/camera/camera/color/image_raw/compressed")
+        self.declare_parameter("depth_topic", "/camera/camera/aligned_depth_to_color/image_raw")
         self.declare_parameter("result_topic", "/vision/inference_result")
         self.declare_parameter("period", 0.5)
         self._endpoint = str(self.get_parameter("endpoint").value).strip()
